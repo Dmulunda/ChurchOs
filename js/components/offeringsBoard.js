@@ -98,10 +98,11 @@ export function renderOfferingsBoard(container, { supabase, currentUserId }) {
     </div>
 
     <div class="bg-white rounded-xl shadow p-4 sm:p-6 mb-6">
-      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <div class="flex items-center justify-between mb-1 flex-wrap gap-2">
         <h2 class="text-lg font-semibold">${t('offerings.currentPeriodTitle')}</h2>
         <span data-el="period-total" class="text-sm font-semibold text-slate-700"></span>
       </div>
+      ${!canDelete ? `<p class="text-xs text-amber-600 mb-3">${t('offerings.todayOnlyNote')}</p>` : ''}
       <div data-el="list"></div>
     </div>
 

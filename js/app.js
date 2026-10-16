@@ -1049,7 +1049,7 @@ function buildQuickAccessItems() {
   if (hasFeature('vpd_academy')) items.push({ icon: '🎓', label: t('nav.training'), tab: 'training' });
   if (hasFeature('flyers')) items.push({ icon: '🖼️', label: t('nav.flyers'), tab: 'flyers' });
   if (hasAnyDeptLeadership()) items.push({ icon: '💰', label: t('nav.budget'), tab: 'budget' });
-  if (hasFinanceOversight()) items.push({ icon: '🙏', label: t('nav.offerings'), tab: 'offerings' });
+  if (canRecordOfferings()) items.push({ icon: '🙏', label: t('nav.offerings'), tab: 'offerings' });
   if (active) {
     items.push({ icon: '📊', label: t('nav.dashboard'), tab: isChoir ? 'dashboard' : 'dept-dashboard' });
     if (!(active.key === 'finance' || active.key === 'church_program')) {
