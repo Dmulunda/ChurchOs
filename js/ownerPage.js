@@ -37,6 +37,31 @@ export async function renderOwnerTab(container = document.querySelector('#owner-
   const myTenantId = getTenantId?.() || null;
 
   container.innerHTML = `
+    <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
+      <h3 class="text-sm font-semibold text-slate-800 mb-3">${t('owner.createChurchTitle')}</h3>
+      <form data-el="create-church-form" class="grid sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">${t('owner.createChurchName')}</label>
+          <input type="text" name="church_name" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">${t('owner.createChurchAdminEmail')}</label>
+          <input type="email" name="admin_email" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">${t('owner.createChurchTempPassword')}</label>
+          <div class="flex gap-2">
+            <input type="text" name="admin_password" required minlength="6" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+            <button type="button" data-action="generate-password" class="px-2 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:border-indigo-200 hover:text-indigo-600 whitespace-nowrap">${t('userCreator.generatePassword')}</button>
+          </div>
+        </div>
+        <div class="sm:col-span-3 flex items-center gap-3">
+          <button type="submit" data-el="create-church-submit" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">${t('owner.createChurchSubmit')}</button>
+          <span data-el="create-church-status" class="text-sm text-slate-500"></span>
+        </div>
+      </form>
+    </div>
+
     <div class="overflow-x-auto border border-slate-200 rounded-lg">
       <table class="w-full text-sm">
         <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
@@ -54,6 +79,50 @@ export async function renderOwnerTab(container = document.querySelector('#owner-
       </table>
     </div>
   `;
+
+  const createChurchForm = container.querySelector('[data-el="create-church-form"]');
+  const createChurchSubmitBtn = createChurchForm.querySelector('[data-el="create-church-submit"]');
+  const createChurchStatusEl = createChurchForm.querySelector('[data-el="create-church-status"]');
+  createChurchForm.querySelector('[data-action="generate-password"]').addEventListener('click', () => {
+    createChurchForm.elements.admin_password.value = generateTempPassword();
+  });
+  createChurchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const church_name = createChurchForm.elements.church_name.value.trim();
+    const admin_email = createChurchForm.elements.admin_email.value.trim();
+    const admin_password = createChurchForm.elements.admin_password.value;
+
+    createChurchSubmitBtn.disabled = true;
+    createChurchStatusEl.className = 'text-sm text-slate-500';
+    createChurchStatusEl.textContent = t('common.saving');
+
+    const { data, error: invokeError } = await supabase.functions.invoke('owner-create-church', {
+      body: { church_name, admin_email, admin_password },
+    });
+    createChurchSubmitBtn.disabled = false;
+
+    // supabase-js only rejects with `error` on a network failure --a
+    // non-2xx response still resolves with `data` holding this
+    // function's own { error } JSON body (same shape import-bible's
+    // callers already handle).
+    const message = invokeError?.message || data?.error;
+    if (message) {
+      createChurchStatusEl.className = 'text-sm text-rose-600';
+      createChurchStatusEl.textContent = t('owner.createChurchFailed', { message });
+      return;
+    }
+
+    createChurchStatusEl.className = 'text-sm text-emerald-600';
+    createChurchStatusEl.textContent = t('owner.createChurchSuccess', { name: church_name });
+    createChurchForm.reset();
+    renderOwnerTab(container, { onOwnTenantChanged });
+  });
+
+  function generateTempPassword() {
+    const bytes = new Uint8Array(9);
+    window.crypto.getRandomValues(bytes);
+    return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, 12);
+  }
 
   const rowsEl = container.querySelector('[data-el="rows"]');
   rowsEl.innerHTML = (tenants || []).map((tn) => {

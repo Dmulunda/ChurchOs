@@ -452,6 +452,10 @@ const TRANSLATIONS = {
     'changePassword.failed': 'Failed to change password: {message}',
     'changePassword.success': 'Password changed.',
 
+    'forcePassword.title': 'Change Your Password',
+    'forcePassword.body': "You're signing in with a temporary password. Enter it once more below, then choose a new one only you know.",
+    'forcePassword.action': 'Set New Password',
+
     'sidebar.myProfile': 'My Profile',
     'myProfile.title': 'My Profile',
     'myProfile.editInfo': 'Edit my info',
@@ -1349,6 +1353,13 @@ const TRANSLATIONS = {
     'owner.clearOverride': 'Clear override',
     'owner.applyFailed': 'Failed to apply plan: {message}',
     'owner.clearFailed': 'Failed to clear override: {message}',
+    'owner.createChurchTitle': 'Create a Church',
+    'owner.createChurchName': 'Church name',
+    'owner.createChurchAdminEmail': "Admin's email",
+    'owner.createChurchTempPassword': 'Temporary password',
+    'owner.createChurchSubmit': 'Create Church',
+    'owner.createChurchFailed': 'Failed to create church: {message}',
+    'owner.createChurchSuccess': '{name} created. Share the email and temporary password with its admin -- they\'ll be asked to change it on first login.',
 
     'siteAdmin.title': 'Site Admin',
     'siteAdmin.tabInquiries': 'Website Inquiries',
@@ -3108,6 +3119,10 @@ const TRANSLATIONS = {
     'changePassword.failed': 'Échec du changement de mot de passe : {message}',
     'changePassword.success': 'Mot de passe changé.',
 
+    'forcePassword.title': 'Changez votre mot de passe',
+    'forcePassword.body': "Vous vous connectez avec un mot de passe temporaire. Entrez-le une fois de plus ci-dessous, puis choisissez-en un nouveau que vous seul connaissez.",
+    'forcePassword.action': 'Définir le nouveau mot de passe',
+
     'sidebar.myProfile': 'Mon profil',
     'myProfile.title': 'Mon profil',
     'myProfile.editInfo': 'Modifier mes informations',
@@ -4005,6 +4020,13 @@ const TRANSLATIONS = {
     'owner.clearOverride': 'Annuler le forçage',
     'owner.applyFailed': "Échec de l'application du forfait : {message}",
     'owner.clearFailed': "Échec de l'annulation : {message}",
+    'owner.createChurchTitle': 'Créer une église',
+    'owner.createChurchName': "Nom de l'église",
+    'owner.createChurchAdminEmail': "E-mail de l'admin",
+    'owner.createChurchTempPassword': 'Mot de passe temporaire',
+    'owner.createChurchSubmit': "Créer l'église",
+    'owner.createChurchFailed': "Échec de la création de l'église : {message}",
+    'owner.createChurchSuccess': "{name} créée. Partagez l'e-mail et le mot de passe temporaire avec son admin -- il lui sera demandé de le changer dès la première connexion.",
 
     'siteAdmin.title': 'Admin du site',
     'siteAdmin.tabInquiries': 'Demandes du site web',

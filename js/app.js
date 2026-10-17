@@ -1538,6 +1538,7 @@ const authScreenEl = document.querySelector('#auth-screen');
 const appShellEl = document.querySelector('#app-shell');
 const passwordRecoveryEl = document.querySelector('#password-recovery-screen');
 const trialEndedEl = document.querySelector('#trial-ended-screen');
+const forcePasswordEl = document.querySelector('#force-password-screen');
 const signOutBtn = document.querySelector('#sign-out-btn');
 
 renderAuthScreen(authScreenEl, { supabase });
@@ -1664,7 +1665,7 @@ async function showApp(session, { isFreshSignIn = false } = {}) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, role, removed_at, tenant_id')
+    .select('full_name, role, removed_at, tenant_id, must_change_password')
     .eq('id', session.user.id)
     .single();
 
@@ -1691,6 +1692,19 @@ async function showApp(session, { isFreshSignIn = false } = {}) {
     await supabase.auth.signOut({ scope: 'global' });
     return;
   }
+
+  // An owner-created admin's temporary password (js/ownerPage.js's
+  // Create Church form, supabase/functions/owner-create-church) --
+  // blocks everything else, including the trial check below, until
+  // it's actually changed. Checked this early (right after the two
+  // account-sanity checks above) rather than folded into them since
+  // it isn't a sign-out condition — just a one-time detour.
+  if (profile?.must_change_password) {
+    await showForcePasswordChange();
+    return;
+  }
+  forcePasswordEl.classList.add('hidden');
+  forcePasswordEl.classList.remove('flex');
 
   const displayName = profile?.full_name || session.user.email;
   forEachNavGroup('current-user-name', (el) => { el.textContent = displayName; });
@@ -1784,6 +1798,98 @@ const HAS_WELCOMED_KEY = 'choir-hub-has-welcomed';
 // arbitrary container, built for exactly this kind of reuse) so they
 // can fix their own (or anyone's) trial/plan right here without
 // needing a separate escape hatch.
+// Same current-password-reverify-then-updateUser() logic as
+// changePasswordModal.js (Supabase's updateUser() alone doesn't check
+// the current password, so a plain updateUser() here would let
+// someone skip straight past "prove you know the temp password" by
+// just picking a new one) -- not reused directly since that's a
+// dismissible overlay instance and this has to be a permanent,
+// non-closeable screen; duplicating this one small block was simpler
+// than reshaping that component to support both.
+async function showForcePasswordChange() {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  forcePasswordEl.innerHTML = `
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+      <h1 class="text-xl font-bold text-slate-800 mb-2">${t('forcePassword.title')}</h1>
+      <p class="text-sm text-slate-600 mb-4">${t('forcePassword.body')}</p>
+      <form data-el="form" class="space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">${t('changePassword.current')}</label>
+          <input type="password" name="current" required autocomplete="current-password" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">${t('changePassword.new')}</label>
+          <input type="password" name="new" required minlength="6" autocomplete="new-password" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">${t('changePassword.confirm')}</label>
+          <input type="password" name="confirm" required minlength="6" autocomplete="new-password" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+        </div>
+        <p data-el="status" class="text-sm"></p>
+        <button type="submit" data-el="submit-btn" class="w-full py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50">${t('forcePassword.action')}</button>
+      </form>
+    </div>
+  `;
+
+  const form = forcePasswordEl.querySelector('[data-el="form"]');
+  const statusEl = forcePasswordEl.querySelector('[data-el="status"]');
+  const submitBtn = forcePasswordEl.querySelector('[data-el="submit-btn"]');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const currentPassword = form.elements.current.value;
+    const newPassword = form.elements.new.value;
+    const confirmPassword = form.elements.confirm.value;
+
+    if (newPassword !== confirmPassword) {
+      statusEl.className = 'text-sm text-rose-600';
+      statusEl.textContent = t('changePassword.mismatch');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    statusEl.className = 'text-sm text-slate-500';
+    statusEl.textContent = t('common.loading');
+
+    const { error: verifyError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
+    if (verifyError) {
+      submitBtn.disabled = false;
+      statusEl.className = 'text-sm text-rose-600';
+      statusEl.textContent = t('changePassword.currentWrong');
+      return;
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    if (updateError) {
+      submitBtn.disabled = false;
+      statusEl.className = 'text-sm text-rose-600';
+      statusEl.textContent = t('changePassword.failed', { message: updateError.message });
+      return;
+    }
+
+    const { error: clearError } = await supabase.rpc('clear_must_change_password');
+    submitBtn.disabled = false;
+    if (clearError) {
+      statusEl.className = 'text-sm text-rose-600';
+      statusEl.textContent = t('changePassword.failed', { message: clearError.message });
+      return;
+    }
+
+    // A fresh showApp() pass, not just hiding this screen in place --
+    // everything after this gate in showApp() (trial check, loading
+    // departments, etc.) has never run yet for this session.
+    await showApp({ user }, { isFreshSignIn: true });
+  });
+
+  authScreenEl.classList.add('hidden');
+  passwordRecoveryEl.classList.add('hidden');
+  trialEndedEl.classList.add('hidden');
+  appShellEl.classList.add('hidden');
+  forcePasswordEl.classList.remove('hidden');
+  forcePasswordEl.classList.add('flex');
+}
+
 async function showTrialEnded() {
   await loadPlatformOwnerStatus();
   const tenant = getTenant();
@@ -1852,6 +1958,8 @@ function showAuth() {
   appShellEl.classList.add('hidden');
   trialEndedEl.classList.add('hidden');
   trialEndedEl.classList.remove('flex');
+  forcePasswordEl.classList.add('hidden');
+  forcePasswordEl.classList.remove('flex');
   authScreenEl.classList.remove('hidden');
   forEachNavGroup('members-nav', (el) => el.classList.add('hidden'));
   departmentSwitcherWrapEl.classList.add('hidden');
