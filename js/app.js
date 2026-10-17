@@ -616,7 +616,7 @@ function rememberedDeptTab(active, isChoir) {
     case 'voice-exercises':
     case 'members': return isChoir ? tab : null;
     case 'uniform': return (isChoir || active.key === 'ushers') ? tab : null;
-    case 'dept-projection': return active.key === 'media_tech' ? tab : null;
+    case 'dept-projection': return active.key === 'media_tech' && (active.role === 'admin' || active.role === 'super_admin') ? tab : null;
     case 'dept-equipment': return active.key === 'media_tech' ? tab : null;
     case 'dept-supplies': return active.key === 'cleaning' ? tab : null;
     case 'headcount-tally': return HEADCOUNT_DEPARTMENT_KEYS.includes(active.key) ? tab : null;
@@ -789,8 +789,10 @@ function applyActiveDepartment() {
   // Uniform: Choir always has its own button in choir-nav-group: this
   // one (in the shared lightweight nav) is only for Ushers.
   forEachNavGroup('uniform-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'ushers')));
-  // Projection: its own page, Media & Tech only.
-  forEachNavGroup('dept-projection-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'media_tech')));
+  // Projection: its own page, Media & Tech only -- and (sql/88) only
+  // its admin/super admin can even open it; other Media members still
+  // see the rest of the department, just not this tab.
+  forEachNavGroup('dept-projection-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'media_tech' && (active.role === 'admin' || active.role === 'super_admin'))));
   // Equipment inventory: Media & Tech only.
   forEachNavGroup('dept-equipment-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'media_tech')));
   // Supplies: Cleaning only.
@@ -1058,7 +1060,7 @@ function buildQuickAccessItems() {
     if (isChoir) items.push({ icon: '🎵', label: t('nav.songbook'), tab: 'songbook' });
     if (isChoir) items.push({ icon: '🎤', label: t('nav.voiceExercises'), tab: 'voice-exercises' });
     if (isChoir || active.key === 'ushers') items.push({ icon: '🎽', label: t('nav.uniform'), tab: 'uniform' });
-    if (active.key === 'media_tech' && hasFeature('projection')) items.push({ icon: '🎥', label: t('nav.projection'), tab: 'dept-projection' });
+    if (active.key === 'media_tech' && hasFeature('projection') && (active.role === 'admin' || active.role === 'super_admin')) items.push({ icon: '🎥', label: t('nav.projection'), tab: 'dept-projection' });
     if (active.key === 'media_tech') items.push({ icon: '🎦', label: t('nav.equipment'), tab: 'dept-equipment' });
     if (active.key === 'cleaning') items.push({ icon: '🧹', label: t('nav.supplies'), tab: 'dept-supplies' });
     if (HEADCOUNT_DEPARTMENT_KEYS.includes(active.key)) items.push({ icon: '🔢', label: t('nav.headcountTally'), tab: 'headcount-tally' });
