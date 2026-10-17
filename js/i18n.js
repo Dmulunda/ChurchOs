@@ -2443,6 +2443,7 @@ const TRANSLATIONS = {
     'previewAsMember.banner': 'Previewing as a Member — read-only',
 
     'users.addUser': '+ Add User',
+    'users.bulkAdd': '+ Add Several',
     'users.searchPlaceholder': 'Search by name or email…',
     'users.columns': 'Columns:',
     'users.showEmail': 'Email',
@@ -2500,6 +2501,17 @@ const TRANSLATIONS = {
     'users.reassignIntro': '{name} is currently the only admin of the department(s) below. Pick a replacement for each before deleting, or leave it empty to remove the department’s admin entirely.',
     'users.reassignNoCandidates': 'No other approved members in this department — it will be left without an admin.',
     'users.reassignLeaveEmpty': 'Leave without an admin',
+
+    'bulkAdd.title': 'Add Several Members',
+    'bulkAdd.searchPlaceholder': 'Search by name…',
+    'bulkAdd.allRoles': 'All access levels',
+    'bulkAdd.noAccessLevel': 'No special access',
+    'bulkAdd.selectAllVisible': 'Select all visible',
+    'bulkAdd.addSelected': 'Add Selected',
+    'bulkAdd.selectedCount': '{count} selected',
+    'bulkAdd.none': 'Everyone is already in this department.',
+    'bulkAdd.loadFailed': 'Failed to load members: {message}',
+    'bulkAdd.addFailed': 'Failed to add members: {message}',
 
     'userCreator.title': 'Add User',
     'userCreator.intro': 'Creates a real login for this person. Departments you don’t administer will need approval before the assignment takes effect.',
@@ -5087,6 +5099,7 @@ const TRANSLATIONS = {
     'previewAsMember.banner': 'Aperçu en tant que membre — lecture seule',
 
     'users.addUser': '+ Ajouter un utilisateur',
+    'users.bulkAdd': '+ Ajouter plusieurs',
     'users.searchPlaceholder': 'Rechercher par nom ou e-mail…',
     'users.columns': 'Colonnes :',
     'users.showEmail': 'E-mail',
@@ -5144,6 +5157,17 @@ const TRANSLATIONS = {
     'users.reassignIntro': '{name} est actuellement le seul administrateur du/des département(s) ci-dessous. Choisissez un remplaçant pour chacun avant de supprimer, ou laissez vide pour retirer l’administrateur du département.',
     'users.reassignNoCandidates': 'Aucun autre membre approuvé dans ce département — il restera sans administrateur.',
     'users.reassignLeaveEmpty': 'Laisser sans administrateur',
+
+    'bulkAdd.title': 'Ajouter plusieurs membres',
+    'bulkAdd.searchPlaceholder': 'Rechercher par nom…',
+    'bulkAdd.allRoles': "Tous les niveaux d'accès",
+    'bulkAdd.noAccessLevel': 'Aucun accès spécial',
+    'bulkAdd.selectAllVisible': 'Sélectionner tout ce qui est visible',
+    'bulkAdd.addSelected': 'Ajouter la sélection',
+    'bulkAdd.selectedCount': '{count} sélectionné(s)',
+    'bulkAdd.none': 'Tout le monde est déjà dans ce département.',
+    'bulkAdd.loadFailed': 'Échec du chargement des membres : {message}',
+    'bulkAdd.addFailed': "Échec de l'ajout des membres : {message}",
 
     'userCreator.title': 'Ajouter un utilisateur',
     'userCreator.intro': "Crée un véritable accès de connexion pour cette personne. Les départements que vous n'administrez pas nécessiteront une approbation avant que l'affectation ne prenne effet.",

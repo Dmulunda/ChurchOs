@@ -14,6 +14,7 @@
 //     Access Level column (Super Admin only).
 import { createUserCreatorModal } from './userCreatorModal.js';
 import { createUserEditModal } from './userEditModal.js';
+import { createBulkAddMembersModal } from './bulkAddMembersModal.js';
 import { createResetPasswordModal } from './resetPasswordModal.js';
 import { confirmDialog } from './confirmDialog.js';
 import { reassignAdminDialog } from './reassignAdminDialog.js';
@@ -44,6 +45,15 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
       ${t('users.addUser')}
     </button>`;
 
+  // Bulk-add existing tenant members (as opposed to "Add User" above,
+  // which creates a brand-new account) -- only makes sense for a
+  // single target department, not the global Directory.
+  const bulkAddBtn = (!isViewingAs() && scope.type === 'department') ? `
+    <button type="button" data-action="bulk-add"
+            class="px-4 py-2 rounded-lg border border-indigo-200 text-indigo-600 font-medium hover:bg-indigo-50 whitespace-nowrap">
+      ${t('users.bulkAdd')}
+    </button>` : '';
+
   const filterSortControls = isGlobalScope ? `
     <div class="flex flex-wrap items-center gap-3 mb-3">
       <select data-el="department-filter" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm">
@@ -62,6 +72,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
       <input type="search" data-el="search" placeholder="${t('users.searchPlaceholder')}"
              class="flex-1 min-w-[200px] border border-slate-300 rounded-lg px-3 py-2 text-sm" />
       ${addUserBtn}
+      ${bulkAddBtn}
     </div>
     ${filterSortControls}
     <div class="flex flex-wrap items-center gap-4 mb-3 text-sm text-slate-500">
@@ -93,6 +104,11 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
   if (!isViewingAs()) {
     const creatorModal = createUserCreatorModal({ supabase, scope, currentUserId, onCreated: loadUsers });
     container.querySelector('[data-action="add-user"]').addEventListener('click', () => creatorModal.open());
+  }
+
+  if (!isViewingAs() && scope.type === 'department') {
+    const bulkAddModal = createBulkAddMembersModal({ supabase, departmentId: scope.departmentId, currentUserId, onAdded: loadUsers });
+    container.querySelector('[data-action="bulk-add"]').addEventListener('click', () => bulkAddModal.open());
   }
 
   loadUsers();
