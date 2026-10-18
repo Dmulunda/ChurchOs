@@ -1138,11 +1138,13 @@ function updateSidebarToolsSelect() {
   const hasAccess = getMyDepartments().length > 0;
   const active = getActiveDepartment();
 
-  // Mirrors can_record_attendance() in sql/037 — a global role from the
-  // pastoral team, or an approved admin/secretary in the Ushers
-  // department specifically.
+  // Mirrors can_record_attendance() (sql/037, widened by sql/saas_platform/91)
+  // — a global role from the pastoral team, an approved admin/secretary
+  // in Ushers specifically, or ANY approved Welcoming & Socialisation
+  // member (deliberately wider than Ushers' own bar, by request).
   const canRecordAttendance = USHER_ATTENDANCE_ROLES.includes(getGlobalRole())
-    || getMyDepartments().some((d) => d.key === 'ushers' && (d.role === 'admin' || d.role === 'secretary'));
+    || getMyDepartments().some((d) => d.key === 'ushers' && (d.role === 'admin' || d.role === 'secretary'))
+    || getMyDepartments().some((d) => d.key === 'welcoming_socialisation');
 
   const options = [{ value: 'church-rules', label: t('sidebar.churchRules') }];
   if (getGlobalRole() === 'super_admin' && !isViewingAs()) options.push({ value: 'plans', label: t('plans.title') });

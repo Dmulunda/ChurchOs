@@ -1,7 +1,9 @@
-// Attendance check-in for Ushers/Super Admin/Pastor Admin/Church
-// Secretary (see can_record_attendance() in sql/037) — search for a
-// member by name and check them in, or log a guest visitor by name.
-// sql/038's trigger picks guests up for pastoral follow-up automatically.
+// Attendance check-in for Ushers' admin/secretary, any approved
+// Welcoming & Socialisation member, or Super Admin/Pastor Admin/
+// Church Secretary (see can_record_attendance() in sql/037, widened
+// by sql/saas_platform/91) — search for a member by name and check
+// them in, or log a guest visitor by name. sql/038's trigger picks
+// guests up for pastoral follow-up automatically.
 import { confirmDialog } from './confirmDialog.js';
 import { t } from '../i18n.js';
 
