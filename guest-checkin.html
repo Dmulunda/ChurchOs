@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guest Check-In</title>
+  <link rel="icon" type="image/png" href="img/church-on-point-icon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+  <div class="max-w-md mx-auto px-4 py-8 sm:py-12">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="img/church-on-point-icon.png" alt="" class="h-10 w-10 object-contain" />
+      <h1 class="text-xl font-bold text-slate-800" data-i18n="guestCheckin.title">Guest Check-In</h1>
+    </div>
+    <div id="guest-checkin-content">
+      <p class="text-slate-500 bg-white rounded-xl shadow p-4 sm:p-6">Loading…</p>
+    </div>
+  </div>
+  <script type="module" src="js/publicGuestCheckin.js"></script>
+</body>
+</html>

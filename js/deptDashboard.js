@@ -14,6 +14,8 @@ import { getEffectiveSupabase, getActiveDepartment, canPostAnnouncements, isGlob
 import { renderDepartmentApprovals } from './components/departmentApprovals.js';
 import { renderAnnouncements } from './components/departmentAnnouncements.js';
 import { createUserManagerModal } from './components/userManager.js';
+import { createGuestCheckinQrModal } from './components/guestCheckinQrModal.js';
+import { renderGuestAttendanceDashboard } from './components/guestAttendanceDashboard.js';
 import { renderNextUpcomingWidget } from './components/nextUpcomingWidget.js';
 import { renderMyPreachingWidget } from './components/myPreachingWidget.js';
 import { renderChurchProgramBoard } from './components/churchProgramBoard.js';
@@ -114,6 +116,20 @@ export async function renderDeptDashboardTab() {
   // department admin/secretary or Pastor, with no nav trace at all for
   // anyone else.
 
+  // Guest self-check-in QR -- every approved Welcoming & Socialisation
+  // member sees this, not just canAdminister (unlike "Manage Roster"
+  // above), since the whole point is that any of them can show/share
+  // it at the door.
+  if (active.key === 'welcoming_socialisation') {
+    const qrBtn = document.createElement('button');
+    qrBtn.type = 'button';
+    qrBtn.className = 'px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:border-indigo-200 hover:text-indigo-600 whitespace-nowrap';
+    qrBtn.textContent = `📱 ${t('guestCheckinQr.showButton')}`;
+    headerActionsEl.appendChild(qrBtn);
+    const qrModal = createGuestCheckinQrModal();
+    qrBtn.addEventListener('click', () => qrModal.open());
+  }
+
   if (active.key === 'intercession' && canManageDept) {
     const prayerRequestsBtn = document.createElement('button');
     prayerRequestsBtn.type = 'button';
@@ -166,6 +182,12 @@ export async function renderDeptDashboardTab() {
       departmentId: active.id,
       adminUserId: user.id,
     });
+  }
+
+  if (active.key === 'welcoming_socialisation') {
+    const guestDashboardEl = document.createElement('div');
+    fullWidthEl.appendChild(guestDashboardEl);
+    renderGuestAttendanceDashboard(guestDashboardEl, { supabase });
   }
 
   const announcementsCard = document.createElement('div');
