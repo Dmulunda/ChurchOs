@@ -20,6 +20,7 @@
 // computed wherever that matters, matching sql/083/084's existing
 // no-separate-status design.
 import { t } from '../i18n.js';
+import { publicPageUrl } from '../utils/publicUrl.js';
 import { confirmDialog } from './confirmDialog.js';
 import { createSignaturePad } from './signaturePad.js';
 import { getTenant } from '../tenant.js';
@@ -496,7 +497,7 @@ function printLetter(letter, sigs) {
   // Falls back to the platform default only if this tenant hasn't
   // uploaded their own yet -- see js/components/tenantLogoModal.js,
   // same pattern as memberIdCard.js's header.
-  const logoUrl = getTenant()?.logo_url || `${window.location.origin}/img/church-on-point-icon.png`;
+  const logoUrl = getTenant()?.logo_url || publicPageUrl('img/church-on-point-icon.png');
 
   const html = `
     <!DOCTYPE html>

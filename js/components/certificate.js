@@ -12,6 +12,7 @@
 // and none was asked for, so these are simple constants a future code
 // change would update if the actual people ever change.
 import { t } from '../i18n.js';
+import { publicPageUrl } from '../utils/publicUrl.js';
 import { getTenant } from '../tenant.js';
 
 const LEAD_INSTRUCTOR_NAME = 'Prophète Francis Ngawala';
@@ -24,7 +25,7 @@ export function openCertificate({ studentName, courseTitle, approvedAt, approval
   // Falls back to the platform default only if this tenant hasn't
   // uploaded their own yet -- see js/components/tenantLogoModal.js,
   // same pattern as memberIdCard.js's header.
-  const logoUrl = getTenant()?.logo_url || `${window.location.origin}/img/church-on-point-icon.png`;
+  const logoUrl = getTenant()?.logo_url || publicPageUrl('img/church-on-point-icon.png');
   const certificateId = formatCertificateId(approvalId, approvedAt);
 
   const html = `

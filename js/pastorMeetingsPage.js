@@ -19,6 +19,7 @@ import { t, tn } from './i18n.js';
 import { confirmDialog } from './components/confirmDialog.js';
 import { openMeetingWindow, navigateMeetingWindow } from './components/videoMeeting.js';
 import { getTenantId, getTenant } from './tenant.js';
+import { publicPageUrl } from './utils/publicUrl.js';
 
 const PASTORAL_TEAM_ROLES = ['super_admin', 'church_secretary'];
 
@@ -367,7 +368,7 @@ async function renderSettingsTab(container, { supabase, currentUserId }) {
   // Public link needs the tenant's slug -- an anon visitor has no
   // session to resolve current_tenant_id() from, unlike main's single-
   // church booking.html, which needs no identifier at all.
-  const publicUrl = `${window.location.origin}/booking.html?church=${encodeURIComponent(getTenant()?.slug || '')}`;
+  const publicUrl = publicPageUrl('booking.html', { church: getTenant()?.slug || '' });
 
   container.innerHTML = `
     <div class="bg-white rounded-xl shadow p-4 sm:p-6 mb-4">

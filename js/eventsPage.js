@@ -18,6 +18,7 @@ import { confirmDialog } from './components/confirmDialog.js';
 import { activateTab, invalidateTabCache } from './app.js';
 import { openFlyerForEvent } from './flyersPage.js';
 import { t } from './i18n.js';
+import { publicPageUrl } from './utils/publicUrl.js';
 
 export async function renderEventsTab() {
   const supabase = getEffectiveSupabase();
@@ -303,7 +304,7 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
     supabase.from('event_registrations').select('id, full_name, email, phone, status, payment_status, party_size, additional_names, created_at').eq('event_id', event.id).order('created_at'),
   ]);
 
-  const publicUrl = `${window.location.origin}/event.html?event=${event.id}&church=${encodeURIComponent(getTenant()?.slug || '')}`;
+  const publicUrl = publicPageUrl('event.html', { event: event.id, church: getTenant()?.slug || '' });
   // Summed by party_size -- a registration can be for more than one
   // person, same reasoning as the capacity check in register_for_event().
   const confirmedCount = (registrations || []).filter((r) => r.status === 'confirmed').reduce((sum, r) => sum + r.party_size, 0);

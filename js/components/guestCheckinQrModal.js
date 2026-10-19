@@ -9,6 +9,7 @@
 // the same copy-link UI eventsPage.js's own public-link share uses.
 import { t } from '../i18n.js';
 import { getTenant } from '../tenant.js';
+import { publicPageUrl } from '../utils/publicUrl.js';
 
 function todayLocalDate() {
   const now = new Date();
@@ -47,7 +48,7 @@ export function createGuestCheckinQrModal() {
     root.classList.remove('hidden');
     root.classList.add('flex');
 
-    const url = `${window.location.origin}/guest-checkin.html?d=${todayLocalDate()}&church=${encodeURIComponent(getTenant()?.slug || '')}`;
+    const url = publicPageUrl('guest-checkin.html', { d: todayLocalDate(), church: getTenant()?.slug || '' });
     linkInputEl.value = url;
     qrAreaEl.innerHTML = `<p class="text-xs text-slate-400">${t('common.loading')}</p>`;
 
