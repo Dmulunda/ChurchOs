@@ -49,6 +49,7 @@ import { createGuestOnboardingModal } from './components/guestOnboardingHub.js';
 import { createMemberCaseModal } from './components/memberCaseManager.js';
 import { renderPastorMeetingsTab } from './pastorMeetingsPage.js';
 import { createPrayerRequestModal } from './components/prayerRequests.js';
+import { createUrgentPrayerCasesModal } from './components/urgentPrayerCases.js';
 import { createChangePasswordModal } from './components/changePasswordModal.js';
 import { createMyProfileModal } from './components/myProfileModal.js';
 import { createMyLettersModal, createDisciplinaryLettersAdminModal } from './components/disciplinaryLetters.js';
@@ -1167,6 +1168,12 @@ function updateSidebarToolsSelect() {
   options.push({ value: 'join-department', label: t('sidebar.joinDepartment') });
   options.push({ value: 'pastor-meeting', label: t('sidebar.pastorMeeting') });
   options.push({ value: 'prayer-request', label: t('sidebar.prayerRequest') });
+  // Mirrors urgent_prayer_cases' own insert policy (sql/saas_platform/98)
+  // as closely as this client can -- same Church-Admin gap noted
+  // elsewhere, not loaded client-side yet.
+  if (getGlobalRole() === 'super_admin' || getGlobalRole() === 'pastor_admin' || getMyDepartments().some((d) => d.role === 'admin')) {
+    options.push({ value: 'urgent-prayer-cases', label: t('sidebar.urgentPrayerCases') });
+  }
   if (canRecordAttendance) options.push({ value: 'attendance', label: t('sidebar.attendance') });
   // Everyone can suggest an improvement or contact support — no role
   // gate (sql/049 widened this on purpose; it used to be elevated
@@ -1275,6 +1282,8 @@ function runSidebarTool(value) {
     activateTab('pastor-meetings');
   } else if (value === 'prayer-request') {
     createPrayerRequestModal({ supabase: effectiveSupabase, currentUserId }).open();
+  } else if (value === 'urgent-prayer-cases') {
+    createUrgentPrayerCasesModal({ supabase: effectiveSupabase, currentUserId }).open();
   } else if (value === 'department-rules' && active) {
     createRulesModal({
       supabase: effectiveSupabase,
