@@ -50,13 +50,14 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
   root.addEventListener('click', (e) => { if (e.target === root) close(); });
 
   let departments = [];
+  let followUpOnly = false;
 
   async function load() {
     bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
 
     let leadsQuery = supabase
       .from('guest_follow_ups')
-      .select('id, full_name, phone, email, city, referral_source, referred_by_name, age_range, prayer_request, wants_pastor_meeting, home_church, user_id, status, assigned_department_id, notes, source, created_at')
+      .select('id, full_name, phone, email, city, referral_source, referred_by_name, age_range, prayer_request, wants_pastor_meeting, home_church, user_id, status, assigned_department_id, notes, source, created_at, follow_up_completed_at, follow_up_completed_by, follow_up_note')
       .is('removed_at', null)
       .order('created_at', { ascending: false });
     if (scope.type === 'department') leadsQuery = leadsQuery.eq('assigned_department_id', scope.departmentId);
@@ -123,11 +124,27 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
       rows = [...rows, ...unassignedProfiles];
     }
 
-    if (rows.length === 0) {
-      bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('guestHub.none')}</p>`;
+    const filterWrap = document.createElement('label');
+    filterWrap.className = 'flex items-center gap-1.5 text-sm text-slate-600 mb-3';
+    filterWrap.innerHTML = `<input type="checkbox" data-el="follow-up-filter" ${followUpOnly ? 'checked' : ''} /> ${t('guestHub.followUpFilterLabel')}`;
+    bodyEl.innerHTML = '';
+    bodyEl.appendChild(filterWrap);
+    filterWrap.querySelector('[data-el="follow-up-filter"]').addEventListener('change', (e) => {
+      followUpOnly = e.target.checked;
+      load();
+    });
+
+    const displayRows = followUpOnly ? rows.filter((r) => r.id !== null && !r.follow_up_completed_at) : rows;
+
+    if (displayRows.length === 0) {
+      const emptyEl = document.createElement('p');
+      emptyEl.className = 'text-sm text-slate-500';
+      emptyEl.textContent = followUpOnly ? t('guestHub.noneNeedFollowUp') : t('guestHub.none');
+      bodyEl.appendChild(emptyEl);
       return;
     }
 
+    rows = displayRows;
     const table = document.createElement('table');
     table.className = 'w-full text-sm';
     table.innerHTML = `
@@ -239,6 +256,27 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
         }
 
         if (isGuestLead) {
+          const followUpEl = document.createElement('div');
+          followUpEl.className = 'border-t border-slate-200 pt-2';
+          followUpEl.innerHTML = `
+            <div class="font-medium text-slate-700 mb-1">${t('guestHub.followUpTitle')}</div>
+            <p class="text-xs ${row.follow_up_completed_at ? 'text-emerald-600' : 'text-amber-600'} mb-1.5">
+              ${row.follow_up_completed_at ? t('guestHub.followUpDoneOn', { date: row.follow_up_completed_at.slice(0, 10) }) : t('guestHub.followUpNeeded')}
+            </p>
+            <textarea data-el="follow-up-note" rows="2" placeholder="${t('guestHub.followUpNotePlaceholder')}"
+                      class="w-full border border-slate-300 rounded-lg px-2 py-1 text-sm mb-1.5">${escapeHtml(row.follow_up_note || '')}</textarea>
+            <div class="flex gap-2">
+              <button type="button" data-action="save-follow-up-note" class="text-xs font-medium text-indigo-600 hover:text-indigo-800">${t('guestHub.saveNote')}</button>
+              <button type="button" data-action="toggle-follow-up" class="text-xs font-medium ${row.follow_up_completed_at ? 'text-slate-500 hover:text-slate-700' : 'text-emerald-600 hover:text-emerald-800'}">
+                ${row.follow_up_completed_at ? t('guestHub.reopenFollowUp') : t('guestHub.markFollowUpComplete')}
+              </button>
+            </div>
+          `;
+          const noteEl = followUpEl.querySelector('[data-el="follow-up-note"]');
+          followUpEl.querySelector('[data-action="save-follow-up-note"]').addEventListener('click', () => saveFollowUpNote(row, noteEl.value.trim()));
+          followUpEl.querySelector('[data-action="toggle-follow-up"]').addEventListener('click', () => toggleFollowUpComplete(row));
+          detailsCell.appendChild(followUpEl);
+
           const history = transfersByLead.get(row.id) || [];
           if (history.length > 0) {
             const historyEl = document.createElement('div');
@@ -283,7 +321,6 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
       }
     });
 
-    bodyEl.innerHTML = '';
     bodyEl.appendChild(table);
 
     if (scope.type === 'pastoral') await loadRemoved();
@@ -351,6 +388,34 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
       .update({ ...changes, updated_at: new Date().toISOString() })
       .eq('id', row.id);
 
+    if (error) {
+      window.alert(t('guestHub.updateFailed', { message: error.message }));
+      return;
+    }
+    load();
+  }
+
+  // Independent of `status` (routing state, sql/038/041/042) on
+  // purpose (sql/saas_platform/97) -- a case can be mid-routing and
+  // still need/have a completed follow-up call.
+  async function saveFollowUpNote(row, note) {
+    const { error } = await supabase.from('guest_follow_ups')
+      .update({ follow_up_note: note || null, updated_at: new Date().toISOString() })
+      .eq('id', row.id);
+    if (error) {
+      window.alert(t('guestHub.updateFailed', { message: error.message }));
+      return;
+    }
+    load();
+  }
+
+  async function toggleFollowUpComplete(row) {
+    const completing = !row.follow_up_completed_at;
+    const { error } = await supabase.from('guest_follow_ups')
+      .update(completing
+        ? { follow_up_completed_at: new Date().toISOString(), follow_up_completed_by: currentUserId }
+        : { follow_up_completed_at: null, follow_up_completed_by: null })
+      .eq('id', row.id);
     if (error) {
       window.alert(t('guestHub.updateFailed', { message: error.message }));
       return;

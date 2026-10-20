@@ -22,6 +22,7 @@ const PREFERENCE_TYPES = [
   { type: 'suggestion_reply', labelKey: 'notifications.type.suggestionReply' },
   { type: 'support_reply', labelKey: 'notifications.type.supportReply' },
   { type: 'pastor_meeting_booked', labelKey: 'notifications.type.pastorMeetingBooked' },
+  { type: 'guest_follow_up_reminder', labelKey: 'notifications.type.guestFollowUpReminder' },
 ];
 
 export function createNotificationSettingsModal({ supabase, currentUserId }) {
