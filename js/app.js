@@ -1139,13 +1139,19 @@ function updateSidebarToolsSelect() {
   const hasAccess = getMyDepartments().length > 0;
   const active = getActiveDepartment();
 
-  // Mirrors can_record_attendance() (sql/037, widened by sql/saas_platform/91)
-  // — a global role from the pastoral team, an approved admin/secretary
-  // in Ushers specifically, or ANY approved Welcoming & Socialisation
-  // member (deliberately wider than Ushers' own bar, by request).
+  // Mirrors can_record_attendance() (sql/037, widened by
+  // sql/saas_platform/91 then 96) — a global role from the pastoral
+  // team, an approved admin/secretary in Ushers specifically, ANY
+  // approved Welcoming & Socialisation member, or an admin of ANY
+  // department (sql/96's "all admins, tenant-wide" widening). Doesn't
+  // yet check Church Admin client-side (that flag isn't loaded here) —
+  // a Church Admin with no department-admin role of their own would
+  // still have the RLS access but miss this sidebar shortcut until
+  // Part 6 loads that flag; not a regression, just not caught up yet.
   const canRecordAttendance = USHER_ATTENDANCE_ROLES.includes(getGlobalRole())
     || getMyDepartments().some((d) => d.key === 'ushers' && (d.role === 'admin' || d.role === 'secretary'))
-    || getMyDepartments().some((d) => d.key === 'welcoming_socialisation');
+    || getMyDepartments().some((d) => d.key === 'welcoming_socialisation')
+    || getMyDepartments().some((d) => d.role === 'admin');
 
   const options = [{ value: 'church-rules', label: t('sidebar.churchRules') }];
   if (getGlobalRole() === 'super_admin' && !isViewingAs()) options.push({ value: 'plans', label: t('plans.title') });
