@@ -19,6 +19,13 @@
 // row — never a membership, and never a duplicated file. Every hop is
 // logged in guest_follow_up_transfers so whoever holds the case next
 // (or the pastoral team, always) can see where it's been.
+//
+// "Delete" (pastoral-team scope only) is a soft delete
+// (removed_at/removed_by/removed_reason, sql/saas_platform/94) — cases
+// used to vanish for good with no trash and no undo; now they move to
+// a separate "Recently Removed" section (same shape
+// offeringsBoard.js's own soft-delete already uses) and can be
+// restored.
 import { confirmDialog } from './confirmDialog.js';
 import { t, departmentLabel } from '../i18n.js';
 
@@ -50,6 +57,7 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
     let leadsQuery = supabase
       .from('guest_follow_ups')
       .select('id, full_name, phone, email, city, referral_source, referred_by_name, age_range, prayer_request, wants_pastor_meeting, home_church, user_id, status, assigned_department_id, notes, source, created_at')
+      .is('removed_at', null)
       .order('created_at', { ascending: false });
     if (scope.type === 'department') leadsQuery = leadsQuery.eq('assigned_department_id', scope.departmentId);
 
@@ -193,12 +201,12 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
         const actionsCell = document.createElement('td');
         actionsCell.className = 'px-4 py-2.5';
         if (isGuestLead) {
-          const deleteBtn = document.createElement('button');
-          deleteBtn.type = 'button';
-          deleteBtn.className = 'text-xs font-medium text-rose-600 hover:text-rose-800';
-          deleteBtn.textContent = t('moderation.delete');
-          deleteBtn.addEventListener('click', () => deleteLead(row));
-          actionsCell.appendChild(deleteBtn);
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'text-xs font-medium text-rose-600 hover:text-rose-800';
+          removeBtn.textContent = t('guestHub.remove');
+          removeBtn.addEventListener('click', () => removeLead(row));
+          actionsCell.appendChild(removeBtn);
         }
         tr.appendChild(actionsCell);
       }
@@ -277,6 +285,43 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
 
     bodyEl.innerHTML = '';
     bodyEl.appendChild(table);
+
+    if (scope.type === 'pastoral') await loadRemoved();
+  }
+
+  // Soft-deleted cases (sql/saas_platform/94) -- separate section,
+  // pastoral-team scope only, same shape offeringsBoard.js's own
+  // "Recently Removed" + restore already uses.
+  async function loadRemoved() {
+    const { data: removed, error } = await supabase
+      .from('guest_follow_ups')
+      .select('id, full_name, removed_at, removed_reason')
+      .not('removed_at', 'is', null)
+      .order('removed_at', { ascending: false });
+
+    if (error || !removed || removed.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'border-t border-slate-200 mt-4 pt-4';
+    section.innerHTML = `
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">${t('guestHub.recentlyRemovedTitle')}</h3>
+      <div data-el="removed-list" class="space-y-1.5"></div>
+    `;
+    const removedListEl = section.querySelector('[data-el="removed-list"]');
+    removedListEl.innerHTML = removed.map((row) => `
+      <div class="flex items-center justify-between gap-2 text-sm" data-row-id="${row.id}">
+        <div>
+          <span class="text-slate-700">${escapeHtml(row.full_name)}</span>
+          ${row.removed_reason ? `<span class="text-xs text-slate-400"> — ${escapeHtml(row.removed_reason)}</span>` : ''}
+        </div>
+        <button type="button" data-action="restore" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 whitespace-nowrap">${t('guestHub.restore')}</button>
+      </div>
+    `).join('');
+    removedListEl.querySelectorAll('[data-action="restore"]').forEach((btn) => {
+      btn.addEventListener('click', () => restoreLead(btn.closest('[data-row-id]').dataset.rowId));
+    });
+
+    bodyEl.appendChild(section);
   }
 
   async function sendToDepartment(row, departmentId, note) {
@@ -360,13 +405,35 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
     load();
   }
 
-  async function deleteLead(row) {
-    const confirmed = await confirmDialog({ message: t('moderation.confirmDeleteCase') });
-    if (!confirmed) return;
+  // Soft delete (sql/saas_platform/94) -- recoverable via the
+  // "Recently Removed" section above, not a real DELETE (that policy
+  // no longer exists on this table at all).
+  async function removeLead(row) {
+    const reason = await confirmDialog({
+      message: t('guestHub.removeConfirm', { name: row.full_name }),
+      reasonLabel: t('guestHub.removeReasonLabel'),
+      reasonPlaceholder: t('guestHub.removeReasonPlaceholder'),
+    });
+    if (!reason) return;
 
-    const { error } = await supabase.from('guest_follow_ups').delete().eq('id', row.id);
+    const { error } = await supabase.from('guest_follow_ups').update({
+      removed_at: new Date().toISOString(),
+      removed_by: currentUserId,
+      removed_reason: reason,
+    }).eq('id', row.id);
     if (error) {
-      window.alert(t('moderation.deleteFailed', { message: error.message }));
+      window.alert(t('guestHub.removeFailed', { message: error.message }));
+      return;
+    }
+    load();
+  }
+
+  async function restoreLead(id) {
+    const { error } = await supabase.from('guest_follow_ups')
+      .update({ removed_at: null, removed_by: null, removed_reason: null })
+      .eq('id', id);
+    if (error) {
+      window.alert(t('guestHub.restoreFailed', { message: error.message }));
       return;
     }
     load();
