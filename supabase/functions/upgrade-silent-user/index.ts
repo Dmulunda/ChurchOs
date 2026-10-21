@@ -15,6 +15,11 @@
 //   Otherwise it queues a silent_user_claims row for the pastoral team
 //   to review and touches no auth user at all.
 //
+// Admin mode also supports `email_only: true` -- updates just the
+// contact email (e.g. so a tax receipt can be delivered) without
+// flipping is_silent or touching a password; used by
+// taxReceiptsAdminBoard.js's Silent Members section.
+//
 // Deploy: `supabase functions deploy upgrade-silent-user`.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -61,9 +66,12 @@ Deno.serve(async (req) => {
 
     const jwt = (req.headers.get('Authorization') ?? '').replace('Bearer ', '');
     const body = await req.json();
-    const { silent_profile_id, email, password, phone } = body;
-    if (!silent_profile_id || !email || !password) {
-      return json({ error: 'silent_profile_id, email and password are required' }, 400);
+    const { silent_profile_id, email, password, phone, email_only } = body;
+    if (!silent_profile_id || !email) {
+      return json({ error: 'silent_profile_id and email are required' }, 400);
+    }
+    if (!email_only && !password) {
+      return json({ error: 'password is required' }, 400);
     }
 
     const { data: silentProfile, error: silentError } = await admin
@@ -94,6 +102,16 @@ Deno.serve(async (req) => {
         .eq('id', silent_profile_id);
       if (updateProfileError) return json({ error: updateProfileError.message }, 400);
       return json({ status: 'upgraded', profile_id: silent_profile_id });
+    }
+
+    // Admin wants to add/correct this Silent user's contact email
+    // (e.g. so a tax receipt can actually be delivered to them)
+    // without making them live -- is_silent stays true, no password
+    // touched.
+    if (isAdminCaller && email_only) {
+      const { error: updateAuthError } = await admin.auth.admin.updateUserById(silent_profile_id, { email, email_confirm: true });
+      if (updateAuthError) return json({ error: updateAuthError.message }, 400);
+      return json({ status: 'email_updated', profile_id: silent_profile_id });
     }
 
     if (isAdminCaller) return await doUpgrade();

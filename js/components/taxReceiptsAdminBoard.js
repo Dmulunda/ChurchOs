@@ -6,15 +6,14 @@
 // Reimbursements inbox there is oversight-only too, since this is a
 // church-wide financial/legal feature, not a per-department one.
 //
-// Guest Donors (sql/065): a real church member who gives but has no
-// app account -- offeringsBoard.js/offeringsImport.js can link an
-// offering to a lightweight guest_donors row (name + email) instead of
-// a real member_id, which flows through to donation_entries exactly
-// like a member-linked one. finalize_tax_receipt_year() issues them a
-// receipt the same way, provided they have an email on file; since
-// they have no account to log in and download it themselves, Finance
-// emails it to them here -- the PDF is built client-side with the
-// exact same code the member-facing download button uses
+// Silent Members: a real church member who gives but has no login
+// (profiles.is_silent) -- offeringsBoard.js/offeringsImport.js link an
+// offering straight to their member_id, same as any other member, so
+// it already flows through to donation_entries and
+// finalize_tax_receipt_year() like any other member's. Since they
+// have no account to log in and download their receipt themselves,
+// Finance emails it to them here -- the PDF is built client-side with
+// the exact same code the member-facing download button uses
 // (js/utils/taxReceiptPdf.js), then handed to the offering-reports
 // Edge Function's send_tax_receipt_email action as base64.
 import { t } from '../i18n.js';
@@ -22,6 +21,7 @@ import { confirmDialog } from './confirmDialog.js';
 import { createTaxReceiptSettingsModal } from './taxReceiptSettingsModal.js';
 import { createTaxDonationImportModal } from './taxDonationImport.js';
 import { receiptPdfAvailable, buildReceiptPdfBlob, blobToBase64 } from '../utils/taxReceiptPdf.js';
+import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
 
 export function renderTaxReceiptsAdminBoard(container, { supabase, currentUserId }) {
   container.innerHTML = `
@@ -31,13 +31,13 @@ export function renderTaxReceiptsAdminBoard(container, { supabase, currentUserId
     </div>
     <div data-el="years-list"><p class="text-sm text-slate-500">${t('common.loading')}</p></div>
 
-    <h3 class="text-base font-semibold text-slate-800 mt-6 mb-1">${t('taxAdmin.guestDonorsTitle')}</h3>
-    <p class="text-xs text-slate-500 mb-3">${t('taxAdmin.guestDonorsIntro')}</p>
-    <div data-el="guest-donors-list"><p class="text-sm text-slate-500">${t('common.loading')}</p></div>
+    <h3 class="text-base font-semibold text-slate-800 mt-6 mb-1">${t('taxAdmin.silentMembersTitle')}</h3>
+    <p class="text-xs text-slate-500 mb-3">${t('taxAdmin.silentMembersIntro')}</p>
+    <div data-el="silent-members-list"><p class="text-sm text-slate-500">${t('common.loading')}</p></div>
   `;
 
   const yearsListEl = container.querySelector('[data-el="years-list"]');
-  const guestDonorsListEl = container.querySelector('[data-el="guest-donors-list"]');
+  const silentMembersListEl = container.querySelector('[data-el="silent-members-list"]');
 
   const settingsModal = createTaxReceiptSettingsModal({ supabase, currentUserId });
   const importModal = createTaxDonationImportModal({ supabase, currentUserId, onImported: loadYears });
@@ -46,7 +46,7 @@ export function renderTaxReceiptsAdminBoard(container, { supabase, currentUserId
   container.querySelector('[data-action="import"]').addEventListener('click', () => importModal.open());
 
   loadYears();
-  loadGuestDonors();
+  loadSilentMembers();
 
   async function loadYears() {
     yearsListEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
@@ -131,76 +131,76 @@ export function renderTaxReceiptsAdminBoard(container, { supabase, currentUserId
 
     const result = Array.isArray(data) ? data[0] : data;
     const skipped = result?.skipped_members || [];
-    const skippedGuests = result?.skipped_guests || [];
     let message = t('taxAdmin.finalizeSuccess', { count: result?.issued_count ?? 0 });
     if (skipped.length > 0) {
       message += '\n\n' + t('taxAdmin.finalizeSkipped', { names: skipped.map((m) => m.full_name).join(', ') });
     }
-    if (skippedGuests.length > 0) {
-      message += '\n\n' + t('taxAdmin.finalizeSkippedGuests', { names: skippedGuests.map((g) => g.full_name).join(', ') });
-    }
     window.alert(message);
     loadYears();
-    loadGuestDonors();
+    loadSilentMembers();
   }
 
-  // ---- Guest Donors (sql/065) ----
-  async function loadGuestDonors() {
-    guestDonorsListEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
+  // ---- Silent Members ----
+  async function loadSilentMembers() {
+    silentMembersListEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
 
-    const [{ data: guests, error: guestsError }, { data: entries, error: entriesError }, { data: receipts, error: receiptsError }] = await Promise.all([
-      supabase.from('guest_donors').select('id, name, email').order('name'),
-      supabase.from('donation_entries').select('guest_donor_id, amount, currency').not('guest_donor_id', 'is', null),
-      supabase.from('tax_receipts').select('id, guest_donor_id, fiscal_year, receipt_number, total_amount, currency, issued_at, legal_name_snapshot, tenant_info_snapshot').not('guest_donor_id', 'is', null),
+    const [{ data: members, error: membersError }, { data: entries, error: entriesError }, { data: receipts, error: receiptsError }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name').eq('is_silent', true).order('full_name'),
+      supabase.from('donation_entries').select('member_id, amount, currency').not('member_id', 'is', null),
+      supabase.from('tax_receipts').select('id, member_id, fiscal_year, receipt_number, total_amount, currency, issued_at, legal_name_snapshot, tenant_info_snapshot').not('member_id', 'is', null),
     ]);
 
-    if (guestsError || entriesError || receiptsError) {
-      guestDonorsListEl.innerHTML = `<p class="text-sm text-rose-600">${t('taxAdmin.loadFailed', { message: (guestsError || entriesError || receiptsError).message })}</p>`;
+    if (membersError || entriesError || receiptsError) {
+      silentMembersListEl.innerHTML = `<p class="text-sm text-rose-600">${t('taxAdmin.loadFailed', { message: (membersError || entriesError || receiptsError).message })}</p>`;
       return;
     }
 
-    // One subtotal per currency per guest, same reasoning throughout
+    const silentIds = new Set((members || []).map((m) => m.id));
+
+    // One subtotal per currency per person, same reasoning throughout
     // this file.
-    const totalsByGuest = new Map(); // guest_donor_id -> Map<currency, cents-equivalent total>
+    const totalsByMember = new Map(); // member_id -> Map<currency, total>
     (entries || []).forEach((e) => {
-      if (!totalsByGuest.has(e.guest_donor_id)) totalsByGuest.set(e.guest_donor_id, new Map());
-      const byCurrency = totalsByGuest.get(e.guest_donor_id);
+      if (!silentIds.has(e.member_id)) return;
+      if (!totalsByMember.has(e.member_id)) totalsByMember.set(e.member_id, new Map());
+      const byCurrency = totalsByMember.get(e.member_id);
       const currency = e.currency || 'CAD';
       byCurrency.set(currency, (byCurrency.get(currency) || 0) + Number(e.amount));
     });
-    const receiptsByGuest = new Map();
+    const receiptsByMember = new Map();
     (receipts || []).forEach((r) => {
-      if (!receiptsByGuest.has(r.guest_donor_id)) receiptsByGuest.set(r.guest_donor_id, []);
-      receiptsByGuest.get(r.guest_donor_id).push(r);
+      if (!silentIds.has(r.member_id)) return;
+      if (!receiptsByMember.has(r.member_id)) receiptsByMember.set(r.member_id, []);
+      receiptsByMember.get(r.member_id).push(r);
     });
 
-    if (!guests || guests.length === 0) {
-      guestDonorsListEl.innerHTML = `<p class="text-sm text-slate-400">${t('taxAdmin.noGuestDonors')}</p>`;
+    if (!members || members.length === 0) {
+      silentMembersListEl.innerHTML = `<p class="text-sm text-slate-400">${t('taxAdmin.noSilentMembers')}</p>`;
       return;
     }
 
-    guestDonorsListEl.innerHTML = guests.map((g) => {
-      const byCurrency = totalsByGuest.get(g.id) || new Map();
+    silentMembersListEl.innerHTML = members.map((m) => {
+      const byCurrency = totalsByMember.get(m.id) || new Map();
       const totalLines = byCurrency.size > 0
         ? Array.from(byCurrency.entries()).map(([currency, total]) => t('taxAdmin.guestTotal', { amount: formatAmount(total, currency) })).join('<br>')
         : t('taxAdmin.guestTotal', { amount: formatAmount(0, 'CAD') });
-      const receiptsForGuest = (receiptsByGuest.get(g.id) || []).sort((a, b) => b.fiscal_year - a.fiscal_year);
+      const receiptsForMember = (receiptsByMember.get(m.id) || []).sort((a, b) => b.fiscal_year - a.fiscal_year);
       return `
-        <div class="border border-slate-200 rounded-lg p-3 mb-2" data-guest-id="${g.id}">
+        <div class="border border-slate-200 rounded-lg p-3 mb-2" data-member-id="${m.id}">
           <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
             <div class="flex-1 min-w-[160px]">
-              <input type="text" data-el="name" value="${escapeAttr(g.name)}" class="font-semibold text-slate-800 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded px-1.5 py-0.5 -ml-1.5 w-full" />
-              <input type="email" data-el="email" value="${escapeAttr(g.email || '')}" placeholder="${escapeAttr(t('taxAdmin.guestEmailPlaceholder'))}" class="text-sm text-slate-500 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded px-1.5 py-0.5 -ml-1.5 w-full" />
+              <div class="font-semibold text-slate-800">${escapeHtml(m.full_name)}</div>
+              <input type="email" data-el="email" placeholder="${escapeAttr(t('taxAdmin.guestEmailPlaceholder'))}" class="text-sm text-slate-500 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded px-1.5 py-0.5 -ml-1.5 w-full" />
             </div>
             <div class="text-right">
               <div class="text-sm text-slate-600">${totalLines}</div>
-              <button type="button" data-action="save-guest" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">${t('taxAdmin.saveGuest')}</button>
+              <button type="button" data-action="save-email" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">${t('taxAdmin.saveGuest')}</button>
               <span data-el="save-status" class="text-xs text-slate-500 ml-1"></span>
             </div>
           </div>
-          ${receiptsForGuest.length > 0 ? `
+          ${receiptsForMember.length > 0 ? `
             <div class="divide-y divide-slate-100 border-t border-slate-100 pt-1">
-              ${receiptsForGuest.map((r) => `
+              ${receiptsForMember.map((r) => `
                 <div class="flex items-center justify-between py-1.5 text-sm" data-receipt-id="${r.id}">
                   <span class="text-slate-600">${r.fiscal_year} — ${escapeHtml(r.receipt_number)} — ${formatAmount(r.total_amount, r.currency)}</span>
                   <span>
@@ -215,16 +215,17 @@ export function renderTaxReceiptsAdminBoard(container, { supabase, currentUserId
       `;
     }).join('');
 
-    guestDonorsListEl.querySelectorAll('[data-guest-id]').forEach((row) => {
-      const guestId = row.dataset.guestId;
-      row.querySelector('[data-action="save-guest"]').addEventListener('click', async () => {
+    silentMembersListEl.querySelectorAll('[data-member-id]').forEach((row) => {
+      const memberId = row.dataset.memberId;
+      row.querySelector('[data-action="save-email"]').addEventListener('click', async () => {
         const statusEl = row.querySelector('[data-el="save-status"]');
-        const name = row.querySelector('[data-el="name"]').value.trim();
-        const email = row.querySelector('[data-el="email"]').value.trim() || null;
-        if (!name) return;
+        const email = row.querySelector('[data-el="email"]').value.trim();
+        if (!email) return;
         statusEl.textContent = t('common.saving');
-        const { error } = await supabase.from('guest_donors').update({ name, email }).eq('id', guestId);
-        statusEl.textContent = error ? t('taxAdmin.saveGuestFailed', { message: error.message }) : t('taxAdmin.saved');
+        const { error } = await supabase.functions.invoke('upgrade-silent-user', {
+          body: { silent_profile_id: memberId, email, email_only: true },
+        });
+        statusEl.textContent = error ? t('taxAdmin.saveGuestFailed', { message: await extractFunctionErrorMessage(error) }) : t('taxAdmin.saved');
         if (!error) setTimeout(() => { statusEl.textContent = ''; }, 2000);
       });
       row.querySelectorAll('[data-receipt-id]').forEach((receiptRow) => {
