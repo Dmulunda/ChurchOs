@@ -71,7 +71,7 @@ import {
   isGlobalSuperAdminForAnyDenomination, switchActingExtension, getMyDenominationRole,
 } from './denominationExtensions.js';
 import { loadMyEntitlements, hasFeature } from './entitlements.js';
-import { createHelpModal } from './components/helpModal.js';
+import { createAssistantModal } from './components/assistantModal.js';
 import { registerServiceWorker, setAppBadgeCount } from './pwa.js';
 import { getTheme, setTheme, loadAppTheme } from './theme.js';
 import { confirmLeaveIfProjecting } from './utils/projectionGuard.js';
@@ -1403,12 +1403,7 @@ inboxBtn.addEventListener('click', () => {
 });
 
 helpBtn.addEventListener('click', () => {
-  const modal = createHelpModal({
-    supabase: getEffectiveSupabase(),
-    tenantId: getTenantId(),
-    currentUserId,
-    canAdminister: hasGlobalReach() && getGlobalRole() === 'super_admin',
-  });
+  const modal = createAssistantModal({ supabase: getEffectiveSupabase(), currentUserId });
   modal.open();
   closeSidebar();
 });
