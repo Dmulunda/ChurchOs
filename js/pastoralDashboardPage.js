@@ -25,6 +25,7 @@ import { renderUrgentPrayerCases } from './components/urgentPrayerCases.js';
 import { renderMemberCases } from './components/memberCaseManager.js';
 import { renderGuestOnboardingHub } from './components/guestOnboardingHub.js';
 import { renderAttendanceManager } from './components/attendanceManager.js';
+import { renderQuickAttendance } from './components/quickAttendance.js';
 import { renderPastorMeetingsTab } from './pastorMeetingsPage.js';
 import { renderSilentUserClaims } from './components/silentUserClaims.js';
 
@@ -110,8 +111,50 @@ export async function renderPastoralDashboardTab() {
     if (tab === 'member-cases') renderMemberCases(panels[tab], { supabase, currentUserId, scope: { type: 'pastoral' } });
     if (tab === 'guest-cases') renderGuestOnboardingHub(panels[tab], { supabase, currentUserId, scope: { type: 'pastoral' } });
     if (tab === 'silent-claims') renderSilentUserClaims(panels[tab], { supabase });
-    if (tab === 'attendance') renderAttendanceManager(panels[tab], { supabase, currentUserId });
+    if (tab === 'attendance') renderAttendanceSection(panels[tab]);
     if (tab === 'pastor-meetings') renderPastorMeetingsTab(panels[tab]);
+  }
+
+  // Quick Attendance (tap-to-check-in, full roster) and the existing
+  // search/guest-intake flow both write the same attendance_records
+  // table -- this is just two different ways to get there, not two
+  // separate permission models.
+  function renderAttendanceSection(panelEl) {
+    panelEl.innerHTML = `
+      <div class="flex gap-2 mb-3">
+        <button type="button" data-attendance-mode="quick" class="px-3 py-1.5 rounded-lg text-sm font-medium"></button>
+        <button type="button" data-attendance-mode="search" class="px-3 py-1.5 rounded-lg text-sm font-medium"></button>
+      </div>
+      <div data-el="quick-panel"></div>
+      <div data-el="search-panel" class="hidden"></div>
+    `;
+    const quickBtn = panelEl.querySelector('[data-attendance-mode="quick"]');
+    const searchBtn = panelEl.querySelector('[data-attendance-mode="search"]');
+    quickBtn.textContent = t('quickAttendance.tabTitle');
+    searchBtn.textContent = t('quickAttendance.searchTabTitle');
+    const quickPanel = panelEl.querySelector('[data-el="quick-panel"]');
+    const searchPanel = panelEl.querySelector('[data-el="search-panel"]');
+    const subLoaded = {};
+
+    function setSubMode(subMode) {
+      [quickBtn, searchBtn].forEach((btn) => {
+        const active = btn.dataset.attendanceMode === subMode;
+        btn.classList.toggle('bg-indigo-600', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('bg-slate-100', !active);
+        btn.classList.toggle('text-slate-600', !active);
+      });
+      quickPanel.classList.toggle('hidden', subMode !== 'quick');
+      searchPanel.classList.toggle('hidden', subMode !== 'search');
+      if (subLoaded[subMode]) return;
+      subLoaded[subMode] = true;
+      if (subMode === 'quick') renderQuickAttendance(quickPanel, { supabase, currentUserId });
+      else renderAttendanceManager(searchPanel, { supabase, currentUserId });
+    }
+
+    quickBtn.addEventListener('click', () => setSubMode('quick'));
+    searchBtn.addEventListener('click', () => setSubMode('search'));
+    setSubMode('quick');
   }
 
   switchTab(tabs[0].key);
