@@ -15,6 +15,7 @@ import { createScopedClient } from '../supabaseClient.js';
 import { getMyDepartments, getGlobalRole } from '../departments.js';
 import { getTenantId } from '../tenant.js';
 import { confirmDialog } from './confirmDialog.js';
+import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
 import { t, roleLabel } from '../i18n.js';
 
 const DEPARTMENT_ROLES = ['member', 'secretary', 'admin'];
@@ -36,6 +37,15 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
           <label class="block text-sm font-medium text-slate-600 mb-1">${t('userCreator.fullName')}</label>
           <input type="text" name="full_name" required class="w-full border border-slate-300 rounded-lg px-3 py-2" />
         </div>
+
+        <label class="flex items-start gap-2 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <input type="checkbox" data-el="silent-toggle" class="mt-0.5" />
+          <span>
+            <span class="font-medium">${t('userCreator.silentToggle')}</span>
+            <br /><span class="text-xs text-slate-500">${t('userCreator.silentToggleHint')}</span>
+          </span>
+        </label>
+
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-slate-600 mb-1">${t('userCreator.email')}</label>
@@ -46,7 +56,7 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
             <input type="tel" name="phone" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
           </div>
         </div>
-        <div>
+        <div data-el="password-field">
           <label class="block text-sm font-medium text-slate-600 mb-1">${t('userCreator.password')}</label>
           <div class="flex gap-2">
             <input type="text" name="password" required minlength="6"
@@ -87,11 +97,23 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
   const accessLevelWrapEl = root.querySelector('[data-el="access-level-wrap"]');
   const formStatusEl = root.querySelector('[data-el="form-status"]');
   const saveBtn = root.querySelector('[data-el="save-btn"]');
+  const silentToggleEl = root.querySelector('[data-el="silent-toggle"]');
+  const passwordFieldEl = root.querySelector('[data-el="password-field"]');
 
   root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
   root.addEventListener('click', (e) => { if (e.target === root) close(); });
   root.querySelector('[data-action="generate-password"]').addEventListener('click', () => {
     form.elements.password.value = generateTempPassword();
+  });
+  // No login yet -- no password to set, and a global access level
+  // (super_admin etc.) is meaningless for someone who can't sign in.
+  silentToggleEl.addEventListener('change', () => {
+    const silent = silentToggleEl.checked;
+    passwordFieldEl.classList.toggle('hidden', silent);
+    form.elements.password.required = !silent;
+    form.elements.email.required = !silent;
+    if (silent) accessLevelWrapEl.classList.add('hidden');
+    else accessLevelWrapEl.classList.toggle('hidden', getGlobalRole() !== 'super_admin');
   });
   form.addEventListener('submit', handleSubmit);
 
@@ -139,6 +161,7 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
   async function handleSubmit(e) {
     e.preventDefault();
 
+    const isSilent = silentToggleEl.checked;
     const fullName = form.elements.full_name.value.trim();
     const email = form.elements.email.value.trim();
     const phone = form.elements.phone.value.trim() || null;
@@ -152,12 +175,12 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
         return { departmentId: deptId, role: roleSelect.disabled ? 'member' : roleSelect.value };
       });
 
-    if (!fullName || !email || !password) {
+    if (!fullName || (!isSilent && !email) || (!isSilent && !password)) {
       formStatusEl.className = 'text-sm text-rose-600';
       formStatusEl.textContent = t('userCreator.missingFields');
       return;
     }
-    if (password.length < 6) {
+    if (!isSilent && password.length < 6) {
       formStatusEl.className = 'text-sm text-rose-600';
       formStatusEl.textContent = t('userCreator.passwordTooShort');
       return;
@@ -174,45 +197,65 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
     formStatusEl.className = 'text-sm text-slate-500';
     formStatusEl.textContent = t('userCreator.creating');
 
-    const scopedClient = createScopedClient();
-    const { data, error } = await scopedClient.auth.signUp({
-      email,
-      password,
-      // tenant_id must travel in here -- handle_new_user() (the trigger
-      // that creates the profiles row) reads it from raw_user_meta_data,
-      // since it has no other way to know which church this account
-      // belongs to. Without it the insert fails outright (tenant_id is
-      // NOT NULL). The creating admin's own tenant is always the right
-      // one here -- there's no path in this modal for a Super Admin to
-      // create an account in a church other than their own.
-      options: { data: { full_name: fullName, tenant_id: getTenantId() } },
-    });
+    let newUserId;
+    let profileError = null;
 
-    // Supabase's anti-enumeration behavior: signing up with an email that's
-    // already registered can return a fake user with no identities instead
-    // of an error.
-    const alreadyRegistered = !error && data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
+    if (isSilent) {
+      const { data, error } = await supabase.functions.invoke('create-silent-user', {
+        body: { full_name: fullName, email: email || undefined, phone: phone || undefined },
+      });
+      if (error) {
+        formStatusEl.className = 'text-sm text-rose-600';
+        formStatusEl.textContent = t('userCreator.failedToCreate', { message: await extractFunctionErrorMessage(error) });
+        saveBtn.disabled = false;
+        return;
+      }
+      newUserId = data.profile_id;
+      if (globalRole) {
+        const { error: roleError } = await supabase.from('profiles').update({ global_role: globalRole }).eq('id', newUserId);
+        profileError = roleError;
+      }
+    } else {
+      const scopedClient = createScopedClient();
+      const { data, error } = await scopedClient.auth.signUp({
+        email,
+        password,
+        // tenant_id must travel in here -- handle_new_user() (the trigger
+        // that creates the profiles row) reads it from raw_user_meta_data,
+        // since it has no other way to know which church this account
+        // belongs to. Without it the insert fails outright (tenant_id is
+        // NOT NULL). The creating admin's own tenant is always the right
+        // one here -- there's no path in this modal for a Super Admin to
+        // create an account in a church other than their own.
+        options: { data: { full_name: fullName, tenant_id: getTenantId() } },
+      });
 
-    if (error || alreadyRegistered) {
-      formStatusEl.className = 'text-sm text-rose-600';
-      formStatusEl.textContent = alreadyRegistered
-        ? t('userCreator.emailAlreadyRegistered')
-        : t('userCreator.failedToCreate', { message: error.message });
-      saveBtn.disabled = false;
-      return;
+      // Supabase's anti-enumeration behavior: signing up with an email that's
+      // already registered can return a fake user with no identities instead
+      // of an error.
+      const alreadyRegistered = !error && data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
+
+      if (error || alreadyRegistered) {
+        formStatusEl.className = 'text-sm text-rose-600';
+        formStatusEl.textContent = alreadyRegistered
+          ? t('userCreator.emailAlreadyRegistered')
+          : t('userCreator.failedToCreate', { message: error.message });
+        saveBtn.disabled = false;
+        return;
+      }
+
+      newUserId = data.user.id;
+      const profileUpdate = { phone };
+      if (globalRole) profileUpdate.global_role = globalRole;
+      const { error: updateError } = await supabase.from('profiles').update(profileUpdate).eq('id', newUserId);
+      profileError = updateError;
     }
 
-    const newUserId = data.user.id;
     const myDepartments = getMyDepartments();
     const canApprove = (deptId) => {
       const mine = myDepartments.find((d) => d.id === deptId);
       return mine?.role === 'admin' || mine?.role === 'super_admin' || mine?.role === 'pastor_admin';
     };
-
-    const profileUpdate = { phone };
-    if (globalRole) profileUpdate.global_role = globalRole;
-
-    const { error: profileError } = await supabase.from('profiles').update(profileUpdate).eq('id', newUserId);
 
     const membershipRows = selectedDeptRows.map(({ departmentId, role }) => {
       const approved = canApprove(departmentId);
@@ -237,7 +280,9 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
 
     saveBtn.disabled = false;
     formStatusEl.className = 'text-sm text-emerald-600';
-    formStatusEl.textContent = t('userCreator.success', { name: fullName, password });
+    formStatusEl.textContent = isSilent
+      ? t('userCreator.silentSuccess', { name: fullName })
+      : t('userCreator.success', { name: fullName, password });
     onCreated?.();
   }
 
@@ -257,6 +302,9 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
     if (prefill.fullName) form.elements.full_name.value = prefill.fullName;
     if (prefill.email) form.elements.email.value = prefill.email;
     if (prefill.phone) form.elements.phone.value = prefill.phone;
+    passwordFieldEl.classList.remove('hidden');
+    form.elements.password.required = true;
+    form.elements.email.required = true;
     formStatusEl.textContent = '';
     root.classList.remove('hidden');
     root.classList.add('flex');

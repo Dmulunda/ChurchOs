@@ -142,12 +142,12 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
   async function loadMembers() {
     const { data } = await supabase
       .from('department_memberships')
-      .select('user_id, member:profiles!user_id ( id, full_name )')
+      .select('user_id, member:profiles!user_id ( id, full_name, is_silent )')
       .eq('status', 'approved');
 
     const byId = new Map();
-    (data || []).forEach((r) => { if (r.member) byId.set(r.member.id, r.member.full_name); });
-    members = Array.from(byId.entries()).map(([id, full_name]) => ({ id, full_name })).sort((a, b) => a.full_name.localeCompare(b.full_name));
+    (data || []).forEach((r) => { if (r.member) byId.set(r.member.id, r.member); });
+    members = Array.from(byId.values()).map((m) => ({ id: m.id, full_name: m.full_name, isSilent: m.is_silent })).sort((a, b) => a.full_name.localeCompare(b.full_name));
   }
 
   memberSearchEl.addEventListener('input', () => renderSearchResults(memberSearchEl.value.trim().toLowerCase()));
@@ -155,10 +155,13 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
   function renderSearchResults(query) {
     const matches = query ? members.filter((m) => m.full_name.toLowerCase().includes(query)) : [];
     searchResultsEl.innerHTML = matches.slice(0, 15).map((m) => `
-      <button type="button" data-member-id="${m.id}" class="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100">${escapeHtml(m.full_name)}</button>
+      <button type="button" data-member-id="${m.id}" class="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100">${escapeHtml(m.full_name)}${m.isSilent ? ` <span class="text-xs text-slate-400">(${t('users.silentBadge')})</span>` : ''}</button>
     `).join('');
     searchResultsEl.querySelectorAll('[data-member-id]').forEach((btn) => {
-      btn.addEventListener('click', () => checkInMember(btn.dataset.memberId, btn.textContent.trim()));
+      btn.addEventListener('click', () => {
+        const member = members.find((m) => m.id === btn.dataset.memberId);
+        checkInMember(btn.dataset.memberId, member?.full_name || btn.textContent.trim());
+      });
     });
   }
 
@@ -272,7 +275,7 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
 
     const { data, error } = await supabase
       .from('attendance_records')
-      .select('id, member_id, guest_name, note, member:profiles!member_id ( full_name )')
+      .select('id, member_id, guest_name, note, member:profiles!member_id ( full_name, is_silent )')
       .eq('service_date', serviceDateEl.value)
       .eq('service_type', serviceTypeEl.value)
       .order('created_at', { ascending: false });
@@ -289,7 +292,9 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
 
     checkedInListEl.innerHTML = '';
     data.forEach((rec) => {
-      const name = rec.member ? rec.member.full_name : `${rec.guest_name} (${t('attendance.guestBadge')})`;
+      const name = rec.member
+        ? (rec.member.is_silent ? `${rec.member.full_name} (${t('users.silentBadge')})` : rec.member.full_name)
+        : `${rec.guest_name} (${t('attendance.guestBadge')})`;
       const row = document.createElement('div');
       row.className = 'text-sm text-slate-600 px-2 py-1.5 bg-slate-50 rounded';
       row.innerHTML = `

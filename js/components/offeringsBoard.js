@@ -171,13 +171,18 @@ export function renderOfferingsBoard(container, { supabase, currentUserId }) {
 
   async function loadMemberOptions() {
     const [{ data: members }, { data: guests }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name').order('full_name'),
+      supabase.from('profiles').select('id, full_name, is_silent').order('full_name'),
       supabase.from('guest_donors').select('id, name').order('name'),
     ]);
-    membersByName = new Map((members || []).map((p) => [p.full_name, p.id]));
+    // Silent members are real profiles rows, so they're already in this
+    // list -- the " (Silent)" suffix is the only way to tell them apart
+    // in a plain <datalist>, and has to be part of the matched key too
+    // (it becomes the literal input value once picked).
+    const memberDisplayNames = (members || []).map((p) => (p.is_silent ? `${p.full_name} (${t('users.silentBadge')})` : p.full_name));
+    membersByName = new Map((members || []).map((p, i) => [memberDisplayNames[i], p.id]));
     guestDonorsByName = new Map((guests || []).map((g) => [g.name, g.id]));
     memberListEl.innerHTML = [
-      ...(members || []).map((p) => p.full_name),
+      ...memberDisplayNames,
       ...(guests || []).map((g) => g.name),
     ].map((name) => `<option value="${escapeAttr(name)}"></option>`).join('');
   }

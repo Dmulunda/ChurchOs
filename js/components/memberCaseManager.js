@@ -98,12 +98,13 @@ export function renderMemberCases(container, { supabase, currentUserId, scope })
   function renderMemberResults(query) {
     const matches = query ? members.filter((m) => m.full_name.toLowerCase().includes(query)) : [];
     memberResultsEl.innerHTML = matches.slice(0, 15).map((m) => `
-      <button type="button" data-member-id="${m.id}" class="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100">${escapeHtml(m.full_name)}</button>
+      <button type="button" data-member-id="${m.id}" class="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100">${escapeHtml(m.full_name)}${m.isSilent ? ` <span class="text-xs text-slate-400">(${t('users.silentBadge')})</span>` : ''}</button>
     `).join('');
     memberResultsEl.querySelectorAll('[data-member-id]').forEach((btn) => {
       btn.addEventListener('click', () => {
         selectedMemberId = btn.dataset.memberId;
-        memberSelectedEl.textContent = `${t('memberCase.member')}: ${btn.textContent.trim()}`;
+        const member = members.find((m) => m.id === selectedMemberId);
+        memberSelectedEl.textContent = `${t('memberCase.member')}: ${member?.full_name || ''}`;
         memberResultsEl.innerHTML = '';
         memberSearchEl.value = '';
       });
@@ -150,12 +151,12 @@ export function renderMemberCases(container, { supabase, currentUserId, scope })
   async function loadMembers() {
     const { data } = await supabase
       .from('department_memberships')
-      .select('user_id, member:profiles!user_id ( id, full_name )')
+      .select('user_id, member:profiles!user_id ( id, full_name, is_silent )')
       .eq('status', 'approved');
 
     const byId = new Map();
-    (data || []).forEach((r) => { if (r.member) byId.set(r.member.id, r.member.full_name); });
-    members = Array.from(byId.entries()).map(([id, full_name]) => ({ id, full_name })).sort((a, b) => a.full_name.localeCompare(b.full_name));
+    (data || []).forEach((r) => { if (r.member) byId.set(r.member.id, r.member); });
+    members = Array.from(byId.values()).map((m) => ({ id: m.id, full_name: m.full_name, isSilent: m.is_silent })).sort((a, b) => a.full_name.localeCompare(b.full_name));
   }
 
   async function load() {
@@ -163,7 +164,7 @@ export function renderMemberCases(container, { supabase, currentUserId, scope })
 
     let casesQuery = supabase
       .from('member_cases')
-      .select('id, note, status, assigned_department_id, created_at, subject:profiles!subject_user_id ( full_name ), creator:profiles!created_by ( full_name )')
+      .select('id, note, status, assigned_department_id, created_at, subject:profiles!subject_user_id ( full_name, is_silent ), creator:profiles!created_by ( full_name )')
       .order('created_at', { ascending: false });
     if (scope.type === 'department') casesQuery = casesQuery.eq('assigned_department_id', scope.departmentId);
 
@@ -213,6 +214,12 @@ export function renderMemberCases(container, { supabase, currentUserId, scope })
       nameBtn.textContent = c.subject?.full_name || '—';
       nameBtn.addEventListener('click', () => detailsRow.classList.toggle('hidden'));
       nameCell.appendChild(nameBtn);
+      if (c.subject?.is_silent) {
+        const silentBadge = document.createElement('span');
+        silentBadge.className = 'ml-2 inline-block px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-500 align-middle';
+        silentBadge.textContent = t('users.silentBadge');
+        nameCell.appendChild(silentBadge);
+      }
       tr.appendChild(nameCell);
 
       const openedByCell = document.createElement('td');

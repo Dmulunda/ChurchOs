@@ -51,6 +51,7 @@ import { confirmDialog } from './components/confirmDialog.js';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { getEffectiveSupabase } from './departments.js';
 import { getTenant } from './tenant.js';
+import { extractFunctionErrorMessage } from './utils/edgeFunctionError.js';
 import { getIsPlatformOwner } from './platformOwner.js';
 import { renderOwnerTab } from './ownerPage.js';
 
@@ -78,19 +79,6 @@ let chartJsPromise = null;
 function loadChartJs() {
   if (!chartJsPromise) chartJsPromise = import('https://cdn.jsdelivr.net/npm/chart.js@4/auto/+esm').then((m) => m.default);
   return chartJsPromise;
-}
-
-// supabase-js's functions.invoke() only gives a generic "Edge Function
-// returned a non-2xx status code" in error.message -- the real reason
-// (the JSON body this function's own error responses carry) is on
-// error.context, a raw Response object whose body hasn't been read yet.
-async function extractFunctionErrorMessage(error) {
-  if (!error) return 'Unknown error';
-  try {
-    const body = await error.context?.clone().json();
-    if (body?.error) return body.error;
-  } catch { /* context wasn't JSON (e.g. a network failure) -- fall through */ }
-  return error.message || 'Unknown error';
 }
 
 function centsOrBytesToSize(bytes) {

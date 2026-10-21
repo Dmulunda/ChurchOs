@@ -96,12 +96,13 @@ export function renderUrgentPrayerCases(container, { supabase, currentUserId }) 
     const query = personNameEl.value.trim().toLowerCase();
     const matches = query ? members.filter((m) => m.full_name.toLowerCase().includes(query)) : [];
     memberResultsEl.innerHTML = matches.slice(0, 10).map((m) => `
-      <button type="button" data-member-id="${m.id}" class="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100">${escapeHtml(m.full_name)}</button>
+      <button type="button" data-member-id="${m.id}" class="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100">${escapeHtml(m.full_name)}${m.isSilent ? ` <span class="text-xs text-slate-400">(${t('users.silentBadge')})</span>` : ''}</button>
     `).join('');
     memberResultsEl.querySelectorAll('[data-member-id]').forEach((btn) => {
       btn.addEventListener('click', () => {
         selectedMemberId = btn.dataset.memberId;
-        personNameEl.value = btn.textContent.trim();
+        const member = members.find((m) => m.id === selectedMemberId);
+        personNameEl.value = member?.full_name || '';
         memberSelectedEl.textContent = t('urgentPrayer.memberLinked');
         memberResultsEl.innerHTML = '';
       });
@@ -167,11 +168,11 @@ export function renderUrgentPrayerCases(container, { supabase, currentUserId }) 
   async function loadMembers() {
     const { data } = await supabase
       .from('department_memberships')
-      .select('user_id, member:profiles!user_id ( id, full_name )')
+      .select('user_id, member:profiles!user_id ( id, full_name, is_silent )')
       .eq('status', 'approved');
     const byId = new Map();
-    (data || []).forEach((r) => { if (r.member) byId.set(r.member.id, r.member.full_name); });
-    members = Array.from(byId.entries()).map(([id, full_name]) => ({ id, full_name })).sort((a, b) => a.full_name.localeCompare(b.full_name));
+    (data || []).forEach((r) => { if (r.member) byId.set(r.member.id, r.member); });
+    members = Array.from(byId.values()).map((m) => ({ id: m.id, full_name: m.full_name, isSilent: m.is_silent })).sort((a, b) => a.full_name.localeCompare(b.full_name));
   }
 
   async function loadAdmins() {

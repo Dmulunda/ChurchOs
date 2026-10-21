@@ -120,7 +120,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
     if (scope.type === 'department') {
       const { data, error } = await supabase
         .from('department_memberships')
-        .select('id, role, status, user_id, member:profiles!user_id ( id, full_name, phone, address, photo_path, member_title, parish, sex, birth_date, birth_country, birth_city, card_revoked_at, signature_data, voice_parts, media_tech_skills, profile_emails ( email ) )')
+        .select('id, role, status, user_id, member:profiles!user_id ( id, full_name, phone, address, photo_path, member_title, parish, sex, birth_date, birth_country, birth_city, card_revoked_at, signature_data, voice_parts, media_tech_skills, is_silent, profile_emails ( email ) )')
         .eq('department_id', scope.departmentId)
         .eq('status', 'approved');
 
@@ -149,13 +149,14 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
           email: r.member.profile_emails?.email,
           voice_parts: r.member.voice_parts,
           media_tech_skills: r.member.media_tech_skills,
+          isSilent: r.member.is_silent,
           membershipId: r.id,
           deptRole: r.role,
         }))
         .sort((a, b) => a.full_name.localeCompare(b.full_name));
     } else {
       const [{ data: profiles, error: profilesError }, { data: memberships, error: membershipsError }] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, phone, address, photo_path, member_title, parish, sex, birth_date, birth_country, birth_city, card_revoked_at, signature_data, global_role, removed_at, permanently_deleted_at, is_primary_admin, is_school_admin, can_view_all_departments, can_manage_pastoral_cases, can_post_global_announcements, can_message_any_member, can_approve_any_membership, profile_emails ( email )').order('full_name'),
+        supabase.from('profiles').select('id, full_name, phone, address, photo_path, member_title, parish, sex, birth_date, birth_country, birth_city, card_revoked_at, signature_data, global_role, removed_at, permanently_deleted_at, is_primary_admin, is_school_admin, is_silent, can_view_all_departments, can_manage_pastoral_cases, can_post_global_announcements, can_message_any_member, can_approve_any_membership, profile_emails ( email )').order('full_name'),
         supabase.from('department_memberships').select('user_id, role, status, departments ( key, name )').eq('status', 'approved'),
       ]);
 
@@ -192,6 +193,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
         removedAt: p.removed_at,
         isPrimaryAdmin: p.is_primary_admin,
         isSchoolAdmin: p.is_school_admin,
+        isSilent: p.is_silent,
         can_view_all_departments: p.can_view_all_departments,
         can_manage_pastoral_cases: p.can_manage_pastoral_cases,
         can_post_global_announcements: p.can_post_global_announcements,
@@ -298,6 +300,12 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
       nameBtn.textContent = row.full_name;
       nameBtn.addEventListener('click', openEdit);
       nameCell.appendChild(nameBtn);
+      if (row.isSilent) {
+        const silentBadge = document.createElement('span');
+        silentBadge.className = 'ml-2 inline-block px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-500 align-middle';
+        silentBadge.textContent = t('users.silentBadge');
+        nameCell.appendChild(silentBadge);
+      }
       if (isGlobal && row.permanentlyDeletedAt) {
         const badge = document.createElement('span');
         badge.className = 'ml-2 inline-block px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600 align-middle';
