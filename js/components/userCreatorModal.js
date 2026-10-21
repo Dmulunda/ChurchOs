@@ -247,8 +247,16 @@ export function createUserCreatorModal({ supabase, scope, currentUserId, onCreat
     return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, 12);
   }
 
-  function open() {
+  // prefill lets a caller (e.g. "Create Account" on a Guest Case,
+  // which already has the person's name/email/phone captured at
+  // intake) start the form with those fields filled in but still
+  // fully editable -- every other field (password, departments)
+  // still needs the admin's own input same as today.
+  function open(prefill = {}) {
     form.reset();
+    if (prefill.fullName) form.elements.full_name.value = prefill.fullName;
+    if (prefill.email) form.elements.email.value = prefill.email;
+    if (prefill.phone) form.elements.phone.value = prefill.phone;
     formStatusEl.textContent = '';
     root.classList.remove('hidden');
     root.classList.add('flex');

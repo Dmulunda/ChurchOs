@@ -27,6 +27,7 @@
 // offeringsBoard.js's own soft-delete already uses) and can be
 // restored.
 import { confirmDialog } from './confirmDialog.js';
+import { createUserCreatorModal } from './userCreatorModal.js';
 import { t, departmentLabel } from '../i18n.js';
 
 const STATUSES = ['new_guest', 'contacted', 'assigned_to_department'];
@@ -40,6 +41,19 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
 
   let departments = [];
   let followUpOnly = false;
+  // Lazily built on first use -- a guest case's captured name/email/
+  // phone pre-fills the same "Add User" flow every other account in
+  // this app goes through (userCreatorModal.js), rather than a
+  // parallel one. Still requires an email before it can actually
+  // submit (Supabase auth here is email/password only); a phone-only
+  // guest just needs the admin to type one in at that point.
+  let userCreatorModal = null;
+  function openCreateAccount(row) {
+    if (!userCreatorModal) {
+      userCreatorModal = createUserCreatorModal({ supabase, scope, currentUserId, onCreated: load });
+    }
+    userCreatorModal.open({ fullName: row.full_name, email: row.email, phone: row.phone });
+  }
 
   async function load() {
     bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
@@ -205,7 +219,15 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
 
       if (scope.type === 'pastoral') {
         const actionsCell = document.createElement('td');
-        actionsCell.className = 'px-4 py-2.5';
+        actionsCell.className = 'px-4 py-2.5 flex items-center gap-2 flex-wrap';
+        if (isGuestLead && !row.user_id) {
+          const createAccountBtn = document.createElement('button');
+          createAccountBtn.type = 'button';
+          createAccountBtn.className = 'text-xs font-medium text-indigo-600 hover:text-indigo-800';
+          createAccountBtn.textContent = t('guestHub.createAccount');
+          createAccountBtn.addEventListener('click', () => openCreateAccount(row));
+          actionsCell.appendChild(createAccountBtn);
+        }
         if (isGuestLead) {
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
