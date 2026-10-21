@@ -26,6 +26,7 @@ import { renderMemberCases } from './components/memberCaseManager.js';
 import { renderGuestOnboardingHub } from './components/guestOnboardingHub.js';
 import { renderAttendanceManager } from './components/attendanceManager.js';
 import { renderPastorMeetingsTab } from './pastorMeetingsPage.js';
+import { renderSilentUserClaims } from './components/silentUserClaims.js';
 
 const PASTORAL_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
 
@@ -64,6 +65,7 @@ export async function renderPastoralDashboardTab() {
     { key: 'urgent-prayer', label: t('urgentPrayer.title'), visible: isPastoralTeamClient() || isAnyDeptAdminClient() },
     { key: 'member-cases', label: t('memberCase.title'), visible: isPastoralTeamClient() || isAnyDeptAdminClient() },
     { key: 'guest-cases', label: t('guestHub.title'), visible: isPastoralTeamClient() || isAnyDeptAdminClient() },
+    { key: 'silent-claims', label: t('silentClaims.tabTitle'), visible: isPastoralTeamClient() || isAnyDeptAdminClient() },
     { key: 'attendance', label: t('attendance.title'), visible: canSeeAttendanceClient() },
     // Every signed-in user can already reach this standalone (it's
     // not gated on the pastoral/department-admin roles the other
@@ -107,6 +109,7 @@ export async function renderPastoralDashboardTab() {
     if (tab === 'urgent-prayer') renderUrgentPrayerCases(panels[tab], { supabase, currentUserId });
     if (tab === 'member-cases') renderMemberCases(panels[tab], { supabase, currentUserId, scope: { type: 'pastoral' } });
     if (tab === 'guest-cases') renderGuestOnboardingHub(panels[tab], { supabase, currentUserId, scope: { type: 'pastoral' } });
+    if (tab === 'silent-claims') renderSilentUserClaims(panels[tab], { supabase });
     if (tab === 'attendance') renderAttendanceManager(panels[tab], { supabase, currentUserId });
     if (tab === 'pastor-meetings') renderPastorMeetingsTab(panels[tab]);
   }

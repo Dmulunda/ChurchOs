@@ -4,6 +4,7 @@ import { t, departmentLabel } from '../i18n.js';
 import { DEPARTMENT_KEYS, requestDepartmentMemberships } from '../departments.js';
 import { createPlanPickerModal } from './planPickerModal.js';
 import { markInteractiveSignIn } from '../utils/authIntent.js';
+import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
 
 export function renderAuthScreen(container, { supabase }) {
   let mode = 'login';
@@ -64,6 +65,15 @@ export function renderAuthScreen(container, { supabase }) {
               <div data-el="full-name-field" class="hidden">
                 <label class="block text-sm font-medium text-slate-600 mb-1">${t('auth.fullName')}</label>
                 <input type="text" name="full_name" autocomplete="name" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent" />
+              </div>
+
+              <div data-el="silent-match" class="hidden text-sm bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p data-el="silent-match-question"></p>
+                <div class="flex gap-2 mt-2">
+                  <button type="button" data-action="silent-match-yes" class="px-3 py-1.5 rounded-lg bg-[#0B1F3A] text-white text-xs font-medium">${t('auth.silentMatchYes')}</button>
+                  <button type="button" data-action="silent-match-no" class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-xs font-medium">${t('auth.silentMatchNo')}</button>
+                </div>
+                <p data-el="silent-match-confirmed" class="hidden text-emerald-700 mt-2"></p>
               </div>
 
               <div data-el="departments-field" class="hidden">
@@ -137,6 +147,9 @@ export function renderAuthScreen(container, { supabase }) {
   const churchFields = container.querySelector('[data-el="church-fields"]');
   const fullNameField = container.querySelector('[data-el="full-name-field"]');
   const departmentsField = container.querySelector('[data-el="departments-field"]');
+  const silentMatchEl = container.querySelector('[data-el="silent-match"]');
+  const silentMatchQuestionEl = container.querySelector('[data-el="silent-match-question"]');
+  const silentMatchConfirmedEl = container.querySelector('[data-el="silent-match-confirmed"]');
   const form = container.querySelector('[data-el="form"]');
   const statusEl = container.querySelector('[data-el="status"]');
   const submitBtn = container.querySelector('[data-el="submit-btn"]');
@@ -175,6 +188,8 @@ export function renderAuthScreen(container, { supabase }) {
     form.elements.email.autocomplete = isSignup || isNewChurch ? 'email' : 'username';
     form.elements.password.autocomplete = isSignup || isNewChurch ? 'new-password' : 'current-password';
     statusEl.textContent = '';
+    silentMatchEl.classList.add('hidden');
+    silentMatchConfirmedEl.classList.add('hidden');
   }
 
   modeButtons.forEach((btn) => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
@@ -214,6 +229,45 @@ export function renderAuthScreen(container, { supabase }) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 32);
+  });
+
+  // Only in 'signup' mode -- 'new-church' creates a brand-new tenant
+  // with nobody in it yet, nothing to match against. Confirming "yes"
+  // only remembers which Silent record was matched; the actual upgrade
+  // (and its server-side corroboration check) happens at submit time,
+  // once email/password are known -- see handleSubmit().
+  let confirmedSilentMatch = null;
+  let silentMatchTimeout = null;
+  form.elements.full_name.addEventListener('input', () => {
+    confirmedSilentMatch = null;
+    silentMatchEl.classList.add('hidden');
+    silentMatchConfirmedEl.classList.add('hidden');
+    if (mode !== 'signup') return;
+    clearTimeout(silentMatchTimeout);
+    const name = form.elements.full_name.value.trim();
+    if (!name) return;
+    silentMatchTimeout = setTimeout(async () => {
+      const { data } = await supabase.rpc('find_silent_user_match', {
+        p_full_name: name,
+        ...(inviteTenant ? { p_tenant_id: inviteTenant.id } : {}),
+      });
+      const match = Array.isArray(data) && data[0];
+      if (!match || form.elements.full_name.value.trim() !== name) return;
+      silentMatchQuestionEl.textContent = t('auth.silentMatchQuestion', { name: match.full_name });
+      silentMatchEl.dataset.matchId = match.id;
+      silentMatchEl.dataset.matchName = match.full_name;
+      silentMatchEl.classList.remove('hidden');
+    }, 300);
+  });
+
+  silentMatchEl.querySelector('[data-action="silent-match-yes"]').addEventListener('click', () => {
+    confirmedSilentMatch = { id: silentMatchEl.dataset.matchId, name: silentMatchEl.dataset.matchName };
+    silentMatchConfirmedEl.textContent = t('auth.silentMatchConfirmed', { name: confirmedSilentMatch.name });
+    silentMatchConfirmedEl.classList.remove('hidden');
+  });
+  silentMatchEl.querySelector('[data-action="silent-match-no"]').addEventListener('click', () => {
+    confirmedSilentMatch = null;
+    silentMatchEl.classList.add('hidden');
   });
 
   container.querySelector('[data-action="show-forgot"]').addEventListener('click', () => {
@@ -325,6 +379,37 @@ export function renderAuthScreen(container, { supabase }) {
       const fullName = form.elements.full_name.value.trim();
       const selectedDepartments = Array.from(form.querySelectorAll('[data-dept-checkbox]:checked')).map((cb) => cb.value);
       markInteractiveSignIn();
+
+      if (confirmedSilentMatch) {
+        const { data: upgradeData, error: upgradeError } = await supabase.functions.invoke('upgrade-silent-user', {
+          body: { silent_profile_id: confirmedSilentMatch.id, claimed_full_name: fullName, email, password },
+        });
+        if (upgradeError) {
+          statusEl.className = 'text-sm text-rose-600';
+          statusEl.textContent = await extractFunctionErrorMessage(upgradeError);
+          submitBtn.disabled = false;
+          return;
+        }
+        if (upgradeData.status === 'pending_review') {
+          statusEl.className = 'text-sm text-emerald-600';
+          statusEl.textContent = t('auth.silentClaimPendingReview');
+          submitBtn.disabled = false;
+          return;
+        }
+        // The Edge Function updates auth.users server-side -- it doesn't
+        // sign this browser in, so a normal password sign-in finishes
+        // the job, same as the 'login' branch below.
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          statusEl.className = 'text-sm text-rose-600';
+          statusEl.textContent = signInError.message;
+        } else {
+          await requestDepartmentMemberships(upgradeData.profile_id, selectedDepartments);
+        }
+        submitBtn.disabled = false;
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
