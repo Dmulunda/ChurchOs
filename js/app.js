@@ -44,6 +44,7 @@ import { createAttendanceManagerModal } from './components/attendanceManager.js'
 import { createAppSuggestionModal } from './components/appSuggestionModal.js';
 import { createSupportRequestModal } from './components/supportRequestModal.js';
 import { renderSiteAdminTab } from './siteAdminPage.js';
+import { renderPastoralDashboardTab } from './pastoralDashboardPage.js';
 import { renderOwnerTab } from './ownerPage.js';
 import { createGuestOnboardingModal } from './components/guestOnboardingHub.js';
 import { createMemberCaseModal } from './components/memberCaseManager.js';
@@ -411,6 +412,7 @@ const lazyTabs = {
   offerings: renderOfferingsPageTab,
   'pastor-meetings': renderPastorMeetingsTab,
   'site-admin': renderSiteAdminTab,
+  'pastoral-dashboard': renderPastoralDashboardTab,
   'owner': renderOwnerTab,
 };
 let loadedTabs = new Set();
@@ -472,6 +474,7 @@ function restoreScrollPosition(tabName) {
 // one otherwise; everything else relies on the global sidebar Home icon).
 let siteAdminReturnTab = 'dashboard';
 let ownerReturnTab = 'dashboard';
+let pastoralDashboardReturnTab = 'dashboard';
 
 // activateTab() only toggles a panel's visibility -- it never unmounts
 // or re-renders an already-loaded tab's DOM, so a tab whose data was
@@ -557,6 +560,8 @@ export function activateTab(name) {
 
 document.querySelector('[data-tab-panel="site-admin"] [data-el="site-admin-back"]')
   ?.addEventListener('click', () => activateTab(siteAdminReturnTab || 'dashboard'));
+document.querySelector('[data-tab-panel="pastoral-dashboard"] [data-el="pastoral-dashboard-back"]')
+  ?.addEventListener('click', () => activateTab(pastoralDashboardReturnTab || 'dashboard'));
 document.querySelector('[data-tab-panel="owner"] [data-el="owner-back"]')
   ?.addEventListener('click', () => activateTab(ownerReturnTab || 'dashboard'));
 
@@ -583,7 +588,7 @@ const TAB_KIND_MAP = {
 // on any of these when a reload fired silently bounced you back to
 // Home/Dashboard -- confirmed by a Site Admin testing this exact
 // scenario on Main (same bug, identical code shape, both fixed here).
-const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers']);
+const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard']);
 
 function resolveLandingTab(previousTabName, active, isChoir) {
   const mapping = TAB_KIND_MAP[previousTabName];
@@ -1183,6 +1188,16 @@ function updateSidebarToolsSelect() {
   options.push({ value: 'support-request', label: t('sidebar.supportRequest') });
   if (getIsSiteAdmin()) options.push({ value: 'site-admin', label: t('sidebar.siteAdmin') });
   if (getIsPlatformOwner()) options.push({ value: 'owner', label: t('sidebar.owner') });
+  // Mirrors pastoralDashboardPage.js's own per-tab visibility checks,
+  // just collapsed into "does at least one tab show" for the nav
+  // entry itself.
+  if (
+    USHER_ATTENDANCE_ROLES.includes(getGlobalRole())
+    || getMyDepartments().some((d) => d.role === 'admin')
+    || getMyDepartments().some((d) => d.key === 'intercession' && (d.role === 'admin' || d.role === 'secretary'))
+  ) {
+    options.push({ value: 'pastoral-dashboard', label: t('sidebar.pastoralDashboard') });
+  }
   if (hasAccess) {
     if (!isViewingAs()) options.push({ value: 'report-absence', label: t('sidebar.reportAbsence') });
     if (active) {
@@ -1269,6 +1284,9 @@ function runSidebarTool(value) {
   } else if (value === 'site-admin') {
     siteAdminReturnTab = currentTabName;
     activateTab('site-admin');
+  } else if (value === 'pastoral-dashboard') {
+    pastoralDashboardReturnTab = currentTabName;
+    activateTab('pastoral-dashboard');
   } else if (value === 'owner') {
     ownerReturnTab = currentTabName;
     activateTab('owner');

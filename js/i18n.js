@@ -717,6 +717,7 @@ const TRANSLATIONS = {
     'sidebar.appSuggestion': 'App Suggestion',
     'sidebar.supportRequest': 'Contact Support',
     'sidebar.siteAdmin': 'Site Admin',
+    'sidebar.pastoralDashboard': 'Pastoral Dashboard',
     'sidebar.owner': 'Owner',
 
     'attendance.title': 'Attendance Check-In',
@@ -1409,6 +1410,9 @@ const TRANSLATIONS = {
     'owner.createChurchSuccess': '{name} created. Share the email and temporary password with its admin -- they\'ll be asked to change it on first login.',
 
     'siteAdmin.title': 'Site Admin',
+    'pastoralDashboard.title': 'Pastoral Dashboard',
+    'pastoralDashboard.noAccess': 'Nothing to show here yet.',
+    'pastoralDashboard.tabPrayerRequests': 'Prayer Requests',
     'siteAdmin.tabInquiries': 'Website Inquiries',
     'siteAdmin.tabSuggestions': 'App Suggestions',
     'siteAdmin.tabRequests': 'Support Requests',
@@ -3463,6 +3467,7 @@ const TRANSLATIONS = {
     'sidebar.appSuggestion': "Suggestion pour l'appli",
     'sidebar.supportRequest': 'Contacter le support',
     'sidebar.siteAdmin': 'Admin du site',
+    'sidebar.pastoralDashboard': 'Tableau de bord pastoral',
     'sidebar.owner': 'Propriétaire',
 
     'attendance.title': 'Enregistrement de présence',
@@ -4155,6 +4160,9 @@ const TRANSLATIONS = {
     'owner.createChurchSuccess': "{name} créée. Partagez l'e-mail et le mot de passe temporaire avec son admin -- il lui sera demandé de le changer dès la première connexion.",
 
     'siteAdmin.title': 'Admin du site',
+    'pastoralDashboard.title': 'Tableau de bord pastoral',
+    'pastoralDashboard.noAccess': 'Rien à afficher ici pour le moment.',
+    'pastoralDashboard.tabPrayerRequests': 'Requêtes de prière',
     'siteAdmin.tabInquiries': 'Demandes du site web',
     'siteAdmin.tabSuggestions': "Suggestions pour l'appli",
     'siteAdmin.tabRequests': 'Demandes de support',

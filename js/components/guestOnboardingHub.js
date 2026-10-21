@@ -31,23 +31,12 @@ import { t, departmentLabel } from '../i18n.js';
 
 const STATUSES = ['new_guest', 'contacted', 'assigned_to_department'];
 
-export function createGuestOnboardingModal({ supabase, currentUserId, scope = { type: 'pastoral' } }) {
-  const root = document.createElement('div');
-  root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
-  root.innerHTML = `
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold">${t('guestHub.title')}</h2>
-        <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
-      </div>
-      <div data-el="body"></div>
-    </div>
-  `;
-  document.body.appendChild(root);
-
-  const bodyEl = root.querySelector('[data-el="body"]');
-  root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
-  root.addEventListener('click', (e) => { if (e.target === root) close(); });
+// Mountable render function (the pastoral dashboard's own Guest Cases
+// tab mounts this directly) plus a thin modal wrapper around it, same
+// split userManager.js's renderUserManager/createUserManagerModal
+// already uses.
+export function renderGuestOnboardingHub(container, { supabase, currentUserId, scope = { type: 'pastoral' } }) {
+  const bodyEl = container;
 
   let departments = [];
   let followUpOnly = false;
@@ -504,10 +493,30 @@ export function createGuestOnboardingModal({ supabase, currentUserId, scope = { 
     load();
   }
 
+  load();
+}
+
+export function createGuestOnboardingModal({ supabase, currentUserId, scope = { type: 'pastoral' } }) {
+  const root = document.createElement('div');
+  root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
+  root.innerHTML = `
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold">${t('guestHub.title')}</h2>
+        <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div data-el="body"></div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
+  root.addEventListener('click', (e) => { if (e.target === root) close(); });
+
   function open() {
     root.classList.remove('hidden');
     root.classList.add('flex');
-    load();
+    renderGuestOnboardingHub(root.querySelector('[data-el="body"]'), { supabase, currentUserId, scope });
   }
 
   function close() {

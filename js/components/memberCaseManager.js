@@ -21,63 +21,54 @@ import { t, departmentLabel } from '../i18n.js';
 
 const STATUSES = ['open', 'in_progress', 'resolved'];
 
-export function createMemberCaseModal({ supabase, currentUserId, scope }) {
-  const root = document.createElement('div');
-  root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
-  root.innerHTML = `
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold">${t('memberCase.title')}</h2>
-        <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+// Mountable render function (the pastoral dashboard's own Member
+// Cases tab mounts this directly) plus a thin modal wrapper around
+// it, same split userManager.js's renderUserManager/
+// createUserManagerModal already uses.
+export function renderMemberCases(container, { supabase, currentUserId, scope }) {
+  container.innerHTML = `
+    <button type="button" data-action="toggle-new-case" class="mb-3 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">
+      ${t('memberCase.newCase')}
+    </button>
+
+    <div data-el="create-form" class="hidden border border-slate-200 rounded-lg p-4 mb-4 space-y-2">
+      <label class="block text-sm font-medium text-slate-600">${t('memberCase.member')}</label>
+      <input type="search" data-el="member-search" placeholder="${t('memberCase.memberSearchPlaceholder')}"
+             class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+      <div data-el="member-results" class="max-h-32 overflow-y-auto border border-slate-100 rounded-lg divide-y"></div>
+      <p data-el="member-selected" class="text-sm text-slate-500"></p>
+
+      <label class="block text-sm font-medium text-slate-600">${t('memberCase.note')}</label>
+      <textarea data-el="case-note" rows="3" placeholder="${t('memberCase.notePlaceholder')}"
+                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
+
+      <div data-el="department-picker-wrap" class="hidden">
+        <label class="block text-sm font-medium text-slate-600 mb-1">${t('memberCase.startingDepartment')}</label>
+        <select data-el="case-department" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"></select>
       </div>
 
-      <button type="button" data-action="toggle-new-case" class="mb-3 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">
-        ${t('memberCase.newCase')}
-      </button>
-
-      <div data-el="create-form" class="hidden border border-slate-200 rounded-lg p-4 mb-4 space-y-2">
-        <label class="block text-sm font-medium text-slate-600">${t('memberCase.member')}</label>
-        <input type="search" data-el="member-search" placeholder="${t('memberCase.memberSearchPlaceholder')}"
-               class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-        <div data-el="member-results" class="max-h-32 overflow-y-auto border border-slate-100 rounded-lg divide-y"></div>
-        <p data-el="member-selected" class="text-sm text-slate-500"></p>
-
-        <label class="block text-sm font-medium text-slate-600">${t('memberCase.note')}</label>
-        <textarea data-el="case-note" rows="3" placeholder="${t('memberCase.notePlaceholder')}"
-                  class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
-
-        <div data-el="department-picker-wrap" class="hidden">
-          <label class="block text-sm font-medium text-slate-600 mb-1">${t('memberCase.startingDepartment')}</label>
-          <select data-el="case-department" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"></select>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <button type="button" data-action="submit-case" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">
-            ${t('memberCase.createCase')}
-          </button>
-          <span data-el="create-status" class="text-sm text-slate-500"></span>
-        </div>
+      <div class="flex items-center gap-3">
+        <button type="button" data-action="submit-case" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">
+          ${t('memberCase.createCase')}
+        </button>
+        <span data-el="create-status" class="text-sm text-slate-500"></span>
       </div>
-
-      <div data-el="body"></div>
     </div>
+
+    <div data-el="body"></div>
   `;
-  document.body.appendChild(root);
 
-  const newCaseBtn = root.querySelector('[data-action="toggle-new-case"]');
-  const createFormEl = root.querySelector('[data-el="create-form"]');
-  const memberSearchEl = root.querySelector('[data-el="member-search"]');
-  const memberResultsEl = root.querySelector('[data-el="member-results"]');
-  const memberSelectedEl = root.querySelector('[data-el="member-selected"]');
-  const caseNoteEl = root.querySelector('[data-el="case-note"]');
-  const departmentPickerWrapEl = root.querySelector('[data-el="department-picker-wrap"]');
-  const caseDepartmentEl = root.querySelector('[data-el="case-department"]');
-  const createStatusEl = root.querySelector('[data-el="create-status"]');
-  const submitCaseBtn = root.querySelector('[data-action="submit-case"]');
-  const bodyEl = root.querySelector('[data-el="body"]');
-
-  root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
-  root.addEventListener('click', (e) => { if (e.target === root) close(); });
+  const newCaseBtn = container.querySelector('[data-action="toggle-new-case"]');
+  const createFormEl = container.querySelector('[data-el="create-form"]');
+  const memberSearchEl = container.querySelector('[data-el="member-search"]');
+  const memberResultsEl = container.querySelector('[data-el="member-results"]');
+  const memberSelectedEl = container.querySelector('[data-el="member-selected"]');
+  const caseNoteEl = container.querySelector('[data-el="case-note"]');
+  const departmentPickerWrapEl = container.querySelector('[data-el="department-picker-wrap"]');
+  const caseDepartmentEl = container.querySelector('[data-el="case-department"]');
+  const createStatusEl = container.querySelector('[data-el="create-status"]');
+  const submitCaseBtn = container.querySelector('[data-action="submit-case"]');
+  const bodyEl = container.querySelector('[data-el="body"]');
 
   let departments = [];
   let members = [];
@@ -355,16 +346,35 @@ export function createMemberCaseModal({ supabase, currentUserId, scope }) {
     load();
   }
 
-  async function open() {
-    root.classList.remove('hidden');
-    root.classList.add('flex');
-    createFormEl.classList.add('hidden');
-
+  (async () => {
     const { data: depts } = await supabase.from('departments').select('id, key, name').order('name');
     departments = depts || [];
-
     await loadMembers();
     await load();
+  })();
+}
+
+export function createMemberCaseModal({ supabase, currentUserId, scope }) {
+  const root = document.createElement('div');
+  root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
+  root.innerHTML = `
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold">${t('memberCase.title')}</h2>
+        <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div data-el="body"></div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
+  root.addEventListener('click', (e) => { if (e.target === root) close(); });
+
+  function open() {
+    root.classList.remove('hidden');
+    root.classList.add('flex');
+    renderMemberCases(root.querySelector('[data-el="body"]'), { supabase, currentUserId, scope });
   }
 
   function close() {

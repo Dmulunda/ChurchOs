@@ -14,16 +14,12 @@ function todayLocalDate() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-export function createAttendanceManagerModal({ supabase, currentUserId }) {
-  const root = document.createElement('div');
-  root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
-  root.innerHTML = `
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold">${t('attendance.title')}</h2>
-        <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
-      </div>
-
+// Mountable render function (the pastoral dashboard's own Attendance
+// Check-In tab mounts this directly) plus a thin modal wrapper around
+// it, same split userManager.js's renderUserManager/
+// createUserManagerModal already uses.
+export function renderAttendanceManager(container, { supabase, currentUserId }) {
+  container.innerHTML = `
       <div class="grid sm:grid-cols-2 gap-3 mb-4">
         <div>
           <label class="block text-sm font-medium text-slate-600 mb-1">${t('attendance.serviceDate')}</label>
@@ -104,36 +100,31 @@ export function createAttendanceManagerModal({ supabase, currentUserId }) {
 
       <p data-el="status" class="text-sm mt-3"></p>
       <div data-el="checked-in-list" class="mt-3 space-y-1"></div>
-    </div>
   `;
-  document.body.appendChild(root);
 
-  const serviceDateEl = root.querySelector('[data-el="service-date"]');
-  const serviceTypeEl = root.querySelector('[data-el="service-type"]');
-  const serviceLabelWrapEl = root.querySelector('[data-el="service-label-wrap"]');
-  const serviceLabelEl = root.querySelector('[data-el="service-label"]');
-  const memberSearchEl = root.querySelector('[data-el="member-search"]');
-  const searchResultsEl = root.querySelector('[data-el="search-results"]');
-  const guestNameEl = root.querySelector('[data-el="guest-name"]');
-  const guestPhoneEl = root.querySelector('[data-el="guest-phone"]');
-  const guestEmailEl = root.querySelector('[data-el="guest-email"]');
-  const guestCityEl = root.querySelector('[data-el="guest-city"]');
-  const guestReferralEl = root.querySelector('[data-el="guest-referral"]');
-  const guestReferredByEl = root.querySelector('[data-el="guest-referred-by"]');
-  const guestAgeRangeEl = root.querySelector('[data-el="guest-age-range"]');
-  const guestHasPrayerRequestEl = root.querySelector('[data-el="guest-has-prayer-request"]');
-  const guestPrayerRequestEl = root.querySelector('[data-el="guest-prayer-request"]');
-  const guestWantsPastorMeetingEl = root.querySelector('[data-el="guest-wants-pastor-meeting"]');
-  const guestHasHomeChurchEl = root.querySelector('[data-el="guest-has-home-church"]');
-  const guestHomeChurchEl = root.querySelector('[data-el="guest-home-church"]');
-  const addGuestBtn = root.querySelector('[data-action="add-guest"]');
-  const statusEl = root.querySelector('[data-el="status"]');
-  const checkedInListEl = root.querySelector('[data-el="checked-in-list"]');
+  const serviceDateEl = container.querySelector('[data-el="service-date"]');
+  const serviceTypeEl = container.querySelector('[data-el="service-type"]');
+  const serviceLabelWrapEl = container.querySelector('[data-el="service-label-wrap"]');
+  const serviceLabelEl = container.querySelector('[data-el="service-label"]');
+  const memberSearchEl = container.querySelector('[data-el="member-search"]');
+  const searchResultsEl = container.querySelector('[data-el="search-results"]');
+  const guestNameEl = container.querySelector('[data-el="guest-name"]');
+  const guestPhoneEl = container.querySelector('[data-el="guest-phone"]');
+  const guestEmailEl = container.querySelector('[data-el="guest-email"]');
+  const guestCityEl = container.querySelector('[data-el="guest-city"]');
+  const guestReferralEl = container.querySelector('[data-el="guest-referral"]');
+  const guestReferredByEl = container.querySelector('[data-el="guest-referred-by"]');
+  const guestAgeRangeEl = container.querySelector('[data-el="guest-age-range"]');
+  const guestHasPrayerRequestEl = container.querySelector('[data-el="guest-has-prayer-request"]');
+  const guestPrayerRequestEl = container.querySelector('[data-el="guest-prayer-request"]');
+  const guestWantsPastorMeetingEl = container.querySelector('[data-el="guest-wants-pastor-meeting"]');
+  const guestHasHomeChurchEl = container.querySelector('[data-el="guest-has-home-church"]');
+  const guestHomeChurchEl = container.querySelector('[data-el="guest-home-church"]');
+  const addGuestBtn = container.querySelector('[data-action="add-guest"]');
+  const statusEl = container.querySelector('[data-el="status"]');
+  const checkedInListEl = container.querySelector('[data-el="checked-in-list"]');
 
   let members = [];
-
-  root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
-  root.addEventListener('click', (e) => { if (e.target === root) close(); });
 
   serviceTypeEl.addEventListener('change', () => {
     serviceLabelWrapEl.classList.toggle('hidden', serviceTypeEl.value !== 'special_service');
@@ -308,16 +299,37 @@ export function createAttendanceManagerModal({ supabase, currentUserId }) {
     });
   }
 
-  async function open() {
-    root.classList.remove('hidden');
-    root.classList.add('flex');
+  (async () => {
     serviceDateEl.value = todayLocalDate();
     serviceTypeEl.value = 'sunday_service';
-    serviceLabelWrapEl.classList.add('hidden');
     statusEl.textContent = '';
     resetGuestForm();
     await loadMembers();
     await loadHistory();
+  })();
+}
+
+export function createAttendanceManagerModal({ supabase, currentUserId }) {
+  const root = document.createElement('div');
+  root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
+  root.innerHTML = `
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold">${t('attendance.title')}</h2>
+        <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div data-el="body"></div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
+  root.addEventListener('click', (e) => { if (e.target === root) close(); });
+
+  function open() {
+    root.classList.remove('hidden');
+    root.classList.add('flex');
+    renderAttendanceManager(root.querySelector('[data-el="body"]'), { supabase, currentUserId });
   }
 
   function close() {

@@ -133,34 +133,14 @@ export function createPrayerRequestModal({ supabase, currentUserId }) {
   return { open, root };
 }
 
-export function createPrayerRequestQueueModal({ supabase }) {
-  const root = document.createElement('div');
-  root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
-  root.innerHTML = `
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold">${t('prayerRequest.queueTitle')}</h2>
-        <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
-      </div>
-      <div data-el="list" class="space-y-2"></div>
-    </div>
-  `;
-  document.body.appendChild(root);
-
-  const listEl = root.querySelector('[data-el="list"]');
-  root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
-  root.addEventListener('click', (e) => { if (e.target === root) close(); });
-
-  function open() {
-    root.classList.remove('hidden');
-    root.classList.add('flex');
-    load();
-  }
-
-  function close() {
-    root.classList.add('hidden');
-    root.classList.remove('flex');
-  }
+// Mountable render function (the pastoral dashboard's own Prayer
+// Requests tab mounts this directly) plus a thin modal wrapper around
+// it, same split userManager.js's renderUserManager/
+// createUserManagerModal already uses.
+export function renderPrayerRequestQueue(container, { supabase }) {
+  container.innerHTML = `<div data-el="list" class="space-y-2"></div>`;
+  const listEl = container.querySelector('[data-el="list"]');
+  load();
 
   async function load() {
     listEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
@@ -214,6 +194,35 @@ export function createPrayerRequestQueueModal({ supabase }) {
       return;
     }
     load();
+  }
+}
+
+export function createPrayerRequestQueueModal({ supabase }) {
+  const root = document.createElement('div');
+  root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
+  root.innerHTML = `
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold">${t('prayerRequest.queueTitle')}</h2>
+        <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div data-el="body"></div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
+  root.addEventListener('click', (e) => { if (e.target === root) close(); });
+
+  function open() {
+    root.classList.remove('hidden');
+    root.classList.add('flex');
+    renderPrayerRequestQueue(root.querySelector('[data-el="body"]'), { supabase });
+  }
+
+  function close() {
+    root.classList.add('hidden');
+    root.classList.remove('flex');
   }
 
   return { open, root };
