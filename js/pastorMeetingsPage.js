@@ -43,9 +43,13 @@ const TIMEZONE_CHOICES = [
   { value: 'Africa/Johannesburg', label: 'Johannesburg' },
 ];
 
-export async function renderPastorMeetingsTab() {
+// Accepts an explicit container so the Pastoral Dashboard can mount
+// this directly into one of its own tab panels (same mountable
+// pattern as renderPrayerRequestQueue/renderMemberCases/etc.);
+// defaults to the standalone page's own fixed container when called
+// with no args, as app.js's lazyTabs map still does.
+export async function renderPastorMeetingsTab(container = document.querySelector('#pastor-meetings-content')) {
   const supabase = getEffectiveSupabase();
-  const container = document.querySelector('#pastor-meetings-content');
   container.innerHTML = `<p class="text-slate-500">${t('common.loading')}</p>`;
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
