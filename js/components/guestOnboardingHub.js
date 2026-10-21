@@ -245,6 +245,18 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
         }
 
         if (isGuestLead) {
+          const generalNoteEl = document.createElement('div');
+          generalNoteEl.innerHTML = `
+            <label class="block font-medium text-slate-700 mb-1">${t('guestHub.generalNote')}</label>
+            <textarea data-el="general-note" rows="2" placeholder="${t('guestHub.generalNotePlaceholder')}"
+                      class="w-full border border-slate-300 rounded-lg px-2 py-1 text-sm mb-1.5">${escapeHtml(row.notes || '')}</textarea>
+            <button type="button" data-action="save-general-note" class="text-xs font-medium text-indigo-600 hover:text-indigo-800">${t('guestHub.saveNote')}</button>
+            <span data-el="general-note-status" class="text-xs text-slate-500 ml-2"></span>
+          `;
+          const generalNoteTextarea = generalNoteEl.querySelector('[data-el="general-note"]');
+          generalNoteEl.querySelector('[data-action="save-general-note"]').addEventListener('click', () => saveGeneralNote(row, generalNoteTextarea.value.trim(), generalNoteEl));
+          detailsCell.appendChild(generalNoteEl);
+
           const followUpEl = document.createElement('div');
           followUpEl.className = 'border-t border-slate-200 pt-2';
           followUpEl.innerHTML = `
@@ -387,6 +399,22 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
   // Independent of `status` (routing state, sql/038/041/042) on
   // purpose (sql/saas_platform/97) -- a case can be mid-routing and
   // still need/have a completed follow-up call.
+  async function saveGeneralNote(row, note, generalNoteEl) {
+    const statusEl = generalNoteEl.querySelector('[data-el="general-note-status"]');
+    statusEl.className = 'text-xs text-slate-500 ml-2';
+    statusEl.textContent = t('common.saving');
+    const { error } = await supabase.from('guest_follow_ups')
+      .update({ notes: note || null, updated_at: new Date().toISOString() })
+      .eq('id', row.id);
+    if (error) {
+      statusEl.className = 'text-xs text-rose-600 ml-2';
+      statusEl.textContent = t('common.saveFailed', { message: error.message });
+      return;
+    }
+    statusEl.className = 'text-xs text-emerald-600 ml-2';
+    statusEl.textContent = t('common.saved');
+  }
+
   async function saveFollowUpNote(row, note) {
     const { error } = await supabase.from('guest_follow_ups')
       .update({ follow_up_note: note || null, updated_at: new Date().toISOString() })

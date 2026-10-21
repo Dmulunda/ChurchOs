@@ -42,6 +42,12 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2" />
       <div data-el="search-results" class="max-h-40 overflow-y-auto border border-slate-100 rounded-lg divide-y mb-3"></div>
 
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-slate-600 mb-1">${t('attendance.checkInNote')}</label>
+        <textarea data-el="checkin-note" rows="2" placeholder="${t('attendance.checkInNotePlaceholder')}"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
+      </div>
+
       <div class="border-t border-slate-200 pt-3 space-y-2">
         <p class="text-sm font-semibold text-slate-700">${t('attendance.guestName')}</p>
 
@@ -108,6 +114,7 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
   const serviceLabelEl = container.querySelector('[data-el="service-label"]');
   const memberSearchEl = container.querySelector('[data-el="member-search"]');
   const searchResultsEl = container.querySelector('[data-el="search-results"]');
+  const checkinNoteEl = container.querySelector('[data-el="checkin-note"]');
   const guestNameEl = container.querySelector('[data-el="guest-name"]');
   const guestPhoneEl = container.querySelector('[data-el="guest-phone"]');
   const guestEmailEl = container.querySelector('[data-el="guest-email"]');
@@ -177,6 +184,7 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
       service_type: serviceTypeEl.value,
       service_label: serviceTypeEl.value === 'special_service' ? (serviceLabelEl.value.trim() || null) : null,
       member_id: memberId,
+      note: checkinNoteEl.value.trim() || null,
       recorded_by: currentUserId,
     });
 
@@ -199,6 +207,7 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
     loadHistory();
     memberSearchEl.value = '';
     searchResultsEl.innerHTML = '';
+    checkinNoteEl.value = '';
   }
 
   async function checkInGuest(name) {
@@ -219,6 +228,7 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
       guest_prayer_request: guestHasPrayerRequestEl.checked ? (guestPrayerRequestEl.value.trim() || null) : null,
       guest_wants_pastor_meeting: guestWantsPastorMeetingEl.checked,
       guest_home_church: guestHasHomeChurchEl.checked ? (guestHomeChurchEl.value.trim() || null) : null,
+      note: checkinNoteEl.value.trim() || null,
       recorded_by: currentUserId,
     });
 
@@ -232,6 +242,7 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
     statusEl.textContent = t('attendance.guestCheckedIn', { name });
     loadHistory();
     resetGuestForm();
+    checkinNoteEl.value = '';
   }
 
   function resetGuestForm() {
@@ -261,7 +272,7 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
 
     const { data, error } = await supabase
       .from('attendance_records')
-      .select('id, member_id, guest_name, member:profiles!member_id ( full_name )')
+      .select('id, member_id, guest_name, note, member:profiles!member_id ( full_name )')
       .eq('service_date', serviceDateEl.value)
       .eq('service_type', serviceTypeEl.value)
       .order('created_at', { ascending: false });
@@ -280,12 +291,22 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
     data.forEach((rec) => {
       const name = rec.member ? rec.member.full_name : `${rec.guest_name} (${t('attendance.guestBadge')})`;
       const row = document.createElement('div');
-      row.className = 'flex items-center justify-between text-sm text-slate-600 px-2 py-1 bg-slate-50 rounded';
+      row.className = 'text-sm text-slate-600 px-2 py-1.5 bg-slate-50 rounded';
       row.innerHTML = `
-        <span>${escapeHtml(name)}</span>
-        <button type="button" class="text-xs font-medium text-rose-600 hover:text-rose-800">${t('moderation.delete')}</button>
+        <div class="flex items-center justify-between">
+          <span>${escapeHtml(name)}</span>
+          <button type="button" data-action="delete" class="text-xs font-medium text-rose-600 hover:text-rose-800">${t('moderation.delete')}</button>
+        </div>
+        <textarea data-el="record-note" rows="1" placeholder="${t('attendance.checkInNotePlaceholder')}"
+                  class="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs mt-1 bg-white">${rec.note ? escapeHtml(rec.note) : ''}</textarea>
+        <div class="flex items-center gap-2 mt-1">
+          <button type="button" data-action="save-note" class="px-2 py-0.5 rounded border border-slate-300 text-xs font-medium text-slate-600 hover:bg-white">
+            ${t('common.saveNote')}
+          </button>
+          <span data-el="note-status" class="text-xs text-slate-500"></span>
+        </div>
       `;
-      row.querySelector('button').addEventListener('click', async () => {
+      row.querySelector('[data-action="delete"]').addEventListener('click', async () => {
         const confirmed = await confirmDialog({ message: t('moderation.confirmDeleteAttendance', { name }) });
         if (!confirmed) return;
         const { error: deleteError } = await supabase.from('attendance_records').delete().eq('id', rec.id);
@@ -294,6 +315,20 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
           return;
         }
         loadHistory();
+      });
+      row.querySelector('[data-action="save-note"]').addEventListener('click', async () => {
+        const noteEl = row.querySelector('[data-el="record-note"]');
+        const noteStatusEl = row.querySelector('[data-el="note-status"]');
+        noteStatusEl.className = 'text-xs text-slate-500';
+        noteStatusEl.textContent = t('common.saving');
+        const { error: noteError } = await supabase.from('attendance_records').update({ note: noteEl.value.trim() || null }).eq('id', rec.id);
+        if (noteError) {
+          noteStatusEl.className = 'text-xs text-rose-600';
+          noteStatusEl.textContent = t('common.saveFailed', { message: noteError.message });
+          return;
+        }
+        noteStatusEl.className = 'text-xs text-emerald-600';
+        noteStatusEl.textContent = t('common.saved');
       });
       checkedInListEl.appendChild(row);
     });

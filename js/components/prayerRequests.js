@@ -147,7 +147,7 @@ export function renderPrayerRequestQueue(container, { supabase }) {
 
     const { data, error } = await supabase
       .from('prayer_requests')
-      .select('id, request_text, status, created_at, requester:profiles!user_id ( full_name )')
+      .select('id, request_text, status, created_at, admin_note, requester:profiles!user_id ( full_name )')
       .eq('status', 'pending')
       .order('created_at', { ascending: true });
 
@@ -180,11 +180,41 @@ export function renderPrayerRequestQueue(container, { supabase }) {
           ${t('prayerRequest.markPrayed')}
         </button>
       </div>
+      <div class="mt-2">
+        <textarea data-el="admin-note" rows="2" placeholder="${t('prayerRequest.notePlaceholder')}"
+                  class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm">${row.admin_note ? escapeHtml(row.admin_note) : ''}</textarea>
+        <div class="flex items-center gap-2 mt-1">
+          <button type="button" data-action="save-note"
+                  class="px-2.5 py-1 rounded-lg border border-slate-300 text-xs font-medium text-slate-600 hover:bg-slate-50">
+            ${t('common.saveNote')}
+          </button>
+          <span data-el="note-status" class="text-xs text-slate-500"></span>
+        </div>
+      </div>
       <p data-el="row-status" class="text-xs text-rose-600 mt-1"></p>
     `;
 
     el.querySelector('[data-action="mark-prayed"]').addEventListener('click', () => markPrayed(row.id, el));
+    el.querySelector('[data-action="save-note"]').addEventListener('click', () => saveNote(row.id, el));
     return el;
+  }
+
+  async function saveNote(id, el) {
+    const noteEl = el.querySelector('[data-el="admin-note"]');
+    const statusEl = el.querySelector('[data-el="note-status"]');
+    statusEl.className = 'text-xs text-slate-500';
+    statusEl.textContent = t('common.saving');
+    const { error } = await supabase
+      .from('prayer_requests')
+      .update({ admin_note: noteEl.value.trim() || null })
+      .eq('id', id);
+    if (error) {
+      statusEl.className = 'text-xs text-rose-600';
+      statusEl.textContent = t('common.saveFailed', { message: error.message });
+      return;
+    }
+    statusEl.className = 'text-xs text-emerald-600';
+    statusEl.textContent = t('common.saved');
   }
 
   async function markPrayed(id, el) {

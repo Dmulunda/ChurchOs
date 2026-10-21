@@ -1053,6 +1053,7 @@ function buildQuickAccessItems() {
     { icon: '🧾', label: t('nav.tax'), tab: 'tax' },
     { icon: '🎟️', label: t('nav.events'), tab: 'events' },
   ];
+  if (canSeePastoralDashboardClient()) items.push({ icon: '🧑‍🤝‍🧑', label: t('sidebar.pastoralDashboard'), tab: 'pastoral-dashboard' });
   // Plan-gated -- a dead-end tile for a feature the tenant's plan
   // doesn't include would be worse than just not offering the shortcut.
   if (hasFeature('vpd_academy')) items.push({ icon: '🎓', label: t('nav.training'), tab: 'training' });
@@ -1118,6 +1119,17 @@ headerNewMemberBtn.addEventListener('click', () => {
 const USHER_ATTENDANCE_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
 // Same set superAdminHome.js gates its Guest Onboarding button on.
 const PASTORAL_TEAM_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
+
+// Mirrors pastoralDashboardPage.js's own per-tab visibility checks,
+// collapsed into "does at least one tab show" -- shared by the sidebar
+// Tools entry and the Quick Access tile so both stay in sync. Doesn't
+// yet check Church Admin client-side (same documented gap as
+// updateSidebarToolsSelect()'s canRecordAttendance above).
+function canSeePastoralDashboardClient() {
+  return USHER_ATTENDANCE_ROLES.includes(getGlobalRole())
+    || getMyDepartments().some((d) => d.role === 'admin')
+    || getMyDepartments().some((d) => d.key === 'intercession' && (d.role === 'admin' || d.role === 'secretary'));
+}
 
 function updateMemberActionsUI() {
   const hasAccess = getMyDepartments().length > 0;
@@ -1188,14 +1200,7 @@ function updateSidebarToolsSelect() {
   options.push({ value: 'support-request', label: t('sidebar.supportRequest') });
   if (getIsSiteAdmin()) options.push({ value: 'site-admin', label: t('sidebar.siteAdmin') });
   if (getIsPlatformOwner()) options.push({ value: 'owner', label: t('sidebar.owner') });
-  // Mirrors pastoralDashboardPage.js's own per-tab visibility checks,
-  // just collapsed into "does at least one tab show" for the nav
-  // entry itself.
-  if (
-    USHER_ATTENDANCE_ROLES.includes(getGlobalRole())
-    || getMyDepartments().some((d) => d.role === 'admin')
-    || getMyDepartments().some((d) => d.key === 'intercession' && (d.role === 'admin' || d.role === 'secretary'))
-  ) {
+  if (canSeePastoralDashboardClient()) {
     options.push({ value: 'pastoral-dashboard', label: t('sidebar.pastoralDashboard') });
   }
   if (hasAccess) {

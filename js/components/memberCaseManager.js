@@ -255,7 +255,17 @@ export function renderMemberCases(container, { supabase, currentUserId, scope })
       detailsCell.className = 'px-4 py-3 text-sm text-slate-600 space-y-3';
 
       const noteEl = document.createElement('div');
-      noteEl.innerHTML = `<span class="font-medium text-slate-700">${escapeHtml(t('memberCase.note'))}:</span> ${escapeHtml(c.note)}`;
+      noteEl.innerHTML = `
+        <label class="block font-medium text-slate-700 mb-1">${escapeHtml(t('memberCase.note'))}</label>
+        <textarea data-el="case-note-edit" rows="3" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white">${escapeHtml(c.note)}</textarea>
+        <div class="flex items-center gap-2 mt-1">
+          <button type="button" data-action="save-case-note" class="px-2.5 py-1 rounded-lg border border-slate-300 text-xs font-medium text-slate-600 hover:bg-white">
+            ${t('common.saveNote')}
+          </button>
+          <span data-el="note-save-status" class="text-xs text-slate-500"></span>
+        </div>
+      `;
+      noteEl.querySelector('[data-action="save-case-note"]').addEventListener('click', () => saveCaseNote(c.id, noteEl));
       detailsCell.appendChild(noteEl);
 
       const history = transfersByCase.get(c.id) || [];
@@ -302,6 +312,27 @@ export function renderMemberCases(container, { supabase, currentUserId, scope })
 
     bodyEl.innerHTML = '';
     bodyEl.appendChild(table);
+  }
+
+  async function saveCaseNote(caseId, noteEl) {
+    const textarea = noteEl.querySelector('[data-el="case-note-edit"]');
+    const statusEl = noteEl.querySelector('[data-el="note-save-status"]');
+    const note = textarea.value.trim();
+    if (!note) {
+      statusEl.className = 'text-xs text-rose-600';
+      statusEl.textContent = t('memberCase.emptyNote');
+      return;
+    }
+    statusEl.className = 'text-xs text-slate-500';
+    statusEl.textContent = t('common.saving');
+    const { error } = await supabase.from('member_cases').update({ note, updated_at: new Date().toISOString() }).eq('id', caseId);
+    if (error) {
+      statusEl.className = 'text-xs text-rose-600';
+      statusEl.textContent = t('common.saveFailed', { message: error.message });
+      return;
+    }
+    statusEl.className = 'text-xs text-emerald-600';
+    statusEl.textContent = t('common.saved');
   }
 
   async function updateCaseStatus(caseId, status) {

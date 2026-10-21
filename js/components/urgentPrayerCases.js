@@ -284,7 +284,21 @@ export function renderUrgentPrayerCases(container, { supabase, currentUserId }) 
       detailsCell.colSpan = 4;
       detailsCell.className = 'px-4 py-3 text-sm text-slate-600 space-y-3';
 
-      if (c.need_description) {
+      if (canManage) {
+        const needEl = document.createElement('div');
+        needEl.innerHTML = `
+          <label class="block font-medium text-slate-700 mb-1">${escapeHtml(t('urgentPrayer.need'))}</label>
+          <textarea data-el="need-edit" rows="3" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white">${escapeHtml(c.need_description || '')}</textarea>
+          <div class="flex items-center gap-2 mt-1">
+            <button type="button" data-action="save-need" class="px-2.5 py-1 rounded-lg border border-slate-300 text-xs font-medium text-slate-600 hover:bg-white">
+              ${t('common.saveNote')}
+            </button>
+            <span data-el="need-save-status" class="text-xs text-slate-500"></span>
+          </div>
+        `;
+        needEl.querySelector('[data-action="save-need"]').addEventListener('click', () => saveNeedDescription(c.id, needEl));
+        detailsCell.appendChild(needEl);
+      } else if (c.need_description) {
         const needEl = document.createElement('div');
         needEl.innerHTML = `<span class="font-medium text-slate-700">${escapeHtml(t('urgentPrayer.need'))}:</span> ${escapeHtml(c.need_description)}`;
         detailsCell.appendChild(needEl);
@@ -328,6 +342,23 @@ export function renderUrgentPrayerCases(container, { supabase, currentUserId }) 
         loadCaseViewers(caseId, chipsEl);
       });
     });
+  }
+
+  async function saveNeedDescription(caseId, needEl) {
+    const textarea = needEl.querySelector('[data-el="need-edit"]');
+    const statusEl = needEl.querySelector('[data-el="need-save-status"]');
+    statusEl.className = 'text-xs text-slate-500';
+    statusEl.textContent = t('common.saving');
+    const { error } = await supabase.from('urgent_prayer_cases')
+      .update({ need_description: textarea.value.trim() || null, updated_at: new Date().toISOString() })
+      .eq('id', caseId);
+    if (error) {
+      statusEl.className = 'text-xs text-rose-600';
+      statusEl.textContent = t('common.saveFailed', { message: error.message });
+      return;
+    }
+    statusEl.className = 'text-xs text-emerald-600';
+    statusEl.textContent = t('common.saved');
   }
 
   async function updateCaseStatus(caseId, status) {
