@@ -1772,6 +1772,10 @@ async function showApp(session, { isFreshSignIn = false } = {}) {
     await showTrialEnded();
     return;
   }
+  if (getTenantStatus() === 'canceled') {
+    showChurchCanceled();
+    return;
+  }
   trialEndedEl.classList.add('hidden');
   trialEndedEl.classList.remove('flex');
 
@@ -1973,6 +1977,28 @@ async function showTrialEnded() {
   // boundary itself, which needs showApp()'s own gate check to re-run
   // from scratch, not just an entitlements refresh.
   if (isOwner) renderOwnerTab(trialEndedEl.querySelector('#trial-ended-owner-panel'), { onOwnTenantChanged: () => window.location.reload() });
+
+  authScreenEl.classList.add('hidden');
+  passwordRecoveryEl.classList.add('hidden');
+  appShellEl.classList.add('hidden');
+  trialEndedEl.classList.remove('hidden');
+  trialEndedEl.classList.add('flex');
+}
+
+// A Site Admin deliberately unsubscribed this church (js/siteAdminPage.js's
+// Churches tab) -- unlike showTrialEnded(), there's no Upgrade path or
+// owner preview, just the reason they gave and a way to sign out.
+function showChurchCanceled() {
+  const tenant = getTenant();
+
+  trialEndedEl.innerHTML = `
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 my-8">
+      <h1 class="text-xl font-bold text-slate-800 mb-2">${t('church.canceledTitle')}</h1>
+      <p class="text-sm text-slate-600 mb-4">${t('church.canceledBody', { reason: tenant?.canceled_reason || '' })}</p>
+      <button type="button" data-action="sign-out" class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">${t('sidebar.signOut')}</button>
+    </div>
+  `;
+  trialEndedEl.querySelector('[data-action="sign-out"]').addEventListener('click', () => supabase.auth.signOut());
 
   authScreenEl.classList.add('hidden');
   passwordRecoveryEl.classList.add('hidden');

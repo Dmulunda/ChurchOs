@@ -10,6 +10,7 @@ import { t } from '../i18n.js';
 import { renderMemberIdCard } from './memberIdCard.js';
 import { createSignaturePad } from './signaturePad.js';
 import { hasFeature } from '../entitlements.js';
+import { confirmDialog } from './confirmDialog.js';
 
 // Member Card is a plan-gated feature (sql/saas_platform/86_pricing_v2.sql)
 // -- its own data is just ordinary profile columns used elsewhere too,
@@ -101,6 +102,12 @@ export function createMyProfileModal({ supabase, userId }) {
           <span data-el="form-status" class="text-sm text-slate-500"></span>
         </div>
       </form>
+
+      <div class="border-t border-rose-100 mt-6 pt-4">
+        <h3 class="text-sm font-semibold text-rose-700 mb-1">${t('account.dangerZone')}</h3>
+        <p class="text-xs text-slate-500 mb-2">${t('account.leaveChurchHint')}</p>
+        <button type="button" data-action="leave-church" class="text-sm text-rose-600 hover:text-rose-700 font-medium">${t('account.leaveChurch')}</button>
+      </div>
     </div>
   `;
   document.body.appendChild(root);
@@ -115,6 +122,7 @@ export function createMyProfileModal({ supabase, userId }) {
   root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
   root.addEventListener('click', (e) => { if (e.target === root) close(); });
   root.querySelector('[data-action="clear-signature"]').addEventListener('click', () => signaturePad.clear());
+  root.querySelector('[data-action="leave-church"]').addEventListener('click', handleLeaveChurch);
   form.addEventListener('submit', handleSubmit);
 
   function setFormExpanded(expanded) {
@@ -194,6 +202,21 @@ export function createMyProfileModal({ supabase, userId }) {
     formStatusEl.textContent = t('myProfile.saved');
     form.querySelector('[data-el="photo-input"]').value = '';
     renderMemberIdCardGated(cardContainer, { supabase, userId });
+  }
+
+  async function handleLeaveChurch() {
+    const ok = await confirmDialog({ message: t('account.confirmLeaveChurch'), danger: true });
+    if (!ok) return;
+
+    const { error } = await supabase.rpc('leave_church');
+    if (error) {
+      window.alert(t('account.leaveChurchFailed', { message: error.message }));
+      return;
+    }
+
+    close();
+    window.alert(t('account.leftChurch'));
+    await supabase.auth.signOut({ scope: 'global' });
   }
 
   return { open, root };

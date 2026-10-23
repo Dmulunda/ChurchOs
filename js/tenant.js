@@ -8,7 +8,7 @@
 // tenant's data, because the database never returns it in the first place.
 import { supabase } from './supabaseClient.js';
 
-const TENANT_COLUMNS = 'id, name, slug, status, trial_ends_at, plan_id, stripe_customer_id, address, logo_url, denomination_id, plan:plans ( name, price_cents, billing_interval )';
+const TENANT_COLUMNS = 'id, name, slug, status, trial_ends_at, plan_id, stripe_customer_id, address, logo_url, denomination_id, canceled_reason, plan:plans ( name, price_cents, billing_interval )';
 
 let myTenant = null; // { id, name, slug, status, trial_ends_at, plan_id, stripe_customer_id, address, logo_url, denomination_id, plan } | null
 let myHomeTenantId = null; // profiles.tenant_id, always the caller's own tenant -- never the one they're acting as

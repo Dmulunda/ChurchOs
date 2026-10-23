@@ -476,6 +476,13 @@ const TRANSLATIONS = {
     'myProfile.saveFailed': 'Save failed: {message}',
     'myProfile.idCardTitle': 'My Member ID Card',
 
+    'account.dangerZone': 'Danger Zone',
+    'account.leaveChurchHint': 'Left this church or no longer want access? You can remove your own account access below. An admin can reinstate you later if needed.',
+    'account.leaveChurch': 'Leave this church',
+    'account.confirmLeaveChurch': 'Are you sure you want to leave this church? You\'ll be signed out immediately and lose access until an admin reinstates you.',
+    'account.leaveChurchFailed': 'Couldn\'t leave the church: {message}',
+    'account.leftChurch': 'You\'ve left the church. You\'ve been signed out.',
+
     'memberCard.loadFailed': 'Failed to load: {message}',
     'memberCard.cardLabel': 'CARTE DE MEMBRE — MEMBERSHIP CARD',
     'memberCard.noPhoto': 'No photo',
@@ -542,6 +549,9 @@ const TRANSLATIONS = {
     'trial.endedBody': 'Your data for {church} is safe, but access is paused until a plan is chosen. Upgrade now to pick back up right where you left off.',
     'trial.upgradeNow': 'View Plans',
     'trial.ownerPreviewNote': 'Owner preview — you can see and fix any church\'s plan/trial right here.',
+
+    'church.canceledTitle': 'This church\'s access has been deactivated',
+    'church.canceledBody': 'You can\'t connect anymore, since: {reason}',
 
     'entitlements.upgrade': 'Upgrade',
     'entitlements.memberCardLocked': 'The member ID card isn\'t included in your church\'s current plan. Ask your admin to upgrade.',
@@ -1518,6 +1528,11 @@ const TRANSLATIONS = {
     'siteAdmin.delete': 'Delete',
     'siteAdmin.restore': 'Restore',
     'siteAdmin.deleteChurchConfirm': 'Delete {name}? This is recoverable for 90 days.',
+    'siteAdmin.unsubscribe': 'Unsubscribe',
+    'siteAdmin.reactivate': 'Reactivate',
+    'siteAdmin.unsubscribeConfirm': 'Unsubscribe {name}? Every member of this church will be signed out and blocked from logging back in until you reactivate it.',
+    'siteAdmin.unsubscribeReasonLabel': 'Reason (shown to every member of this church)',
+    'siteAdmin.unsubscribeReasonPlaceholder': 'e.g. Requested by the church, non-payment, terms violation…',
     'siteAdmin.alreadyReplied': 'Replied on {date}',
     'siteAdmin.replyPlaceholder': 'Write a reply the sender will see…',
     'siteAdmin.sendReply': 'Send Reply',
@@ -3250,6 +3265,13 @@ const TRANSLATIONS = {
     'myProfile.saveFailed': "Échec de l'enregistrement : {message}",
     'myProfile.idCardTitle': "Ma carte de membre",
 
+    'account.dangerZone': 'Zone de danger',
+    'account.leaveChurchHint': "Vous avez quitté cette église ou ne souhaitez plus y avoir accès ? Vous pouvez retirer votre propre accès ci-dessous. Un administrateur pourra vous réintégrer plus tard si besoin.",
+    'account.leaveChurch': 'Quitter cette église',
+    'account.confirmLeaveChurch': "Voulez-vous vraiment quitter cette église ? Vous serez déconnecté immédiatement et perdrez l'accès jusqu'à ce qu'un administrateur vous réintègre.",
+    'account.leaveChurchFailed': "Impossible de quitter l'église : {message}",
+    'account.leftChurch': "Vous avez quitté l'église. Vous avez été déconnecté.",
+
     'memberCard.loadFailed': 'Échec du chargement : {message}',
     'memberCard.cardLabel': 'CARTE DE MEMBRE — MEMBERSHIP CARD',
     'memberCard.noPhoto': 'Aucune photo',
@@ -3316,6 +3338,9 @@ const TRANSLATIONS = {
     'trial.endedBody': "Vos données pour {church} sont en sécurité, mais l'accès est suspendu jusqu'à ce qu'un forfait soit choisi. Mettez à niveau maintenant pour reprendre exactement là où vous étiez.",
     'trial.upgradeNow': 'Voir les forfaits',
     'trial.ownerPreviewNote': "Aperçu propriétaire — vous pouvez voir et corriger le forfait/essai de n'importe quelle église ici même.",
+
+    'church.canceledTitle': "L'accès de cette église a été désactivé",
+    'church.canceledBody': 'Vous ne pouvez plus vous connecter, car : {reason}',
 
     'entitlements.upgrade': 'Améliorer',
     'entitlements.memberCardLocked': "La carte de membre n'est pas incluse dans le forfait actuel de votre église. Demandez à votre administrateur de le mettre à niveau.",
@@ -4292,6 +4317,11 @@ const TRANSLATIONS = {
     'siteAdmin.delete': 'Supprimer',
     'siteAdmin.restore': 'Restaurer',
     'siteAdmin.deleteChurchConfirm': 'Supprimer {name} ? Récupérable pendant 90 jours.',
+    'siteAdmin.unsubscribe': 'Désabonner',
+    'siteAdmin.reactivate': 'Réactiver',
+    'siteAdmin.unsubscribeConfirm': 'Désabonner {name} ? Tous les membres de cette église seront déconnectés et bloqués jusqu\'à la réactivation.',
+    'siteAdmin.unsubscribeReasonLabel': 'Raison (affichée à tous les membres de cette église)',
+    'siteAdmin.unsubscribeReasonPlaceholder': 'ex. Demandé par l\'église, non-paiement, violation des conditions…',
     'siteAdmin.alreadyReplied': 'Répondu le {date}',
     'siteAdmin.replyPlaceholder': 'Écrivez une réponse que l’expéditeur verra…',
     'siteAdmin.sendReply': 'Envoyer la réponse',

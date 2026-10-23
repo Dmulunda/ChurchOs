@@ -472,10 +472,15 @@ export async function renderSiteAdminTab() {
           <td class="px-3 py-2 text-right whitespace-nowrap">${centsOrBytesToSize(totalBytes)}</td>
           <td class="px-3 py-2 text-slate-500">${row.last_active_at ? new Date(row.last_active_at).toLocaleDateString() : '—'}</td>
           <td class="px-3 py-2 whitespace-nowrap">${promoCell}</td>
-          <td class="px-3 py-2 text-right">
+          <td class="px-3 py-2 text-right whitespace-nowrap space-x-3">
             ${isDeleted
               ? `<button type="button" data-action="restore" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">${t('siteAdmin.restore')}</button>`
-              : `<button type="button" data-action="delete" class="text-xs text-rose-600 hover:text-rose-700">${t('siteAdmin.delete')}</button>`}
+              : `
+                ${row.status === 'canceled'
+                  ? `<button type="button" data-action="reactivate-sub" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">${t('siteAdmin.reactivate')}</button>`
+                  : `<button type="button" data-action="unsubscribe" class="text-xs text-amber-600 hover:text-amber-700 font-medium">${t('siteAdmin.unsubscribe')}</button>`}
+                <button type="button" data-action="delete" class="text-xs text-rose-600 hover:text-rose-700">${t('siteAdmin.delete')}</button>
+              `}
           </td>
         </tr>
       `;
@@ -497,6 +502,31 @@ export async function renderSiteAdminTab() {
       btn.addEventListener('click', async () => {
         const id = btn.closest('[data-row-id]').dataset.rowId;
         await supabase.rpc('restore_tenant', { p_tenant_id: id });
+        loaded.churches = false;
+        loadChurches();
+      });
+    });
+    rowsEl.querySelectorAll('[data-action="unsubscribe"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('[data-row-id]');
+        const id = row.dataset.rowId;
+        const name = row.querySelector('td').textContent;
+        const reason = await confirmDialog({
+          message: t('siteAdmin.unsubscribeConfirm', { name }),
+          reasonLabel: t('siteAdmin.unsubscribeReasonLabel'),
+          reasonPlaceholder: t('siteAdmin.unsubscribeReasonPlaceholder'),
+          danger: true,
+        });
+        if (!reason) return;
+        await supabase.rpc('cancel_tenant_subscription', { p_tenant_id: id, p_reason: reason });
+        loaded.churches = false;
+        loadChurches();
+      });
+    });
+    rowsEl.querySelectorAll('[data-action="reactivate-sub"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.closest('[data-row-id]').dataset.rowId;
+        await supabase.rpc('reactivate_tenant_subscription', { p_tenant_id: id });
         loaded.churches = false;
         loadChurches();
       });
