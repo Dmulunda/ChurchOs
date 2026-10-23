@@ -1776,7 +1776,23 @@ async function showApp(session, { isFreshSignIn = false } = {}) {
   trialEndedEl.classList.remove('flex');
 
   await loadAppTheme();
-  await loadMyDepartments(session.user.id, { allowedDepartmentKeys: hasFeature('all_departments') ? null : CORE_DEPARTMENT_KEYS });
+  const deptOptions = { allowedDepartmentKeys: hasFeature('all_departments') ? null : CORE_DEPARTMENT_KEYS };
+  await loadMyDepartments(session.user.id, deptOptions);
+
+  // A brand-new church's founding user normally becomes super_admin via
+  // claim_tenant_admin() right after signUp() (authScreen.js) -- but that
+  // only runs when signUp() returns a session immediately. With email
+  // confirmation enabled, there's no session yet at that point, so the
+  // claim never happens and this person logs in later with no global_role
+  // and no department memberships, landing on the same "ask an admin"
+  // dead end as a genuinely pending member. claim_tenant_admin() is safe
+  // to call here too -- see sql/saas_platform/03_signup_rpcs.sql, it only
+  // ever succeeds once per tenant, for whoever's still role-less.
+  if (!getGlobalRole() && getMyDepartments().length === 0) {
+    const { error: claimError } = await supabase.rpc('claim_tenant_admin');
+    if (!claimError) await loadMyDepartments(session.user.id, deptOptions);
+  }
+
   await loadSchoolAdminStatus(session.user.id);
   await loadSiteAdminStatus();
   await loadPlatformOwnerStatus();
