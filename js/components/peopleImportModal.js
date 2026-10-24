@@ -1,24 +1,35 @@
 // Super-Admin-only bulk "Import People" tool — reads a spreadsheet
-// (.xlsx/.xls/.csv) via SheetJS (window.XLSX, loaded in index.html) and
-// creates many people at once, split into two very different outcomes
-// per row:
-//   - Member rows get a real Supabase Auth account, exactly like
+// (.xlsx/.xls/.csv) via SheetJS (window.XLSX, loaded in index.html), or a
+// roster PDF (text extracted client-side via pdf.js, then structured by
+// the parse-roster-pdf Edge Function) and creates many people at once.
+// Each "member" row's Access decides what actually happens:
+//   - 'real' gets a real Supabase Auth account, exactly like
 //     userCreatorModal.js's one-at-a-time flow (scopedClient.signUp()
 //     so the admin's own session isn't touched), sharing ONE temp
 //     password across the whole batch — everyone imported this way
 //     logs in with it once and changes it themselves afterward.
-//   - Visitor rows never get an account at all — they go straight into
-//     guest_follow_ups, the same table the Guest Onboarding Hub already
-//     manages, since a visitor has no login concept in this app.
-// Auth signups are paced (SIGNUP_DELAY_MS) since Supabase throttles how
-// fast new accounts can be created from one client; a large import
-// takes a while by design rather than tripping that limit.
+//   - 'silent' calls the same create-silent-user Edge Function
+//     userCreatorModal.js's silent toggle uses — no login access, just a
+//     real profile, for someone who isn't ready for an account yet.
+//   - 'existing' creates nothing: the row is recognized as someone
+//     already in the system (real or silent), so only a department
+//     membership gets added, if one was picked.
+// "Visitor" rows never get an account at all — they go straight into
+// guest_follow_ups, the same table the Guest Onboarding Hub already
+// manages, since a visitor has no login concept in this app.
+// Real-account signups are paced (SIGNUP_DELAY_MS) since Supabase
+// throttles how fast new accounts can be created from one client;
+// create-silent-user goes through the admin API instead and isn't
+// throttled the same way, so silent rows run back-to-back.
 import { createScopedClient } from '../supabaseClient.js';
 import { departmentLabel, t } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 import { getTenantId } from '../tenant.js';
+import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
 
 const SIGNUP_DELAY_MS = 400;
+const MATCH_THRESHOLD = 0.7;
+const PDF_TEXT_LIMIT = 15000;
 // Both English and French header names are recognized (this church runs
 // bilingually) — normalizeHeader() strips accents before matching, so
 // "Département"/"Téléphone" match their unaccented candidates below.
@@ -71,6 +82,51 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Lightweight client-side name-similarity score, no server round-trip --
+// find_silent_user_match (sql/saas_platform/102) only searches is_silent
+// profiles, but a row here needs to be checked against EVERY existing
+// person (silent or real) to avoid creating a duplicate of either. Exact
+// match (after normalizing) scores 1; otherwise a bigram-overlap ratio,
+// similar in spirit to the trigram similarity that RPC itself uses.
+function normalizeName(name) {
+  return String(name || '')
+    .trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function bigrams(str) {
+  const set = new Set();
+  for (let i = 0; i < str.length - 1; i += 1) set.add(str.slice(i, i + 2));
+  return set;
+}
+
+function nameSimilarity(a, b) {
+  const na = normalizeName(a);
+  const nb = normalizeName(b);
+  if (!na || !nb) return 0;
+  if (na === nb) return 1;
+  const ba = bigrams(na);
+  const bb = bigrams(nb);
+  if (ba.size === 0 || bb.size === 0) return 0;
+  let shared = 0;
+  ba.forEach((g) => { if (bb.has(g)) shared += 1; });
+  return (2 * shared) / (ba.size + bb.size);
+}
+
+function findBestRosterMatch(fullName, roster) {
+  let best = null;
+  let bestScore = 0;
+  roster.forEach((person) => {
+    const score = nameSimilarity(fullName, person.full_name);
+    if (score > bestScore) {
+      bestScore = score;
+      best = person;
+    }
+  });
+  return bestScore >= MATCH_THRESHOLD ? best : null;
+}
+
 export function createPeopleImportModal({ supabase, currentUserId }) {
   const root = document.createElement('div');
   root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
@@ -83,8 +139,9 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
       <p class="text-xs text-slate-500 mb-4">${t('peopleImport.intro')}</p>
 
       <div data-el="upload-step">
-        <input type="file" data-el="file-input" accept=".xlsx,.xls,.csv" class="block w-full text-sm mb-2" />
+        <input type="file" data-el="file-input" accept=".xlsx,.xls,.csv,.pdf" class="block w-full text-sm mb-2" />
         <p class="text-xs text-slate-500">${t('peopleImport.columnsHint')}</p>
+        <p data-el="pdf-status" class="text-xs text-indigo-600 mt-1 hidden"></p>
       </div>
 
       <div data-el="preview-step" class="hidden">
@@ -110,6 +167,7 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
                 <th class="text-left px-3 py-2">${t('peopleImport.colEmail')}</th>
                 <th class="text-left px-3 py-2">${t('peopleImport.colPhone')}</th>
                 <th class="text-left px-3 py-2">${t('peopleImport.colDepartment')}</th>
+                <th class="text-left px-3 py-2">${t('peopleImport.colAccess')}</th>
                 <th class="text-left px-3 py-2">${t('peopleImport.colStatus')}</th>
               </tr>
             </thead>
@@ -142,8 +200,10 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
   const summaryEl = root.querySelector('[data-el="summary"]');
   const importBtn = root.querySelector('[data-el="import-btn"]');
   const progressEl = root.querySelector('[data-el="progress"]');
+  const pdfStatusEl = root.querySelector('[data-el="pdf-status"]');
 
   let departments = [];
+  let existingRoster = []; // { id, full_name, is_silent } for every non-removed profile in this tenant, for duplicate-match suggestions
   let rows = [];
 
   root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
@@ -164,6 +224,11 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     departments = data || [];
   }
 
+  async function loadExistingRoster() {
+    const { data } = await supabase.from('profiles').select('id, full_name, is_silent').is('removed_at', null);
+    existingRoster = data || [];
+  }
+
   function matchDepartment(text) {
     const needle = String(text || '').trim().toLowerCase();
     if (!needle) return null;
@@ -178,11 +243,39 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
   async function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
-    // open() kicks off loadDepartments() but doesn't wait for it — guard
-    // here too so a very fast file pick can't race ahead of it and match
-    // nothing.
+    // open() kicks off loadDepartments()/loadExistingRoster() but doesn't
+    // wait for them — guard here too so a very fast file pick can't race
+    // ahead and match nothing.
     if (departments.length === 0) await loadDepartments();
+    if (existingRoster.length === 0) await loadExistingRoster();
 
+    const isPdf = /\.pdf$/i.test(file.name);
+    const items = isPdf ? await parsePdfFile(file) : await parseSpreadsheetFile(file);
+    if (items === null) { fileInput.value = ''; return; } // error already shown to the admin
+
+    rows = items.map((item, index) => {
+      const departmentText = item.departmentText || '';
+      const row = {
+        index,
+        full_name: item.full_name,
+        email: item.email,
+        phone: item.phone,
+        type: item.type,
+        departmentText,
+        departmentId: matchDepartment(departmentText),
+        access: null,
+        matchedProfileId: null,
+      };
+      Object.assign(row, computeAccessDefaults(row));
+      return row;
+    });
+
+    renderPreview();
+    uploadStepEl.classList.add('hidden');
+    previewStepEl.classList.remove('hidden');
+  }
+
+  async function parseSpreadsheetFile(file) {
     let rawRows;
     try {
       const buffer = await file.arrayBuffer();
@@ -194,14 +287,12 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
       rawRows = window.XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
     } catch (err) {
       window.alert(t('peopleImport.parseFailed', { message: err.message }));
-      fileInput.value = '';
-      return;
+      return null;
     }
 
     if (rawRows.length === 0) {
       window.alert(t('peopleImport.emptyFile'));
-      fileInput.value = '';
-      return;
+      return null;
     }
 
     const nameKey = findHeaderKey(rawRows[0], NAME_HEADERS);
@@ -210,22 +301,77 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     const typeKey = findHeaderKey(rawRows[0], TYPE_HEADERS);
     const departmentKey = findHeaderKey(rawRows[0], DEPARTMENT_HEADERS);
 
-    rows = rawRows.map((raw, index) => {
-      const departmentText = departmentKey ? String(raw[departmentKey] || '').trim() : '';
-      return {
-        index,
-        full_name: nameKey ? String(raw[nameKey] || '').trim() : '',
-        email: emailKey ? String(raw[emailKey] || '').trim() : '',
-        phone: phoneKey ? String(raw[phoneKey] || '').trim() : '',
-        type: resolveType(typeKey ? raw[typeKey] : ''),
-        departmentText,
-        departmentId: matchDepartment(departmentText),
-      };
-    });
+    return rawRows.map((raw) => ({
+      full_name: nameKey ? String(raw[nameKey] || '').trim() : '',
+      email: emailKey ? String(raw[emailKey] || '').trim() : '',
+      phone: phoneKey ? String(raw[phoneKey] || '').trim() : '',
+      type: resolveType(typeKey ? raw[typeKey] : ''),
+      departmentText: departmentKey ? String(raw[departmentKey] || '').trim() : '',
+    }));
+  }
 
-    renderPreview();
-    uploadStepEl.classList.add('hidden');
-    previewStepEl.classList.remove('hidden');
+  // A PDF roster has no reliable column structure to key off of (unlike a
+  // spreadsheet's headers), so the raw extracted text is handed to Claude
+  // (parse-roster-pdf Edge Function) to turn into the same {full_name,
+  // email, phone} shape a spreadsheet row already produces -- no type or
+  // department column is derivable from a PDF, so every row defaults to
+  // 'member' with no department, same as everything else from here on.
+  async function parsePdfFile(file) {
+    pdfStatusEl.textContent = t('peopleImport.pdfReading');
+    pdfStatusEl.classList.remove('hidden');
+    try {
+      const buffer = await file.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i += 1) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += `${content.items.map((it) => it.str).join(' ')}\n`;
+        if (text.length >= PDF_TEXT_LIMIT) break;
+      }
+      text = text.slice(0, PDF_TEXT_LIMIT).trim();
+      if (!text) {
+        window.alert(t('peopleImport.emptyFile'));
+        return null;
+      }
+
+      pdfStatusEl.textContent = t('peopleImport.pdfParsing');
+      const { data, error } = await supabase.functions.invoke('parse-roster-pdf', { body: { text } });
+      if (error) {
+        window.alert(t('peopleImport.pdfParseFailed', { message: error.message }));
+        return null;
+      }
+      if (!data?.rows?.length) {
+        window.alert(t('peopleImport.emptyFile'));
+        return null;
+      }
+
+      return data.rows.map((r) => ({
+        full_name: r.full_name || '',
+        email: r.email || '',
+        phone: r.phone || '',
+        type: 'member',
+        departmentText: '',
+      }));
+    } catch (err) {
+      window.alert(t('peopleImport.pdfParseFailed', { message: err.message }));
+      return null;
+    } finally {
+      pdfStatusEl.classList.add('hidden');
+    }
+  }
+
+  // Default Access per row: a strong name match against the existing
+  // roster wins (avoid creating a duplicate of someone already in the
+  // system, real or silent), otherwise a row with an email becomes a real
+  // account (today's existing behavior, preserved for rows that came with
+  // a usable email) and a row with none becomes a Silent user instead of
+  // today's placeholder-email real account.
+  function computeAccessDefaults(row) {
+    if (row.type === 'visitor') return { access: null, matchedProfileId: null };
+    const match = findBestRosterMatch(row.full_name, existingRoster);
+    if (match) return { access: 'existing', matchedProfileId: match.id };
+    return { access: row.email ? 'real' : 'silent', matchedProfileId: null };
   }
 
   function renderPreview() {
@@ -241,12 +387,34 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
       if (!row.full_name) warnings.push(t('peopleImport.warnMissingName'));
       const emailLower = row.email.trim().toLowerCase();
       if (emailLower && usedEmails.get(emailLower) > 1) warnings.push(t('peopleImport.warnDuplicateEmail'));
-      if (row.type === 'member' && !row.email) warnings.push(t('peopleImport.infoPlaceholderEmail'));
+      if (row.type === 'member' && row.access === 'real' && !row.email) warnings.push(t('peopleImport.infoPlaceholderEmail'));
       if (row.departmentText && !row.departmentId) warnings.push(t('peopleImport.warnDepartmentNotMatched'));
+
+      if (row.type === 'member' && row.access === 'existing' && !row.matchedProfileId) warnings.push(t('peopleImport.warnPickExistingMatch'));
 
       const statusHtml = warnings.length === 0
         ? `<span class="text-emerald-600">${t('peopleImport.statusOk')}</span>`
         : `<span class="text-amber-600">${escapeHtml(warnings.join('; '))}</span>`;
+
+      const accessHtml = row.type !== 'member' ? '<span class="text-slate-300">—</span>' : `
+        <div class="flex flex-col gap-1">
+          <select data-field="access" data-row="${row.index}" class="w-full border border-slate-200 rounded px-2 py-1">
+            <option value="silent" ${row.access === 'silent' ? 'selected' : ''}>${t('peopleImport.accessSilent')}</option>
+            <option value="real" ${row.access === 'real' ? 'selected' : ''}>${t('peopleImport.accessReal')}</option>
+            <option value="existing" ${row.access === 'existing' ? 'selected' : ''}>${t('peopleImport.accessExisting')}</option>
+          </select>
+          ${row.access === 'existing' ? `
+            <select data-field="matchedProfileId" data-row="${row.index}" class="w-full border border-slate-200 rounded px-2 py-1">
+              <option value="">${t('peopleImport.pickExistingPlaceholder')}</option>
+              ${existingRoster
+                .slice()
+                .sort((a, b) => nameSimilarity(row.full_name, b.full_name) - nameSimilarity(row.full_name, a.full_name))
+                .map((p) => `<option value="${p.id}" ${row.matchedProfileId === p.id ? 'selected' : ''}>${escapeHtml(p.full_name)}${p.is_silent ? ` (${t('users.silentBadge')})` : ''}</option>`)
+                .join('')}
+            </select>
+          ` : ''}
+        </div>
+      `;
 
       return `
         <tr data-row-index="${row.index}" class="${row.full_name ? '' : 'bg-rose-50'}">
@@ -265,6 +433,7 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
               ${departments.map((d) => `<option value="${d.id}" ${row.departmentId === d.id ? 'selected' : ''}>${escapeHtml(departmentLabel(d.key))}</option>`).join('')}
             </select>
           </td>
+          <td class="px-2 py-1.5">${accessHtml}</td>
           <td class="px-2 py-1.5 text-xs">${statusHtml}</td>
         </tr>
       `;
@@ -280,18 +449,40 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     if (!row) return;
 
     if (field === 'department') row.departmentId = e.target.value || null;
-    else row[field] = e.target.value;
+    else if (field === 'matchedProfileId') row.matchedProfileId = e.target.value || null;
+    else if (field === 'type') {
+      row.type = e.target.value;
+      Object.assign(row, computeAccessDefaults(row));
+    } else if (field === 'access') {
+      row.access = e.target.value;
+      if (row.access === 'existing' && !row.matchedProfileId) {
+        const match = findBestRosterMatch(row.full_name, existingRoster);
+        row.matchedProfileId = match ? match.id : null;
+      }
+    } else {
+      row[field] = e.target.value;
+    }
 
     renderPreview();
   }
 
+  function getValidRows() {
+    // A row claiming to match an existing person but with no match
+    // actually picked yet can't be imported either way -- it's withheld
+    // from counts/import until the admin resolves it, same treatment as a
+    // missing name.
+    return rows.filter((r) => r.full_name && !(r.type === 'member' && r.access === 'existing' && !r.matchedProfileId));
+  }
+
   function updateSummary() {
-    const validRows = rows.filter((r) => r.full_name);
-    const memberCount = validRows.filter((r) => r.type === 'member').length;
+    const validRows = getValidRows();
+    const silentCount = validRows.filter((r) => r.type === 'member' && r.access === 'silent').length;
+    const realCount = validRows.filter((r) => r.type === 'member' && r.access === 'real').length;
+    const existingCount = validRows.filter((r) => r.type === 'member' && r.access === 'existing').length;
     const visitorCount = validRows.filter((r) => r.type === 'visitor').length;
     const skippedCount = rows.length - validRows.length;
 
-    summaryEl.textContent = t('peopleImport.summary', { members: memberCount, visitors: visitorCount, skipped: skippedCount });
+    summaryEl.textContent = t('peopleImport.summary', { silent: silentCount, real: realCount, existing: existingCount, visitors: visitorCount, skipped: skippedCount });
     importBtn.disabled = validRows.length === 0;
   }
 
@@ -299,6 +490,7 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     rows = [];
     fileInput.value = '';
     progressEl.innerHTML = '';
+    pdfStatusEl.classList.add('hidden');
     previewStepEl.classList.add('hidden');
     uploadStepEl.classList.remove('hidden');
   }
@@ -311,18 +503,39 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     progressEl.scrollTop = progressEl.scrollHeight;
   }
 
+  // Shared by both the 'existing' path (matchedProfileId already points
+  // at a real row) and the 'silent' path (matchedProfileId is the just-
+  // created profile) -- a unique-violation here just means they're
+  // already in that department, which is a no-op worth a quiet success
+  // line, not an error.
+  async function addDepartmentMembership(profileId, departmentId) {
+    if (!departmentId) return null;
+    const { error } = await supabase.from('department_memberships').insert({
+      user_id: profileId,
+      department_id: departmentId,
+      role: 'member',
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      approved_by: currentUserId,
+    });
+    if (error && error.code !== '23505') return error;
+    return null;
+  }
+
   async function runImport() {
-    const validRows = rows.filter((r) => r.full_name);
-    const memberCount = validRows.filter((r) => r.type === 'member').length;
+    const validRows = getValidRows();
+    const silentCount = validRows.filter((r) => r.type === 'member' && r.access === 'silent').length;
+    const realCount = validRows.filter((r) => r.type === 'member' && r.access === 'real').length;
+    const existingCount = validRows.filter((r) => r.type === 'member' && r.access === 'existing').length;
     const visitorCount = validRows.filter((r) => r.type === 'visitor').length;
     const password = tempPasswordEl.value;
 
-    if (memberCount > 0 && password.length < 6) {
+    if (realCount > 0 && password.length < 6) {
       window.alert(t('peopleImport.passwordTooShort'));
       return;
     }
     if (!(await confirmDialog({
-      message: t('peopleImport.confirmMessage', { members: memberCount, visitors: visitorCount }),
+      message: t('peopleImport.confirmMessage', { silent: silentCount, real: realCount, existing: existingCount, visitors: visitorCount }),
       confirmLabel: t('peopleImport.startImport'),
       danger: false,
     }))) return;
@@ -348,6 +561,28 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
         continue;
       }
 
+      if (row.access === 'existing') {
+        const membershipError = await addDepartmentMembership(row.matchedProfileId, row.departmentId);
+        if (membershipError) logLine(t('peopleImport.rowFailed', { name: row.full_name, message: membershipError.message }), 'error');
+        else logLine(t('peopleImport.existingLinked', { name: row.full_name }), 'success');
+        continue;
+      }
+
+      if (row.access === 'silent') {
+        const { data, error } = await supabase.functions.invoke('create-silent-user', {
+          body: { full_name: row.full_name, email: row.email || undefined, phone: row.phone || undefined },
+        });
+        if (error) {
+          logLine(t('peopleImport.rowFailed', { name: row.full_name, message: await extractFunctionErrorMessage(error) }), 'error');
+          continue;
+        }
+        const membershipError = await addDepartmentMembership(data.profile_id, row.departmentId);
+        if (membershipError) logLine(t('peopleImport.memberCreatedWithWarning', { name: row.full_name, email: '', message: membershipError.message }), 'error');
+        else logLine(t('peopleImport.silentCreated', { name: row.full_name }), 'success');
+        continue;
+      }
+
+      // row.access === 'real' -- unchanged from before this feature.
       const email = row.email.trim() || generatePlaceholderEmail(row.full_name, usedEmails);
       usedEmails.add(email.toLowerCase());
 
@@ -371,18 +606,7 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
 
       const newUserId = data.user.id;
       const { error: profileError } = await supabase.from('profiles').update({ phone: row.phone || null }).eq('id', newUserId);
-
-      let membershipError = null;
-      if (row.departmentId) {
-        ({ error: membershipError } = await supabase.from('department_memberships').insert({
-          user_id: newUserId,
-          department_id: row.departmentId,
-          role: 'member',
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: currentUserId,
-        }));
-      }
+      const membershipError = await addDepartmentMembership(newUserId, row.departmentId);
 
       if (profileError || membershipError) {
         logLine(t('peopleImport.memberCreatedWithWarning', { name: row.full_name, email, message: (profileError || membershipError).message }), 'error');
@@ -409,6 +633,7 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     root.classList.remove('hidden');
     root.classList.add('flex');
     loadDepartments();
+    loadExistingRoster();
   }
 
   function close() {

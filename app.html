@@ -33,6 +33,13 @@
        reads the admin's uploaded .xlsx/.xls/.csv roster in the browser;
        exposes the global `XLSX`. -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Same tool's PDF roster support — extracts raw text client-side via
+       pdf.js, exposing the global `pdfjsLib`; the extracted text is sent
+       to the parse-roster-pdf Edge Function for structured extraction. -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script>
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  </script>
   <style>
     @keyframes login-splash-logo-in {
       0% { opacity: 0; transform: scale(0.55); }
