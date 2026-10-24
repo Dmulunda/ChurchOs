@@ -75,7 +75,9 @@ import { createAssistantModal } from './components/assistantModal.js';
 import { registerServiceWorker, setAppBadgeCount } from './pwa.js';
 import { getTheme, setTheme, loadAppTheme } from './theme.js';
 import { confirmLeaveIfProjecting } from './utils/projectionGuard.js';
+import { hasUnsavedWork } from './utils/unsavedWorkGuard.js';
 import { consumeInteractiveSignIn } from './utils/authIntent.js';
+import { confirmDialog } from './components/confirmDialog.js';
 
 registerServiceWorker();
 
@@ -92,6 +94,7 @@ const comingSoonApprovalsEl = document.querySelector('#department-coming-soon-ap
 const comingSoonApprovalsListEl = comingSoonApprovalsEl.querySelector('[data-el="approvals-list"]');
 const noAccessPanelEl = document.querySelector('#no-department-access');
 const inboxBtn = document.querySelector('#inbox-btn');
+const refreshBtn = document.querySelector('#refresh-btn');
 const helpBtn = document.querySelector('#help-btn');
 const tenantLogoImgEl = document.querySelector('#tenant-logo-img');
 const tenantLogoPlaceholderEl = document.querySelector('#tenant-logo-placeholder');
@@ -1406,6 +1409,15 @@ helpBtn.addEventListener('click', () => {
   const modal = createAssistantModal({ supabase: getEffectiveSupabase(), currentUserId });
   modal.open();
   closeSidebar();
+});
+
+refreshBtn.addEventListener('click', async () => {
+  if (!(await confirmLeaveIfProjecting())) return;
+  if (hasUnsavedWork() && !(await confirmDialog({
+    message: t('app.refreshConfirmUnsaved'),
+    confirmLabel: t('app.refreshAnyway'),
+  }))) return;
+  window.location.reload();
 });
 
 // ---- Language switcher (top bar) ----

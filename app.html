@@ -283,6 +283,20 @@
           <span id="notifications-badge" class="hidden absolute top-0.5 right-0.5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-semibold leading-none"></span>
         </button>
 
+        <!-- Manual reload, mobile only — a phone running this as an
+             installed PWA (standalone display mode) has no browser
+             address bar/reload button and often no reliable
+             pull-to-refresh either, so this is the only obvious way to
+             force a reload on a phone. Desktop already has a normal
+             browser reload, so this stays hidden there. Reload itself is
+             a plain window.location.reload() in js/app.js — refresh
+             already restores state app-wide, nothing special needed. -->
+        <button type="button" id="refresh-btn" data-i18n-aria-label="app.refresh" aria-label="Refresh" class="md:hidden p-2 rounded-lg hover:bg-slate-800">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+
         <!-- Help / training — opens the tenant's training PDF (uploaded by
              their Super Admin) so a new user or admin has something to
              follow along with. See js/components/helpModal.js. -->
