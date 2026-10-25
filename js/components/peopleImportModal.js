@@ -29,7 +29,13 @@ import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
 
 const SIGNUP_DELAY_MS = 400;
 const MATCH_THRESHOLD = 0.7;
-const PDF_TEXT_LIMIT = 15000;
+// A wide spreadsheet exported/printed to PDF without "fit to page width"
+// can easily run to dozens of pages (each column-chunk of the sheet
+// becomes its own page) -- Claude Sonnet 5's context window comfortably
+// fits far more than this, so the cap exists only to keep requests
+// bounded, not because more would fail; see parsePdfFile() below for why
+// every page is kept and labeled rather than silently truncated.
+const PDF_TEXT_LIMIT = 120000;
 // Both English and French header names are recognized (this church runs
 // bilingually) — normalizeHeader() strips accents before matching, so
 // "Département"/"Téléphone" match their unaccented candidates below.
@@ -176,6 +182,7 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
         </div>
 
         <p data-el="summary" class="text-sm text-slate-600 mb-4"></p>
+        <p data-el="pdf-review-hint" class="hidden text-xs text-amber-600 mb-4">${t('peopleImport.pdfReviewHint')}</p>
 
         <div class="flex justify-end gap-2">
           <button type="button" data-action="reset" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100">
@@ -198,6 +205,7 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
   const tempPasswordEl = root.querySelector('[data-el="temp-password"]');
   const previewBodyEl = root.querySelector('[data-el="preview-body"]');
   const summaryEl = root.querySelector('[data-el="summary"]');
+  const pdfReviewHintEl = root.querySelector('[data-el="pdf-review-hint"]');
   const importBtn = root.querySelector('[data-el="import-btn"]');
   const progressEl = root.querySelector('[data-el="progress"]');
   const pdfStatusEl = root.querySelector('[data-el="pdf-status"]');
@@ -252,6 +260,8 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     const isPdf = /\.pdf$/i.test(file.name);
     const items = isPdf ? await parsePdfFile(file) : await parseSpreadsheetFile(file);
     if (items === null) { fileInput.value = ''; return; } // error already shown to the admin
+
+    pdfReviewHintEl.classList.toggle('hidden', !isPdf);
 
     rows = items.map((item, index) => {
       const departmentText = item.departmentText || '';
@@ -310,26 +320,62 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     }));
   }
 
-  // A PDF roster has no reliable column structure to key off of (unlike a
-  // spreadsheet's headers), so the raw extracted text is handed to Claude
-  // (parse-roster-pdf Edge Function) to turn into the same {full_name,
-  // email, phone} shape a spreadsheet row already produces -- no type or
-  // department column is derivable from a PDF, so every row defaults to
-  // 'member' with no department, same as everything else from here on.
+  // Groups a page's text items into lines by Y position (within a small
+  // tolerance, since characters on the "same" printed line rarely share
+  // an exact baseline) and sorts each line left-to-right by X -- turns
+  // pdf.js's raw item list (whose order isn't reliably reading-order for
+  // a table, especially one with overlapping/offset cells) into
+  // something that actually looks like the printed table again, which
+  // matters a lot for a wide spreadsheet exported to PDF (see the big
+  // comment on parsePdfFile below).
+  function pageTextAsLines(content) {
+    const rows = [];
+    content.items.forEach((it) => {
+      if (!it.str.trim()) return;
+      const y = Math.round(it.transform[5]);
+      let row = rows.find((r) => Math.abs(r.y - y) <= 3);
+      if (!row) { row = { y, items: [] }; rows.push(row); }
+      row.items.push({ x: it.transform[4], str: it.str });
+    });
+    return rows
+      .sort((a, b) => b.y - a.y) // PDF y-axis runs bottom-to-top
+      .map((r) => r.items.sort((a, b) => a.x - b.x).map((i) => i.str).join(' '))
+      .join('\n');
+  }
+
+  // A PDF roster has no reliable column structure to key off of the way
+  // a spreadsheet's headers do, so the extracted text is handed to
+  // Claude (parse-roster-pdf Edge Function) to turn into the same
+  // {full_name, email, phone} shape a spreadsheet row already produces
+  // -- no type or department column is derivable from a PDF, so every
+  // row defaults to 'member' with no department, same as everything
+  // else from here on.
+  //
+  // Each page is kept separate and labeled ("=== PDF PAGE n ===")
+  // instead of concatenated into one blob -- a wide spreadsheet printed
+  // without "fit to page width" splits into column-chunk pages (a batch
+  // of rows' Id/Name on one page, the same rows' Phone/Email on the
+  // next, etc.), sometimes repeating the whole thing again later in the
+  // document in a different page grouping. Without page boundaries,
+  // Claude has no way to tell where one table block ends and the next
+  // begins, which is exactly what it needs to correlate rows across
+  // them and to recognize/deduplicate a repeated block -- see
+  // parse-roster-pdf's system prompt, which spells this pattern out
+  // explicitly.
   async function parsePdfFile(file) {
     pdfStatusEl.textContent = t('peopleImport.pdfReading');
     pdfStatusEl.classList.remove('hidden');
     try {
       const buffer = await file.arrayBuffer();
       const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
-      let text = '';
+      const pages = [];
       for (let i = 1; i <= pdf.numPages; i += 1) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        text += `${content.items.map((it) => it.str).join(' ')}\n`;
-        if (text.length >= PDF_TEXT_LIMIT) break;
+        const pageText = pageTextAsLines(content);
+        if (pageText) pages.push(`=== PDF PAGE ${i} ===\n${pageText}`);
       }
-      text = text.slice(0, PDF_TEXT_LIMIT).trim();
+      const text = pages.join('\n\n').slice(0, PDF_TEXT_LIMIT).trim();
       if (!text) {
         window.alert(t('peopleImport.emptyFile'));
         return null;
@@ -491,6 +537,7 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     fileInput.value = '';
     progressEl.innerHTML = '';
     pdfStatusEl.classList.add('hidden');
+    pdfReviewHintEl.classList.add('hidden');
     previewStepEl.classList.add('hidden');
     uploadStepEl.classList.remove('hidden');
   }

@@ -20,12 +20,17 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `You extract a list of people from raw text pulled from a church roster PDF. The text may be messy (columns run together, inconsistent spacing, headers/footers mixed in) -- use your judgment to identify actual people vs. noise.
+const SYSTEM_PROMPT = `You extract a list of people from raw text pulled from a church roster PDF. The text is labeled by page ("=== PDF PAGE n ===") and each page's lines are reconstructed from the PDF's actual layout (left-to-right, top-to-bottom), so indentation and column order within a page are meaningful, not noise.
+
+IMPORTANT -- this PDF is very often a wide spreadsheet (e.g. a Microsoft Forms response export) that was printed without "fit to page width". When that happens, ONE row of real data gets split across SEVERAL consecutive pages: e.g. page 1 might hold a batch of rows' Id/Start time/Email, page 2 the SAME rows' Name/City (in the same top-to-bottom order), page 3 the SAME rows' Phone/Age, and so on -- then the whole pattern may repeat for the next batch of rows, or even repeat for the ENTIRE dataset again later in the document (e.g. a second, differently-grouped printout of the same underlying sheet). When you see this pattern:
+- Correlate rows ACROSS consecutive pages by their POSITION within each page's list (1st row on one page pairs with the 1st row on the next page-chunk, 2nd with 2nd, etc.) -- use an explicit "Id" column as your anchor whenever one is present, since it's the only true per-row key.
+- If the same person's data clearly appears more than once (same name, matching other fields, likely from a repeated page group), output them only ONCE -- merge whatever fields each occurrence supplied rather than duplicating the row.
+- A page of mostly blank/empty cells padding out a table (e.g. a short "Yes/No" column with many empty rows beneath it) is normal for this kind of export -- don't let it shift your row alignment for the following page.
 
 Respond with ONLY a JSON array -- no markdown fences, no commentary before or after -- matching exactly this shape:
 [{"full_name": "...", "email": "..." or null, "phone": "..." or null}, ...]
 
-Skip anything that is clearly not a person's name (page numbers, headers, church name, dates). If a row has no clear full name, omit it entirely.`;
+Skip anything that is clearly not a person's name (page numbers, column headers, church name, dates, stray wrapped text). If a row has no clear full name, omit it entirely. One entry per unique person, in the order they first appear.`;
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -76,9 +81,13 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 8192,
+        max_tokens: 16384,
         system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: text.slice(0, 15000) }],
+        // Matches PDF_TEXT_LIMIT in js/components/peopleImportModal.js --
+        // this is a second cap, not the primary one (the client already
+        // truncates to the same length), kept here as defense-in-depth
+        // against a direct call to this function bypassing the client.
+        messages: [{ role: 'user', content: text.slice(0, 120000) }],
         stream: false,
       }),
     });
@@ -90,14 +99,29 @@ Deno.serve(async (req) => {
     }
 
     const anthropicData = await anthropicRes.json();
-    const rawText = anthropicData?.content?.[0]?.text ?? '';
+    // content[0] isn't reliably the text block -- Sonnet 5 can return a
+    // thinking block first, which has no .text field at all, leaving
+    // content[0].text silently empty. Find the actual text block instead.
+    const rawText = anthropicData?.content?.find((b) => b.type === 'text')?.text ?? '';
 
     let rows;
     try {
-      rows = JSON.parse(rawText);
+      // Strip an accidental ```json fence, and any preamble/trailing text
+      // outside the [ ], in case the model adds either despite the "no
+      // markdown, no commentary" instruction -- same defensive parse
+      // lessonEditorModal.js's quiz generator already uses client-side.
+      let cleaned = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+      const firstBracket = cleaned.indexOf('[');
+      const lastBracket = cleaned.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket !== -1) cleaned = cleaned.slice(firstBracket, lastBracket + 1);
+      rows = JSON.parse(cleaned);
     } catch {
       console.error('parse-roster-pdf: Claude returned non-JSON:', rawText);
-      return json({ error: 'Could not read a people list from this PDF' }, 502);
+      return json({
+        error: 'Could not read a people list from this PDF',
+        debug_stop_reason: anthropicData?.stop_reason,
+        debug_snippet: rawText.slice(0, 2000),
+      }, 502);
     }
     if (!Array.isArray(rows)) return json({ error: 'Could not read a people list from this PDF' }, 502);
 
