@@ -2,9 +2,7 @@
 // routes to the singer calendar or the admin auto-planner.
 import { getEffectiveSupabase, getActiveDepartment, getViewAsTarget } from './departments.js';
 import { renderAvailabilityCalendar } from './components/calendar.js';
-import { renderAdminAutoPlanner } from './components/autoPlanner.js';
-import { renderServiceRequestAdmin } from './components/serviceRequestAdmin.js';
-import { renderServiceRequestSinger } from './components/serviceRequestSinger.js';
+import { renderChoirBoard } from './components/choirBoard.js';
 import { renderReplacementRequests } from './components/replacementRequests.js';
 import { renderDepartmentSwitchShortcut } from './components/departmentSwitchShortcut.js';
 import { renderUpcomingChurchEvents } from './components/upcomingChurchEvents.js';
@@ -60,19 +58,17 @@ export async function renderSchedulingTab() {
   renderDepartmentSwitchShortcut(deptSwitchEl, { activeKey: 'choir' });
   renderUpcomingChurchEvents(churchEventsEl, { supabase });
 
-  if (isChoirAdmin) {
-    // An admin can also be scheduled as a singer for a service, so they
-    // need the same "request a replacement for myself" access as any
-    // other member — it just sits alongside their admin tools instead
-    // of replacing them.
-    container.append(requestsEl, replacementEl, plannerEl);
-    renderServiceRequestAdmin(requestsEl, { supabase, adminUserId: userId });
-    renderReplacementRequests(replacementEl, { supabase, userId, myVoiceParts: profile.voice_parts });
-    renderAdminAutoPlanner(plannerEl, { supabase, adminUserId: userId });
-  } else {
-    container.append(requestsEl, replacementEl, plannerEl);
-    renderServiceRequestSinger(requestsEl, { supabase, userId });
-    renderReplacementRequests(replacementEl, { supabase, userId, myVoiceParts: profile.voice_parts });
+  // renderChoirBoard covers both the admin assignment form and everyone's
+  // "my assignments" accept/decline — an admin can also be scheduled as
+  // a singer, so they need the same response access as any other
+  // member; it just sits alongside their admin tools instead of
+  // replacing them, same as before.
+  container.append(requestsEl, replacementEl);
+  renderChoirBoard(requestsEl, { supabase, departmentId: activeDept?.id, canAdminister: isChoirAdmin, userId });
+  renderReplacementRequests(replacementEl, { supabase, userId, myVoiceParts: profile.voice_parts });
+
+  if (!isChoirAdmin) {
+    container.append(plannerEl);
     renderAvailabilityCalendar(plannerEl, { supabase, userId, departmentId: activeDept?.id });
   }
 }
