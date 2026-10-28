@@ -39,11 +39,91 @@ const PDF_TEXT_LIMIT = 120000;
 // Both English and French header names are recognized (this church runs
 // bilingually) — normalizeHeader() strips accents before matching, so
 // "Département"/"Téléphone" match their unaccented candidates below.
-const NAME_HEADERS = ['name', 'fullname', 'nom', 'nomcomplet'];
+const NAME_HEADERS = ['name', 'fullname', 'guestsname', 'guestname', 'nom', 'nomcomplet'];
 const EMAIL_HEADERS = ['email', 'emailaddress', 'courriel', 'mail'];
 const PHONE_HEADERS = ['phone', 'telephone', 'tel', 'phonenumber', 'numero', 'numerodetelephone'];
 const TYPE_HEADERS = ['type', 'status', 'membertype', 'statut'];
 const DEPARTMENT_HEADERS = ['department', 'dept', 'ministry', 'departement', 'ministere'];
+// Same intake fields the guest check-in form captures
+// (publicGuestCheckin.js/attendanceManager.js) -- a spreadsheet of
+// past visitors/members often already has some of this, so it's
+// picked up when present rather than lost on import. Each is optional
+// -- a sheet missing a column just leaves that field unset, same as
+// every other column here.
+const DATE_HEADERS = ['date', 'joindate', 'datejoined', 'memberssince', 'datedadhesion', 'dateadhesion'];
+const CITY_HEADERS = ['city', 'ville'];
+const REFERRAL_HEADERS = ['whoinvitedyou', 'referral', 'referralsource', 'quivousainvite', 'commentnousavezvousconnu'];
+const REFERRED_BY_HEADERS = ['nameofthepersonwhoapproachedyou', 'referredby', 'invitedby', 'approachedby', 'nomdelapersonne', 'invitepar'];
+const AGE_RANGE_HEADERS = ['agerange', 'age', 'tranchedage'];
+const PRAYER_REQUEST_HEADERS = ['prayerrequest', 'hasaprayerrequest', 'requetedepriere', 'demandedepriere'];
+const WANTS_PASTOR_HEADERS = ['wouldliketomeetthepastors', 'wantstomeetpastor', 'meetpastor', 'rencontrerlepasteur', 'veutrencontrerlepasteur'];
+const HOME_CHURCH_HEADERS = ['hasahomechurch', 'homechurch', 'egliseattache', 'aunechurche'];
+const NOTE_HEADERS = ['note', 'notes', 'noteoptional', 'comment', 'comments', 'commentaire', 'commentaires'];
+
+const REFERRAL_ALIASES = {
+  social_media: ['social', 'facebook', 'instagram', 'reseauxsociaux'],
+  vpd_elsewhere: ['vpd'],
+  word_of_mouth: ['wordofmouth', 'bouchoreille', 'friend', 'family', 'ami', 'famille'],
+};
+const TRUE_WORDS = ['yes', 'y', 'true', '1', 'oui', 'x'];
+
+// Age range needs its own resolver, not the alias-substring match
+// below -- a cell can read "50+", "40 to 50", "18-29" or just a bare
+// age like "34", and stripping punctuation first (resolveEnum's
+// approach) collapses "40 to 50" into "40to50", which won't contain
+// "4050" as a substring. Pulls out the actual numbers instead.
+function resolveAgeRange(raw) {
+  const str = String(raw || '').trim().toLowerCase();
+  if (!str) return null;
+  const nums = (str.match(/\d+/g) || []).map(Number);
+  if (/under|moins/.test(str) && nums.includes(18)) return 'under_18';
+  if ((/\+|plus|older|and up/.test(str)) && nums.some((n) => n >= 50)) return '50_plus';
+  if (nums.includes(18) && nums.includes(29)) return '18_29';
+  if (nums.includes(30) && nums.includes(40)) return '30_40';
+  if (nums.includes(40) && nums.includes(50)) return '40_50';
+  if (nums.length === 1) {
+    const [n] = nums;
+    if (n < 18) return 'under_18';
+    if (n <= 29) return '18_29';
+    if (n <= 40) return '30_40';
+    if (n <= 50) return '40_50';
+    return '50_plus';
+  }
+  return null;
+}
+
+function toIsoDate(raw) {
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw.toISOString().slice(0, 10);
+  if (!raw) return '';
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+}
+
+// Unlike normalizeHeader() (letters only -- fine for a column name),
+// matching a cell *value* like "18-29" or "under 18" against an age-
+// range enum needs digits kept, not stripped.
+function normalizeValue(str) {
+  return String(str || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+// Same alias-list shape as offeringsImport.js's resolveType().
+function resolveEnum(raw, aliasMap) {
+  const norm = normalizeValue(raw);
+  if (!norm) return null;
+  for (const [key, aliases] of Object.entries(aliasMap)) {
+    if (aliases.some((a) => norm.includes(a))) return key;
+  }
+  return null;
+}
+
+function resolveBoolean(raw) {
+  const norm = normalizeValue(raw);
+  return norm ? TRUE_WORDS.includes(norm) : false;
+}
 
 function normalizeHeader(header) {
   return String(header || '')
@@ -275,6 +355,18 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
         departmentId: matchDepartment(departmentText),
         access: null,
         matchedProfileId: null,
+        // Only ever present for a spreadsheet row (parsePdfFile()
+        // doesn't extract these) -- undefined/falsy otherwise, same as
+        // every other optional field here.
+        joinedAt: item.joinedAt || '',
+        city: item.city || '',
+        referralSource: item.referralSource || null,
+        referredByName: item.referredByName || '',
+        ageRange: item.ageRange || null,
+        prayerRequest: item.prayerRequest || '',
+        wantsPastorMeeting: item.wantsPastorMeeting || false,
+        homeChurch: item.homeChurch || '',
+        note: item.note || '',
       };
       Object.assign(row, computeAccessDefaults(row));
       return row;
@@ -292,7 +384,10 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
       // XLSX's type:'array' means "array of 8-bit ints" — a raw
       // ArrayBuffer isn't one, only a typed array/plain array is, so
       // this must be wrapped or SheetJS silently misreads it.
-      const workbook = window.XLSX.read(new Uint8Array(buffer), { type: 'array' });
+      // cellDates: true -- so a Date column comes through as a real
+      // Date object (toIsoDate() below) instead of an Excel serial
+      // number.
+      const workbook = window.XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       rawRows = window.XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
     } catch (err) {
@@ -310,6 +405,15 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
     const phoneKey = findHeaderKey(rawRows[0], PHONE_HEADERS);
     const typeKey = findHeaderKey(rawRows[0], TYPE_HEADERS);
     const departmentKey = findHeaderKey(rawRows[0], DEPARTMENT_HEADERS);
+    const dateKey = findHeaderKey(rawRows[0], DATE_HEADERS);
+    const cityKey = findHeaderKey(rawRows[0], CITY_HEADERS);
+    const referralKey = findHeaderKey(rawRows[0], REFERRAL_HEADERS);
+    const referredByKey = findHeaderKey(rawRows[0], REFERRED_BY_HEADERS);
+    const ageRangeKey = findHeaderKey(rawRows[0], AGE_RANGE_HEADERS);
+    const prayerRequestKey = findHeaderKey(rawRows[0], PRAYER_REQUEST_HEADERS);
+    const wantsPastorKey = findHeaderKey(rawRows[0], WANTS_PASTOR_HEADERS);
+    const homeChurchKey = findHeaderKey(rawRows[0], HOME_CHURCH_HEADERS);
+    const noteKey = findHeaderKey(rawRows[0], NOTE_HEADERS);
 
     return rawRows.map((raw) => ({
       full_name: nameKey ? String(raw[nameKey] || '').trim() : '',
@@ -317,6 +421,15 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
       phone: phoneKey ? String(raw[phoneKey] || '').trim() : '',
       type: resolveType(typeKey ? raw[typeKey] : ''),
       departmentText: departmentKey ? String(raw[departmentKey] || '').trim() : '',
+      joinedAt: dateKey ? toIsoDate(raw[dateKey]) : '',
+      city: cityKey ? String(raw[cityKey] || '').trim() : '',
+      referralSource: referralKey ? resolveEnum(raw[referralKey], REFERRAL_ALIASES) : null,
+      referredByName: referredByKey ? String(raw[referredByKey] || '').trim() : '',
+      ageRange: ageRangeKey ? resolveAgeRange(raw[ageRangeKey]) : null,
+      prayerRequest: prayerRequestKey ? String(raw[prayerRequestKey] || '').trim() : '',
+      wantsPastorMeeting: wantsPastorKey ? resolveBoolean(raw[wantsPastorKey]) : false,
+      homeChurch: homeChurchKey ? String(raw[homeChurchKey] || '').trim() : '',
+      note: noteKey ? String(raw[noteKey] || '').trim() : '',
     }));
   }
 
@@ -595,10 +708,21 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
 
     for (const row of validRows) {
       if (row.type === 'visitor') {
+        // Everything the guest check-in form itself captures
+        // (publicGuestCheckin.js) -- picked up from the sheet when
+        // present, same fields, same table.
         const { data: insertedLead, error } = await supabase.from('guest_follow_ups').insert({
           full_name: row.full_name,
           phone: row.phone || null,
           email: row.email || null,
+          city: row.city || null,
+          referral_source: row.referralSource || null,
+          referred_by_name: row.referredByName || null,
+          age_range: row.ageRange || null,
+          prayer_request: row.prayerRequest || null,
+          wants_pastor_meeting: row.wantsPastorMeeting || false,
+          home_church: row.homeChurch || null,
+          notes: row.note || null,
           assigned_department_id: row.departmentId || null,
           source: 'import',
           created_by: currentUserId,
@@ -616,6 +740,9 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
         const { data: silentData, error: silentError } = await supabase.functions.invoke('create-silent-user', {
           body: { full_name: row.full_name, email: row.email || undefined, phone: row.phone || undefined },
         });
+        if (!silentError && silentData?.profile_id && row.joinedAt) {
+          await supabase.from('profiles').update({ joined_at: row.joinedAt }).eq('id', silentData.profile_id);
+        }
         if (!silentError && silentData?.profile_id) {
           await supabase.from('guest_follow_ups').update({ user_id: silentData.profile_id }).eq('id', insertedLead.id);
         }
@@ -641,8 +768,12 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
         }
         // An imported roster row is a known, existing person -- not a
         // fresh walk-in guest -- so it starts at Member rather than
-        // the column's New Guest default.
-        await supabase.from('profiles').update({ user_status: 'member' }).eq('id', data.profile_id);
+        // the column's New Guest default. joined_at only overridden
+        // when the sheet actually had a date column -- otherwise it
+        // keeps the column's own default (today).
+        const profileUpdate = { user_status: 'member' };
+        if (row.joinedAt) profileUpdate.joined_at = row.joinedAt;
+        await supabase.from('profiles').update(profileUpdate).eq('id', data.profile_id);
         const membershipError = await addDepartmentMembership(data.profile_id, row.departmentId);
         if (membershipError) logLine(t('peopleImport.memberCreatedWithWarning', { name: row.full_name, email: '', message: membershipError.message }), 'error');
         else logLine(t('peopleImport.silentCreated', { name: row.full_name }), 'success');
@@ -672,7 +803,9 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
       }
 
       const newUserId = data.user.id;
-      const { error: profileError } = await supabase.from('profiles').update({ phone: row.phone || null }).eq('id', newUserId);
+      const profileUpdate = { phone: row.phone || null };
+      if (row.joinedAt) profileUpdate.joined_at = row.joinedAt;
+      const { error: profileError } = await supabase.from('profiles').update(profileUpdate).eq('id', newUserId);
       const membershipError = await addDepartmentMembership(newUserId, row.departmentId);
 
       if (profileError || membershipError) {

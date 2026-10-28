@@ -1875,7 +1875,7 @@ const TRANSLATIONS = {
 
     'peopleImport.title': 'Import People',
     'peopleImport.intro': 'Upload a spreadsheet (.xlsx or .csv) or a roster PDF to add many people at once. Add a column marking each row as Member or Visitor — Visitors go straight into the Guest Onboarding queue with no account. For each Member, choose whether they get a Silent profile (no login yet), a real login account, or already have access.',
-    'peopleImport.columnsHint': 'Recognized columns (any order, case-insensitive): Name, Type (Member/Visitor), Email, Phone, Department. A PDF roster is read automatically — no columns needed.',
+    'peopleImport.columnsHint': 'Recognized columns (any order, case-insensitive): Name, Type (Member/Visitor), Email, Phone, Department. Also picked up if present: Date (join date), City, Who invited you, Name of the person who approached you, Age range, Has a prayer request, Would like to meet the pastor(s), Has a home church, Note. A PDF roster is read automatically — no columns needed.',
     'peopleImport.emptyFile': 'That file has no rows.',
     'peopleImport.parseFailed': 'Could not read that file: {message}',
     'peopleImport.pdfReading': 'Reading PDF…',
@@ -4695,7 +4695,7 @@ const TRANSLATIONS = {
 
     'peopleImport.title': 'Importer des personnes',
     'peopleImport.intro': 'Importez un tableur (.xlsx ou .csv) ou un PDF de liste pour ajouter plusieurs personnes à la fois. Ajoutez une colonne indiquant si chaque ligne est Membre ou Visiteur — les Visiteurs vont directement dans la file d’accueil des invités, sans compte. Pour chaque Membre, choisissez un profil Silencieux (sans connexion pour l’instant), un vrai compte, ou s’il a déjà accès.',
-    'peopleImport.columnsHint': 'Colonnes reconnues (ordre libre, insensible à la casse) : Nom, Type (Membre/Visiteur), Email, Téléphone, Département. Un PDF de liste est lu automatiquement — aucune colonne nécessaire.',
+    'peopleImport.columnsHint': "Colonnes reconnues (ordre libre, insensible à la casse) : Nom, Type (Membre/Visiteur), Email, Téléphone, Département. Aussi reconnues si présentes : Date (date d'adhésion), Ville, Qui vous a invité, Nom de la personne qui vous a approché, Tranche d'âge, A une requête de prière, Veut rencontrer le(s) pasteur(s), A une église d'attache, Note. Un PDF de liste est lu automatiquement — aucune colonne nécessaire.",
     'peopleImport.emptyFile': 'Ce fichier ne contient aucune ligne.',
     'peopleImport.parseFailed': 'Impossible de lire ce fichier : {message}',
     'peopleImport.pdfReading': 'Lecture du PDF…',
