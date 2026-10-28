@@ -40,7 +40,7 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
 
     const profileIds = (profiles || []).map((p) => p.id);
     const { data: leads } = profileIds.length > 0
-      ? await supabase.from('guest_follow_ups').select('id, user_id, assigned_department_id, prayer_request, wants_pastor_meeting, home_church, notes').in('user_id', profileIds).is('removed_at', null)
+      ? await supabase.from('guest_follow_ups').select('id, user_id, assigned_department_id, prayer_request, wants_pastor_meeting, home_church, notes, city, referral_source, referred_by_name, age_range').in('user_id', profileIds).is('removed_at', null)
       : { data: [] };
     const leadByProfileId = new Map((leads || []).map((l) => [l.user_id, l]));
 
@@ -131,7 +131,14 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       }
       if (lead?.prayer_request) flags.push({ label: t('silentDirectory.flagPrayerRequest'), cls: 'bg-violet-50 text-violet-600', title: lead.prayer_request });
       if (lead?.notes) flags.push({ label: t('silentDirectory.flagHasNote'), cls: 'bg-rose-50 text-rose-600', title: lead.notes });
-      flagsCell.innerHTML = flags.map((f) => `<span class="inline-block px-1.5 py-0.5 rounded text-xs font-medium ${f.cls} mr-1 mb-1" ${f.title ? `title="${escapeAttr(f.title)}"` : ''}>${f.label}</span>`).join('') || '—';
+      // Plain informational tags (not "needs attention" like the ones
+      // above) -- neutral gray so they read differently at a glance.
+      if (lead?.city) flags.push({ label: lead.city, cls: 'bg-slate-100 text-slate-600', title: '' });
+      if (lead?.referral_source) {
+        flags.push({ label: t(`attendance.referral.${lead.referral_source}`), cls: 'bg-slate-100 text-slate-600', title: lead.referred_by_name || '' });
+      }
+      if (lead?.age_range) flags.push({ label: t(`attendance.ageRange.${lead.age_range}`), cls: 'bg-slate-100 text-slate-600', title: '' });
+      flagsCell.innerHTML = flags.map((f) => `<span class="inline-block px-1.5 py-0.5 rounded text-xs font-medium ${f.cls} mr-1 mb-1" ${f.title ? `title="${escapeAttr(f.title)}"` : ''}>${escapeHtml(f.label)}</span>`).join('') || '—';
       tr.appendChild(flagsCell);
 
       const statusCell = document.createElement('td');
