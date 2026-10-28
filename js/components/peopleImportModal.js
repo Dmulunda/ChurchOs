@@ -708,10 +708,30 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
 
     for (const row of validRows) {
       if (row.type === 'visitor') {
+        // Re-importing the same sheet (e.g. to fill in fields a first
+        // pass missed) must not create a second lead for the same
+        // person -- find an existing, non-removed lead first (phone or
+        // email if given, since those are the most reliable; exact
+        // name only as a last resort) and update it in place instead
+        // of inserting a duplicate.
+        let existingLeadId = null;
+        if (row.phone) {
+          const { data } = await supabase.from('guest_follow_ups').select('id').eq('phone', row.phone).is('removed_at', null).limit(1).maybeSingle();
+          existingLeadId = data?.id || null;
+        }
+        if (!existingLeadId && row.email) {
+          const { data } = await supabase.from('guest_follow_ups').select('id').ilike('email', row.email).is('removed_at', null).limit(1).maybeSingle();
+          existingLeadId = data?.id || null;
+        }
+        if (!existingLeadId) {
+          const { data } = await supabase.from('guest_follow_ups').select('id').ilike('full_name', row.full_name).is('removed_at', null).limit(1).maybeSingle();
+          existingLeadId = data?.id || null;
+        }
+
         // Everything the guest check-in form itself captures
         // (publicGuestCheckin.js) -- picked up from the sheet when
         // present, same fields, same table.
-        const { data: insertedLead, error } = await supabase.from('guest_follow_ups').insert({
+        const leadFields = {
           full_name: row.full_name,
           phone: row.phone || null,
           email: row.email || null,
@@ -723,35 +743,58 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
           wants_pastor_meeting: row.wantsPastorMeeting || false,
           home_church: row.homeChurch || null,
           notes: row.note || null,
-          assigned_department_id: row.departmentId || null,
-          source: 'import',
-          created_by: currentUserId,
-        }).select('id').single();
+        };
+
+        const { data: lead, error } = existingLeadId
+          ? await supabase.from('guest_follow_ups').update(leadFields).eq('id', existingLeadId).select('id, user_id').single()
+          : await supabase.from('guest_follow_ups').insert({
+              ...leadFields,
+              assigned_department_id: row.departmentId || null,
+              source: 'import',
+              created_by: currentUserId,
+            }).select('id, user_id').single();
         if (error) {
           logLine(t('peopleImport.rowFailed', { name: row.full_name, message: error.message }), 'error');
           continue;
         }
 
-        // Same auto-provisioning every other guest intake path now gets
-        // (attendance check-in, via notify_guest_attendance()'s own
-        // Edge Function call) -- this path inserts guest_follow_ups
-        // directly from the client, so it provisions the linked Silent
-        // profile the same way right here instead.
-        const { data: silentData, error: silentError } = await supabase.functions.invoke('create-silent-user', {
-          body: { full_name: row.full_name, email: row.email || undefined, phone: row.phone || undefined },
-        });
-        if (!silentError && silentData?.profile_id && row.joinedAt) {
-          await supabase.from('profiles').update({ joined_at: row.joinedAt }).eq('id', silentData.profile_id);
-        }
-        if (!silentError && silentData?.profile_id) {
-          await supabase.from('guest_follow_ups').update({ user_id: silentData.profile_id }).eq('id', insertedLead.id);
+        if (lead.user_id) {
+          // Already linked to a Silent profile from an earlier
+          // import/check-in -- just bring its join date up to date
+          // (the identity/contact fields already live on the profile
+          // too, via userEditModal.js, not duplicated here).
+          if (row.joinedAt) await supabase.from('profiles').update({ joined_at: row.joinedAt }).eq('id', lead.user_id);
+        } else {
+          // Same auto-provisioning every other guest intake path now
+          // gets (attendance check-in, via notify_guest_attendance()'s
+          // own Edge Function call) -- this path inserts/updates
+          // guest_follow_ups directly from the client, so it
+          // provisions the linked Silent profile the same way right
+          // here instead.
+          const { data: silentData, error: silentError } = await supabase.functions.invoke('create-silent-user', {
+            body: { full_name: row.full_name, email: row.email || undefined, phone: row.phone || undefined },
+          });
+          if (!silentError && silentData?.profile_id && row.joinedAt) {
+            await supabase.from('profiles').update({ joined_at: row.joinedAt }).eq('id', silentData.profile_id);
+          }
+          if (!silentError && silentData?.profile_id) {
+            await supabase.from('guest_follow_ups').update({ user_id: silentData.profile_id }).eq('id', lead.id);
+          }
         }
 
-        logLine(t('peopleImport.visitorAdded', { name: row.full_name }), 'success');
+        logLine(t(existingLeadId ? 'peopleImport.visitorUpdated' : 'peopleImport.visitorAdded', { name: row.full_name }), 'success');
         continue;
       }
 
       if (row.access === 'existing') {
+        // A re-import of the same sheet matches everyone as 'existing'
+        // the second time around -- without this, a sheet's join date
+        // would be silently dropped on every re-import after the
+        // first, which defeats the point of re-importing to fill in
+        // info a first pass (e.g. before this field existed) missed.
+        if (row.joinedAt) {
+          await supabase.from('profiles').update({ joined_at: row.joinedAt }).eq('id', row.matchedProfileId);
+        }
         const membershipError = await addDepartmentMembership(row.matchedProfileId, row.departmentId);
         if (membershipError) logLine(t('peopleImport.rowFailed', { name: row.full_name, message: membershipError.message }), 'error');
         else logLine(t('peopleImport.existingLinked', { name: row.full_name }), 'success');
