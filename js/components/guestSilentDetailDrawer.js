@@ -40,7 +40,7 @@ export function createGuestSilentDetailDrawer({ supabase }) {
     let lead = null;
     if (guestFollowUpId) {
       const { data } = await supabase.from('guest_follow_ups')
-        .select('id, phone, email, city, referral_source, referred_by_name, age_range, prayer_request, wants_pastor_meeting, home_church, assigned_department_id, created_at')
+        .select('id, phone, email, city, referral_source, referred_by_name, age_range, prayer_request, wants_pastor_meeting, home_church, notes, assigned_department_id, created_at')
         .eq('id', guestFollowUpId)
         .maybeSingle();
       lead = data;
@@ -76,6 +76,7 @@ export function createGuestSilentDetailDrawer({ supabase }) {
       [t('guestHub.detail.prayerRequest'), lead.prayer_request],
       [t('guestHub.detail.wantsPastorMeeting'), lead.wants_pastor_meeting ? t('common.yes') : null],
       [t('guestHub.detail.homeChurch'), lead.home_church],
+      [t('guestHub.detail.checkinNote'), lead.notes],
     ].filter(([, value]) => value) : [];
 
     if (fields.length > 0) {

@@ -40,7 +40,7 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
 
     const profileIds = (profiles || []).map((p) => p.id);
     const { data: leads } = profileIds.length > 0
-      ? await supabase.from('guest_follow_ups').select('id, user_id, assigned_department_id, prayer_request, wants_pastor_meeting, home_church').in('user_id', profileIds).is('removed_at', null)
+      ? await supabase.from('guest_follow_ups').select('id, user_id, assigned_department_id, prayer_request, wants_pastor_meeting, home_church, notes').in('user_id', profileIds).is('removed_at', null)
       : { data: [] };
     const leadByProfileId = new Map((leads || []).map((l) => [l.user_id, l]));
 
@@ -105,11 +105,16 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       // of this to show).
       const flagsCell = document.createElement('td');
       flagsCell.className = 'px-4 py-2.5';
+      // title= puts the actual written text one hover away -- a flag
+      // alone ("Prayer request") doesn't help if nobody noticed it was
+      // there at check-in time; this way the content itself is right
+      // here without opening the detail drawer.
       const flags = [];
-      if (lead?.prayer_request) flags.push({ label: t('silentDirectory.flagPrayerRequest'), cls: 'bg-violet-50 text-violet-600' });
-      if (lead && !lead.home_church) flags.push({ label: t('silentDirectory.flagNoHomeChurch'), cls: 'bg-amber-50 text-amber-700' });
-      if (lead?.wants_pastor_meeting) flags.push({ label: t('silentDirectory.flagWantsPastor'), cls: 'bg-sky-50 text-sky-600' });
-      flagsCell.innerHTML = flags.map((f) => `<span class="inline-block px-1.5 py-0.5 rounded text-xs font-medium ${f.cls} mr-1 mb-1">${f.label}</span>`).join('') || '—';
+      if (lead?.prayer_request) flags.push({ label: t('silentDirectory.flagPrayerRequest'), cls: 'bg-violet-50 text-violet-600', title: lead.prayer_request });
+      if (lead && !lead.home_church) flags.push({ label: t('silentDirectory.flagNoHomeChurch'), cls: 'bg-amber-50 text-amber-700', title: '' });
+      if (lead?.wants_pastor_meeting) flags.push({ label: t('silentDirectory.flagWantsPastor'), cls: 'bg-sky-50 text-sky-600', title: '' });
+      if (lead?.notes) flags.push({ label: t('silentDirectory.flagHasNote'), cls: 'bg-rose-50 text-rose-600', title: lead.notes });
+      flagsCell.innerHTML = flags.map((f) => `<span class="inline-block px-1.5 py-0.5 rounded text-xs font-medium ${f.cls} mr-1 mb-1" ${f.title ? `title="${escapeAttr(f.title)}"` : ''}>${f.label}</span>`).join('') || '—';
       tr.appendChild(flagsCell);
 
       const statusCell = document.createElement('td');
@@ -335,4 +340,14 @@ export function createSilentDirectoryModal({ supabase, currentUserId, title }) {
   }
 
   return { open, root };
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return escapeHtml(str).replaceAll('"', '&quot;');
 }
