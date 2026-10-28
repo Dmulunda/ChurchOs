@@ -40,7 +40,7 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
 
     const profileIds = (profiles || []).map((p) => p.id);
     const { data: leads } = profileIds.length > 0
-      ? await supabase.from('guest_follow_ups').select('id, user_id, assigned_department_id').in('user_id', profileIds).is('removed_at', null)
+      ? await supabase.from('guest_follow_ups').select('id, user_id, assigned_department_id, prayer_request, wants_pastor_meeting, home_church').in('user_id', profileIds).is('removed_at', null)
       : { data: [] };
     const leadByProfileId = new Map((leads || []).map((l) => [l.user_id, l]));
 
@@ -62,6 +62,7 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
           <th class="text-left px-4 py-2">${t('silentDirectory.name')}</th>
           <th class="text-left px-4 py-2">${t('silentDirectory.contact')}</th>
           <th class="text-left px-4 py-2">${t('silentDirectory.joined')}</th>
+          <th class="text-left px-4 py-2">${t('silentDirectory.flags')}</th>
           <th class="text-left px-4 py-2">${t('guestHub.userStatus')}</th>
           <th class="text-left px-4 py-2">${t('silentDirectory.guestLead')}</th>
           <th class="text-left px-4 py-2"></th>
@@ -96,6 +97,20 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       joinedCell.className = 'px-4 py-2.5 text-slate-500 whitespace-nowrap';
       joinedCell.textContent = row.joined_at || '—';
       tr.appendChild(joinedCell);
+
+      // Pulled straight from the guest-intake form (attendanceManager.js's
+      // check-in: prayer request / home church / pastor meeting) -- only
+      // ever present when this Silent profile came from a guest lead
+      // (peopleImportModal.js/manually-added Silent profiles have none
+      // of this to show).
+      const flagsCell = document.createElement('td');
+      flagsCell.className = 'px-4 py-2.5';
+      const flags = [];
+      if (lead?.prayer_request) flags.push({ label: t('silentDirectory.flagPrayerRequest'), cls: 'bg-violet-50 text-violet-600' });
+      if (lead && !lead.home_church) flags.push({ label: t('silentDirectory.flagNoHomeChurch'), cls: 'bg-amber-50 text-amber-700' });
+      if (lead?.wants_pastor_meeting) flags.push({ label: t('silentDirectory.flagWantsPastor'), cls: 'bg-sky-50 text-sky-600' });
+      flagsCell.innerHTML = flags.map((f) => `<span class="inline-block px-1.5 py-0.5 rounded text-xs font-medium ${f.cls} mr-1 mb-1">${f.label}</span>`).join('') || '—';
+      tr.appendChild(flagsCell);
 
       const statusCell = document.createElement('td');
       statusCell.className = 'px-4 py-2.5';
@@ -186,7 +201,7 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
     const formRow = document.createElement('tr');
     formRow.dataset.promoteFormFor = row.id;
     formRow.innerHTML = `
-      <td colspan="6" class="px-4 py-3 bg-slate-50">
+      <td colspan="7" class="px-4 py-3 bg-slate-50">
         <div class="flex flex-wrap items-end gap-2">
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">${t('silentDirectory.promoteEmail')}</label>
@@ -254,7 +269,7 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
     const formRow = document.createElement('tr');
     formRow.dataset.emailFormFor = row.id;
     formRow.innerHTML = `
-      <td colspan="6" class="px-4 py-3 bg-slate-50">
+      <td colspan="7" class="px-4 py-3 bg-slate-50">
         <div class="flex flex-wrap items-end gap-2">
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">${t('silentDirectory.promoteEmail')}</label>
