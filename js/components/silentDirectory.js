@@ -84,6 +84,12 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       nameBtn.textContent = row.full_name;
       nameBtn.addEventListener('click', () => openDetail(row, lead));
       nameCell.appendChild(nameBtn);
+      const nameEditBtn = document.createElement('button');
+      nameEditBtn.type = 'button';
+      nameEditBtn.className = 'ml-1.5 text-xs font-medium text-slate-400 hover:text-slate-600';
+      nameEditBtn.textContent = t('silentDirectory.edit');
+      nameEditBtn.addEventListener('click', () => openEdit(row));
+      nameCell.appendChild(nameEditBtn);
       tr.appendChild(nameCell);
 
       const contactCell = document.createElement('td');
@@ -133,12 +139,6 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
 
       const actionsCell = document.createElement('td');
       actionsCell.className = 'px-4 py-2.5 whitespace-nowrap space-x-2';
-      const editBtn = document.createElement('button');
-      editBtn.type = 'button';
-      editBtn.className = 'text-xs font-medium text-slate-600 hover:text-slate-800';
-      editBtn.textContent = t('silentDirectory.edit');
-      editBtn.addEventListener('click', () => openEdit(row));
-      actionsCell.appendChild(editBtn);
 
       if (!realEmail) {
         const setEmailBtn = document.createElement('button');
