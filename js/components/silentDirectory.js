@@ -7,21 +7,28 @@
 // status (whether graduated from a Guest Hub lead or set directly
 // here), then can be promoted to a full Active account.
 import { createGuestSilentDetailDrawer } from './guestSilentDetailDrawer.js';
+import { createUserEditModal } from './userEditModal.js';
 import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
 import { t } from '../i18n.js';
 
 const USER_STATUSES = ['new_guest', 'visitor_other_church', 'out_of_city', 'member', 'lost_member'];
 
+// Same column set userManager.js's own global-scope query selects --
+// userEditModal.js's open(user) expects exactly this shape, since it's
+// the identical "Edit" modal the User Directory already uses.
+const PROFILE_COLUMNS = 'id, full_name, phone, address, photo_path, member_title, parish, sex, birth_date, birth_country, birth_city, card_revoked_at, signature_data, global_role, joined_at, user_status, is_silent, can_view_all_departments, can_manage_pastoral_cases, can_post_global_announcements, can_message_any_member, can_approve_any_membership, profile_emails ( email )';
+
 export function renderSilentDirectory(container, { supabase, currentUserId }) {
   const bodyEl = container;
   let detailDrawer = null;
+  let editModal = null;
 
   async function load() {
     bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
 
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('id, full_name, phone, user_status, profile_emails ( email )')
+      .select(PROFILE_COLUMNS)
       .eq('is_silent', true)
       .is('permanently_deleted_at', null)
       .order('full_name');
@@ -54,6 +61,7 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
         <tr>
           <th class="text-left px-4 py-2">${t('silentDirectory.name')}</th>
           <th class="text-left px-4 py-2">${t('silentDirectory.contact')}</th>
+          <th class="text-left px-4 py-2">${t('silentDirectory.joined')}</th>
           <th class="text-left px-4 py-2">${t('guestHub.userStatus')}</th>
           <th class="text-left px-4 py-2">${t('silentDirectory.guestLead')}</th>
           <th class="text-left px-4 py-2"></th>
@@ -84,6 +92,11 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       contactCell.textContent = [row.phone, realEmail].filter(Boolean).join(' · ') || t('silentDirectory.noContact');
       tr.appendChild(contactCell);
 
+      const joinedCell = document.createElement('td');
+      joinedCell.className = 'px-4 py-2.5 text-slate-500 whitespace-nowrap';
+      joinedCell.textContent = row.joined_at || '—';
+      tr.appendChild(joinedCell);
+
       const statusCell = document.createElement('td');
       statusCell.className = 'px-4 py-2.5';
       const statusSelect = document.createElement('select');
@@ -99,7 +112,23 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       tr.appendChild(leadCell);
 
       const actionsCell = document.createElement('td');
-      actionsCell.className = 'px-4 py-2.5 whitespace-nowrap';
+      actionsCell.className = 'px-4 py-2.5 whitespace-nowrap space-x-2';
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'text-xs font-medium text-slate-600 hover:text-slate-800';
+      editBtn.textContent = t('silentDirectory.edit');
+      editBtn.addEventListener('click', () => openEdit(row));
+      actionsCell.appendChild(editBtn);
+
+      if (!realEmail) {
+        const setEmailBtn = document.createElement('button');
+        setEmailBtn.type = 'button';
+        setEmailBtn.className = 'text-xs font-medium text-slate-600 hover:text-slate-800';
+        setEmailBtn.textContent = t('silentDirectory.setEmail');
+        setEmailBtn.addEventListener('click', () => openSetEmailRow(row, tr));
+        actionsCell.appendChild(setEmailBtn);
+      }
+
       const promoteBtn = document.createElement('button');
       promoteBtn.type = 'button';
       promoteBtn.className = row.user_status === 'member'
@@ -120,7 +149,15 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
 
   function openDetail(row, lead) {
     if (!detailDrawer) detailDrawer = createGuestSilentDetailDrawer({ supabase });
-    detailDrawer.open({ profileId: row.id, guestFollowUpId: lead?.id || null, fullName: row.full_name });
+    detailDrawer.open({ profileId: row.id, guestFollowUpId: lead?.id || null, fullName: row.full_name, joinedAt: row.joined_at });
+  }
+
+  // Same "Edit" modal the User Directory already uses (userManager.js)
+  // -- full profile fields, department memberships, member card -- not
+  // a second, parallel edit UI just for Silent profiles.
+  function openEdit(row) {
+    if (!editModal) editModal = createUserEditModal({ supabase, currentUserId, onSaved: load });
+    editModal.open(row);
   }
 
   async function updateUserStatus(row, newStatus) {
@@ -137,15 +174,19 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
   // than an email-a-setup-link flow -- that's the separate Account
   // Claims pattern (silentUserClaims.js), not what a straightforward
   // admin-initiated upgrade needs.
+  function closeInlineForms() {
+    document.querySelectorAll('[data-promote-form-for], [data-email-form-for]').forEach((el) => el.remove());
+  }
+
   function openPromoteRow(row, afterRow) {
     const existing = afterRow.nextElementSibling;
     if (existing?.dataset?.promoteFormFor === row.id) { existing.remove(); return; }
-    document.querySelectorAll('[data-promote-form-for]').forEach((el) => el.remove());
+    closeInlineForms();
 
     const formRow = document.createElement('tr');
     formRow.dataset.promoteFormFor = row.id;
     formRow.innerHTML = `
-      <td colspan="5" class="px-4 py-3 bg-slate-50">
+      <td colspan="6" class="px-4 py-3 bg-slate-50">
         <div class="flex flex-wrap items-end gap-2">
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">${t('silentDirectory.promoteEmail')}</label>
@@ -196,6 +237,53 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       }
 
       window.alert(t('silentDirectory.promoteSuccess', { name: row.full_name, email, password }));
+      load();
+    });
+  }
+
+  // A fresh Silent profile usually starts on a @noemail.internal
+  // placeholder -- this lets an admin set the real contact email
+  // without making the account live (upgrade-silent-user's
+  // email_only mode, the same one taxReceiptsAdminBoard.js's Silent
+  // Members section already uses), distinct from Promote to Active.
+  function openSetEmailRow(row, afterRow) {
+    const existing = afterRow.nextElementSibling;
+    if (existing?.dataset?.emailFormFor === row.id) { existing.remove(); return; }
+    closeInlineForms();
+
+    const formRow = document.createElement('tr');
+    formRow.dataset.emailFormFor = row.id;
+    formRow.innerHTML = `
+      <td colspan="6" class="px-4 py-3 bg-slate-50">
+        <div class="flex flex-wrap items-end gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">${t('silentDirectory.promoteEmail')}</label>
+            <input type="email" data-el="set-email" required class="border border-slate-300 rounded-lg px-2 py-1 text-sm" />
+          </div>
+          <button type="button" data-action="confirm-set-email" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">${t('silentDirectory.setEmail')}</button>
+          <span data-el="set-email-status" class="text-xs text-slate-500"></span>
+        </div>
+      </td>
+    `;
+    afterRow.insertAdjacentElement('afterend', formRow);
+
+    const emailInput = formRow.querySelector('[data-el="set-email"]');
+    const statusEl = formRow.querySelector('[data-el="set-email-status"]');
+
+    formRow.querySelector('[data-action="confirm-set-email"]').addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!email) return;
+      statusEl.className = 'text-xs text-slate-500';
+      statusEl.textContent = t('common.saving');
+
+      const { data, error } = await supabase.functions.invoke('upgrade-silent-user', {
+        body: { silent_profile_id: row.id, email, email_only: true },
+      });
+      if (error || data?.error) {
+        statusEl.className = 'text-xs text-rose-600';
+        statusEl.textContent = error ? await extractFunctionErrorMessage(error) : data.error;
+        return;
+      }
       load();
     });
   }

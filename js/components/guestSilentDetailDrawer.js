@@ -31,7 +31,7 @@ export function createGuestSilentDetailDrawer({ supabase }) {
   root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
   root.addEventListener('click', (e) => { if (e.target === root) close(); });
 
-  async function open({ profileId = null, guestFollowUpId = null, fullName = '' }) {
+  async function open({ profileId = null, guestFollowUpId = null, fullName = '', joinedAt = null }) {
     titleEl.textContent = fullName;
     bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
     root.classList.remove('hidden');
@@ -54,7 +54,17 @@ export function createGuestSilentDetailDrawer({ supabase }) {
         ])
       : [{ data: [] }, { data: [] }, { data: [] }];
 
+    const { data: profileNotes } = profileId
+      ? await supabase.from('profile_notes').select('author_id, note, created_at').eq('profile_id', profileId).order('created_at')
+      : { data: [] };
+
     bodyEl.innerHTML = '';
+
+    if (joinedAt) {
+      const joinedEl = document.createElement('div');
+      joinedEl.innerHTML = `<span class="font-medium text-slate-700">${t('silentDirectory.joined')}:</span> ${escapeHtml(joinedAt)}`;
+      bodyEl.appendChild(joinedEl);
+    }
 
     const fields = lead ? [
       [t('guestHub.detail.phone'), lead.phone],
@@ -97,6 +107,32 @@ export function createGuestSilentDetailDrawer({ supabase }) {
           }).join('');
         bodyEl.appendChild(historyEl);
       }
+    }
+
+    // Always available (unlike the guest-case notes above, which only
+    // exist when a linked guest_follow_ups row does) -- this is what a
+    // bulk-imported or manually-added Silent profile (no guest case at
+    // all) was missing entirely: nowhere to attach a note.
+    if (profileId) {
+      const profileNotesEl = document.createElement('div');
+      profileNotesEl.className = 'border-t border-slate-200 pt-3';
+      profileNotesEl.innerHTML = `
+        <div class="font-medium text-slate-700 mb-1">${t('silentDirectory.notes.title')}</div>
+        ${(profileNotes || []).length > 0
+          ? profileNotes.map((n) => `<div class="text-xs text-slate-500 mb-1">${escapeHtml(n.created_at.slice(0, 10))} — ${escapeHtml(n.note)}</div>`).join('')
+          : `<p class="text-xs text-slate-400 mb-1">${t('guestHub.notes.empty')}</p>`}
+        <textarea data-el="new-profile-note" rows="2" placeholder="${t('guestHub.notes.placeholder')}" class="w-full border border-slate-300 rounded-lg px-2 py-1 text-sm mb-1.5"></textarea>
+        <button type="button" data-action="add-profile-note" class="text-xs font-medium text-indigo-600 hover:text-indigo-800">${t('guestHub.notes.add')}</button>
+      `;
+      const newNoteTextarea = profileNotesEl.querySelector('[data-el="new-profile-note"]');
+      profileNotesEl.querySelector('[data-action="add-profile-note"]').addEventListener('click', async () => {
+        const note = newNoteTextarea.value.trim();
+        if (!note) return;
+        const { error } = await supabase.rpc('add_profile_note', { p_profile_id: profileId, p_note: note });
+        if (error) { window.alert(error.message); return; }
+        open({ profileId, guestFollowUpId, fullName, joinedAt });
+      });
+      bodyEl.appendChild(profileNotesEl);
     }
   }
 

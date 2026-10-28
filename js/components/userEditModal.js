@@ -72,6 +72,13 @@ export function createUserEditModal({ supabase, currentUserId, onSaved }) {
         </div>
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">${t('userEdit.joinedAt')}</label>
+            <input type="date" name="joined_at" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+            <p class="text-xs text-slate-400 mt-1">${t('userEdit.joinedAtHint')}</p>
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
             <label class="block text-sm font-medium text-slate-600 mb-1">${t('memberCard.function')}</label>
             <select name="member_title" class="w-full border border-slate-300 rounded-lg px-3 py-2">
               <option value="">—</option>
@@ -405,6 +412,10 @@ export function createUserEditModal({ supabase, currentUserId, onSaved }) {
       birth_city: form.elements.birth_city.value.trim() || null,
       signature_data: signaturePad.isEmpty() ? null : signaturePad.toDataUrl(),
     };
+    // joined_at is not-null on the table -- only sent when the admin
+    // actually set a value, so clearing the date field leaves whatever
+    // was already on file untouched instead of trying to null it out.
+    if (form.elements.joined_at.value) update.joined_at = form.elements.joined_at.value;
     if (globalRole !== undefined) update.global_role = globalRole;
     if (form.elements[CUSTOM_POWERS[0]]) {
       CUSTOM_POWERS.forEach((key) => { update[key] = form.elements[key].checked; });
@@ -444,6 +455,7 @@ export function createUserEditModal({ supabase, currentUserId, onSaved }) {
     titleEl.textContent = t('userEdit.title', { name: user.full_name });
     form.elements.full_name.value = user.full_name || '';
     form.elements.phone.value = user.phone || '';
+    form.elements.joined_at.value = user.joined_at || '';
     form.elements.address.value = user.address || '';
     form.elements.member_title.value = user.member_title || '';
     form.elements.parish.value = user.parish || '';
