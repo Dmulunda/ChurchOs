@@ -32,6 +32,13 @@ import { t, departmentLabel } from '../i18n.js';
 
 const STATUSES = ['new_guest', 'contacted', 'assigned_to_department'];
 
+// Separate from STATUSES above (routing progress: has this case been
+// picked up / assigned yet) -- this is the visitor-category field
+// shared with the Silent Directory (silentDirectory.js), confusingly
+// sharing one label ("New Guest") with a value in the other enum.
+// Keep these two columns visibly distinct in the UI.
+export const USER_STATUSES = ['new_guest', 'visitor_other_church', 'out_of_city', 'member', 'lost_member'];
+
 // Mountable render function (the pastoral dashboard's own Guest Cases
 // tab mounts this directly) plus a thin modal wrapper around it, same
 // split userManager.js's renderUserManager/createUserManagerModal
@@ -60,8 +67,9 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
 
     let leadsQuery = supabase
       .from('guest_follow_ups')
-      .select('id, full_name, phone, email, city, referral_source, referred_by_name, age_range, prayer_request, wants_pastor_meeting, home_church, user_id, status, assigned_department_id, notes, source, created_at, follow_up_completed_at, follow_up_completed_by, follow_up_note')
+      .select('id, full_name, phone, email, city, referral_source, referred_by_name, age_range, prayer_request, wants_pastor_meeting, home_church, user_id, status, user_status, assigned_department_id, notes, source, created_at, follow_up_completed_at, follow_up_completed_by, follow_up_note')
       .is('removed_at', null)
+      .is('graduated_at', null)
       .order('created_at', { ascending: false });
     if (scope.type === 'department') leadsQuery = leadsQuery.eq('assigned_department_id', scope.departmentId);
 
@@ -85,13 +93,21 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
 
     let rows = leads || [];
     const leadIds = rows.map((r) => r.id);
-    const { data: transfers } = leadIds.length > 0
-      ? await supabase.from('guest_follow_up_transfers').select('guest_follow_up_id, from_department_id, to_department_id, note, created_at').in('guest_follow_up_id', leadIds).order('created_at')
-      : { data: [] };
+    const [{ data: transfers }, { data: notesRows }] = leadIds.length > 0
+      ? await Promise.all([
+          supabase.from('guest_follow_up_transfers').select('guest_follow_up_id, from_department_id, to_department_id, note, created_at').in('guest_follow_up_id', leadIds).order('created_at'),
+          supabase.from('guest_follow_up_notes').select('guest_follow_up_id, author_id, note, created_at').in('guest_follow_up_id', leadIds).order('created_at'),
+        ])
+      : [{ data: [] }, { data: [] }];
     const transfersByLead = new Map();
     (transfers || []).forEach((tr) => {
       if (!transfersByLead.has(tr.guest_follow_up_id)) transfersByLead.set(tr.guest_follow_up_id, []);
       transfersByLead.get(tr.guest_follow_up_id).push(tr);
+    });
+    const notesByLead = new Map();
+    (notesRows || []).forEach((n) => {
+      if (!notesByLead.has(n.guest_follow_up_id)) notesByLead.set(n.guest_follow_up_id, []);
+      notesByLead.get(n.guest_follow_up_id).push(n);
     });
 
     if (unassignedResult) {
@@ -156,6 +172,7 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
           <th class="text-left px-4 py-2">${t('guestHub.name')}</th>
           <th class="text-left px-4 py-2">${t('guestHub.source')}</th>
           <th class="text-left px-4 py-2">${t('guestHub.status')}</th>
+          <th class="text-left px-4 py-2">${t('guestHub.userStatus')}</th>
           <th class="text-left px-4 py-2">${t('guestHub.department')}</th>
           ${scope.type === 'pastoral' ? `<th class="text-left px-4 py-2"></th>` : ''}
         </tr>
@@ -199,6 +216,17 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
       statusSelect.addEventListener('change', () => updateLeadFields(row, { status: statusSelect.value }));
       statusCell.appendChild(statusSelect);
       tr.appendChild(statusCell);
+
+      const userStatusCell = document.createElement('td');
+      userStatusCell.className = 'px-4 py-2.5';
+      if (isGuestLead) {
+        const userStatusSelect = document.createElement('select');
+        userStatusSelect.className = 'border border-slate-300 rounded-lg px-2 py-1 text-sm';
+        userStatusSelect.innerHTML = USER_STATUSES.map((s) => `<option value="${s}" ${s === row.user_status ? 'selected' : ''}>${t(`directory.userStatus.${s}`)}</option>`).join('');
+        userStatusSelect.addEventListener('change', () => updateUserStatus(row, userStatusSelect.value));
+        userStatusCell.appendChild(userStatusSelect);
+      }
+      tr.appendChild(userStatusCell);
 
       const deptCell = document.createElement('td');
       deptCell.className = 'px-4 py-2.5';
@@ -246,7 +274,7 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
         detailsRow = document.createElement('tr');
         detailsRow.className = 'hidden bg-slate-50';
         const detailsCell = document.createElement('td');
-        detailsCell.colSpan = scope.type === 'pastoral' ? 5 : 4;
+        detailsCell.colSpan = scope.type === 'pastoral' ? 6 : 5;
         detailsCell.className = 'px-4 py-3 text-sm text-slate-600 space-y-3';
 
         const fields = [
@@ -278,6 +306,19 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
           const generalNoteTextarea = generalNoteEl.querySelector('[data-el="general-note"]');
           generalNoteEl.querySelector('[data-action="save-general-note"]').addEventListener('click', () => saveGeneralNote(row, generalNoteTextarea.value.trim(), generalNoteEl));
           detailsCell.appendChild(generalNoteEl);
+
+          const notes = notesByLead.get(row.id) || [];
+          const notesEl = document.createElement('div');
+          notesEl.className = 'border-t border-slate-200 pt-2';
+          notesEl.innerHTML = `
+            <div class="font-medium text-slate-700 mb-1">${t('guestHub.notes.title')}</div>
+            ${notes.length > 0 ? notes.map((n) => `<div class="text-xs text-slate-500 mb-1">${escapeHtml(n.created_at.slice(0, 10))} — ${escapeHtml(n.note)}</div>`).join('') : `<p class="text-xs text-slate-400 mb-1">${t('guestHub.notes.empty')}</p>`}
+            <textarea data-el="new-note" rows="2" placeholder="${t('guestHub.notes.placeholder')}" class="w-full border border-slate-300 rounded-lg px-2 py-1 text-sm mb-1.5"></textarea>
+            <button type="button" data-action="add-note" class="text-xs font-medium text-indigo-600 hover:text-indigo-800">${t('guestHub.notes.add')}</button>
+          `;
+          const newNoteTextarea = notesEl.querySelector('[data-el="new-note"]');
+          notesEl.querySelector('[data-action="add-note"]').addEventListener('click', () => addGuestNote(row, newNoteTextarea.value.trim()));
+          detailsCell.appendChild(notesEl);
 
           const followUpEl = document.createElement('div');
           followUpEl.className = 'border-t border-slate-200 pt-2';
@@ -346,7 +387,39 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
 
     bodyEl.appendChild(table);
 
-    if (scope.type === 'pastoral') await loadRemoved();
+    if (scope.type === 'pastoral') {
+      await loadGraduated();
+      await loadRemoved();
+    }
+  }
+
+  // Read-only history list -- once someone's marked Member, they're
+  // managed going forward from the Silent Directory, not re-opened
+  // here, so no restore/undo action (unlike Recently Removed below).
+  async function loadGraduated() {
+    const { data: graduated, error } = await supabase
+      .from('guest_follow_ups')
+      .select('id, full_name, graduated_at')
+      .not('graduated_at', 'is', null)
+      .order('graduated_at', { ascending: false })
+      .limit(25);
+
+    if (error || !graduated || graduated.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'border-t border-slate-200 mt-4 pt-4';
+    section.innerHTML = `
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">${t('guestHub.recentlyGraduatedTitle')}</h3>
+      <div class="space-y-1.5">
+        ${graduated.map((row) => `
+          <div class="flex items-center justify-between gap-2 text-sm">
+            <span class="text-slate-700">${escapeHtml(row.full_name)}</span>
+            <span class="text-xs text-slate-400">${escapeHtml(row.graduated_at.slice(0, 10))}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    bodyEl.appendChild(section);
   }
 
   // Soft-deleted cases (sql/saas_platform/94) -- separate section,
@@ -411,6 +484,30 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
       .update({ ...changes, updated_at: new Date().toISOString() })
       .eq('id', row.id);
 
+    if (error) {
+      window.alert(t('guestHub.updateFailed', { message: error.message }));
+      return;
+    }
+    load();
+  }
+
+  // Picking "Member" here is the Guest -> Member transition: it also
+  // stamps graduated_at/by, which the main query above filters out of
+  // the active list (the row stays, for history -- same soft-filter
+  // idea as removed_at/follow_up_completed_at on this same table).
+  // Going forward, this person is managed from the Silent Directory.
+  async function updateUserStatus(row, newStatus) {
+    const changes = { user_status: newStatus };
+    if (newStatus === 'member') {
+      changes.graduated_at = new Date().toISOString();
+      changes.graduated_by = currentUserId;
+    }
+    await updateLeadFields(row, changes);
+  }
+
+  async function addGuestNote(row, note) {
+    if (!note) return;
+    const { error } = await supabase.rpc('add_guest_follow_up_note', { p_guest_follow_up_id: row.id, p_note: note });
     if (error) {
       window.alert(t('guestHub.updateFailed', { message: error.message }));
       return;

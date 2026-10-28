@@ -595,16 +595,32 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
 
     for (const row of validRows) {
       if (row.type === 'visitor') {
-        const { error } = await supabase.from('guest_follow_ups').insert({
+        const { data: insertedLead, error } = await supabase.from('guest_follow_ups').insert({
           full_name: row.full_name,
           phone: row.phone || null,
           email: row.email || null,
           assigned_department_id: row.departmentId || null,
           source: 'import',
           created_by: currentUserId,
+        }).select('id').single();
+        if (error) {
+          logLine(t('peopleImport.rowFailed', { name: row.full_name, message: error.message }), 'error');
+          continue;
+        }
+
+        // Same auto-provisioning every other guest intake path now gets
+        // (attendance check-in, via notify_guest_attendance()'s own
+        // Edge Function call) -- this path inserts guest_follow_ups
+        // directly from the client, so it provisions the linked Silent
+        // profile the same way right here instead.
+        const { data: silentData, error: silentError } = await supabase.functions.invoke('create-silent-user', {
+          body: { full_name: row.full_name, email: row.email || undefined, phone: row.phone || undefined },
         });
-        if (error) logLine(t('peopleImport.rowFailed', { name: row.full_name, message: error.message }), 'error');
-        else logLine(t('peopleImport.visitorAdded', { name: row.full_name }), 'success');
+        if (!silentError && silentData?.profile_id) {
+          await supabase.from('guest_follow_ups').update({ user_id: silentData.profile_id }).eq('id', insertedLead.id);
+        }
+
+        logLine(t('peopleImport.visitorAdded', { name: row.full_name }), 'success');
         continue;
       }
 
@@ -623,6 +639,10 @@ export function createPeopleImportModal({ supabase, currentUserId }) {
           logLine(t('peopleImport.rowFailed', { name: row.full_name, message: await extractFunctionErrorMessage(error) }), 'error');
           continue;
         }
+        // An imported roster row is a known, existing person -- not a
+        // fresh walk-in guest -- so it starts at Member rather than
+        // the column's New Guest default.
+        await supabase.from('profiles').update({ user_status: 'member' }).eq('id', data.profile_id);
         const membershipError = await addDepartmentMembership(data.profile_id, row.departmentId);
         if (membershipError) logLine(t('peopleImport.memberCreatedWithWarning', { name: row.full_name, email: '', message: membershipError.message }), 'error');
         else logLine(t('peopleImport.silentCreated', { name: row.full_name }), 'success');

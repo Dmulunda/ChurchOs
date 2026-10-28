@@ -16,6 +16,7 @@ import { getEffectiveSupabase, getGlobalRole } from './departments.js';
 import { hasFeature } from './entitlements.js';
 import { openPlansModal } from './app.js';
 import { createUserManagerModal } from './components/userManager.js';
+import { createSilentDirectoryModal } from './components/silentDirectory.js';
 import { renderAllDepartmentApprovals } from './components/allDepartmentApprovals.js';
 import { createGuestOnboardingModal } from './components/guestOnboardingHub.js';
 import { createMemberCaseModal } from './components/memberCaseManager.js';
@@ -38,6 +39,7 @@ const PASTORAL_TEAM_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
 const LOCALE_BY_LANG = { en: 'en-US', fr: 'fr-FR' };
 
 let currentDirectoryModal = null;
+let currentSilentDirectoryModal = null;
 let currentReportsModal = null;
 let currentGuestHubModal = null;
 let currentMemberCaseModal = null;
@@ -62,6 +64,10 @@ export async function openGuestOnboardingHub() {
 export async function openDirectory() {
   if (!currentDirectoryModal) await renderSuperAdminHomeTab();
   currentDirectoryModal?.open();
+}
+export async function openSilentDirectory() {
+  if (!currentSilentDirectoryModal) await renderSuperAdminHomeTab();
+  currentSilentDirectoryModal?.open();
 }
 export async function openMemberCases() {
   if (!currentMemberCaseModal) await renderSuperAdminHomeTab();
@@ -161,6 +167,7 @@ export async function renderSuperAdminHomeTab() {
   // before fresh ones are built, instead of accumulating hidden orphans.
   currentReportsModal?.root.remove();
   currentDirectoryModal?.root.remove();
+  currentSilentDirectoryModal?.root.remove();
   currentGuestHubModal?.root.remove();
   currentMemberCaseModal?.root.remove();
   currentMenuCustomizerModal?.root.remove();
@@ -184,6 +191,11 @@ export async function renderSuperAdminHomeTab() {
     scope: { type: 'global' },
     currentUserId: user.id,
     title: t('directory.title'),
+  });
+  currentSilentDirectoryModal = createSilentDirectoryModal({
+    supabase,
+    currentUserId: user.id,
+    title: t('silentDirectory.title'),
   });
 
   if (isPastoralTeam) {

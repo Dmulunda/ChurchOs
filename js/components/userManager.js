@@ -20,6 +20,7 @@ import { confirmDialog } from './confirmDialog.js';
 import { reassignAdminDialog } from './reassignAdminDialog.js';
 import { openMeetingWindow, navigateMeetingWindow } from './videoMeeting.js';
 import { isViewingAs, getGlobalRole } from '../departments.js';
+import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
 import { t, voicePartLabel, roleLabel, mediaTechRoleLabel } from '../i18n.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -467,6 +468,15 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
           removeChurchBtn.textContent = t('users.removeFromChurch');
           removeChurchBtn.addEventListener('click', () => removeFromChurch(row));
           actionsCell.appendChild(removeChurchBtn);
+
+          if (!row.isSilent) {
+            const moveToSilentBtn = document.createElement('button');
+            moveToSilentBtn.type = 'button';
+            moveToSilentBtn.className = 'text-sm font-medium text-slate-500 hover:text-slate-700 whitespace-nowrap block';
+            moveToSilentBtn.textContent = t('users.moveToSilent');
+            moveToSilentBtn.addEventListener('click', () => moveToSilent(row));
+            actionsCell.appendChild(moveToSilentBtn);
+          }
         }
       }
 
@@ -561,6 +571,27 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
     const { error } = await supabase.rpc('remove_user_from_church', { target_user_id: row.id });
     if (error) {
       window.alert(t('users.removeFailed', { message: error.message }));
+      return;
+    }
+    loadUsers();
+  }
+
+  // Active -> Silent (silentDirectory.js's counterpart to the
+  // Promote-to-Active action there). Revokes login (ban, via the
+  // downgrade-to-silent Edge Function) rather than deleting anything
+  // -- same profile id, full history untouched, reversible.
+  async function moveToSilent(row) {
+    const confirmed = await confirmDialog({
+      title: t('users.confirmMoveToSilentTitle'),
+      message: t('users.confirmMoveToSilent', { name: row.full_name }),
+      confirmLabel: t('users.moveToSilent'),
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    const { data, error } = await supabase.functions.invoke('downgrade-to-silent', { body: { profile_id: row.id } });
+    if (error || data?.error) {
+      window.alert(t('users.moveToSilentFailed', { message: error ? await extractFunctionErrorMessage(error) : data.error }));
       return;
     }
     loadUsers();
