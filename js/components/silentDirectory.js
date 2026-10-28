@@ -115,10 +115,21 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       // alone ("Prayer request") doesn't help if nobody noticed it was
       // there at check-in time; this way the content itself is right
       // here without opening the detail drawer.
+      // Home church and pastor meeting show BOTH states (not just when
+      // true) -- a badge that only ever appears for one answer makes
+      // "no badge" ambiguous between "no" and "no data at all". Prayer
+      // request and the check-in note stay show-only-if-present since
+      // they're free text, where blank unambiguously means "none".
       const flags = [];
+      if (lead) {
+        flags.push(lead.home_church
+          ? { label: t('silentDirectory.flagHasHomeChurch'), cls: 'bg-emerald-50 text-emerald-700', title: lead.home_church }
+          : { label: t('silentDirectory.flagNoHomeChurch'), cls: 'bg-amber-50 text-amber-700', title: '' });
+        flags.push(lead.wants_pastor_meeting
+          ? { label: t('silentDirectory.flagWantsPastor'), cls: 'bg-sky-50 text-sky-600', title: '' }
+          : { label: t('silentDirectory.flagNoPastorNeeded'), cls: 'bg-slate-100 text-slate-500', title: '' });
+      }
       if (lead?.prayer_request) flags.push({ label: t('silentDirectory.flagPrayerRequest'), cls: 'bg-violet-50 text-violet-600', title: lead.prayer_request });
-      if (lead && !lead.home_church) flags.push({ label: t('silentDirectory.flagNoHomeChurch'), cls: 'bg-amber-50 text-amber-700', title: '' });
-      if (lead?.wants_pastor_meeting) flags.push({ label: t('silentDirectory.flagWantsPastor'), cls: 'bg-sky-50 text-sky-600', title: '' });
       if (lead?.notes) flags.push({ label: t('silentDirectory.flagHasNote'), cls: 'bg-rose-50 text-rose-600', title: lead.notes });
       flagsCell.innerHTML = flags.map((f) => `<span class="inline-block px-1.5 py-0.5 rounded text-xs font-medium ${f.cls} mr-1 mb-1" ${f.title ? `title="${escapeAttr(f.title)}"` : ''}>${f.label}</span>`).join('') || '—';
       tr.appendChild(flagsCell);
