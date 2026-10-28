@@ -1163,6 +1163,7 @@ const TRANSLATIONS = {
     'offeringsImport.batchFailed': 'Could not save offering rows: {message}',
     'offeringsImport.allDone': 'Imported {count} offering rows.',
     'offeringsImport.allDoneDuplicatesSkipped': 'Skipped {count} row(s) that looked like duplicates of existing entries.',
+    'offeringsImport.allDonePdfErrors': 'Note: failed to generate the PDF report for: {periods}.',
     'offeringsImport.generatingPdfs': 'Generating PDF report(s) for the imported month(s)…',
     'offeringsImport.pdfGenFailed': 'Imported, but failed to generate the PDF for {period}: {message}',
 
@@ -3938,6 +3939,7 @@ const TRANSLATIONS = {
     'offeringsImport.batchFailed': "Impossible d'enregistrer les lignes d'offrandes : {message}",
     'offeringsImport.allDone': '{count} lignes d\'offrandes importées.',
     'offeringsImport.allDoneDuplicatesSkipped': '{count} ligne(s) ignorée(s) car elles semblaient être des doublons d\'entrées existantes.',
+    'offeringsImport.allDonePdfErrors': 'Remarque : échec de la génération du rapport PDF pour : {periods}.',
     'offeringsImport.generatingPdfs': 'Génération du ou des rapports PDF pour le(s) mois importé(s)…',
     'offeringsImport.pdfGenFailed': 'Importé, mais échec de la génération du PDF pour {period} : {message}',
 

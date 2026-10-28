@@ -567,7 +567,9 @@ export function createOfferingsImportModal({ supabase, currentUserId, onImported
         body: { full_name: row.newPersonName.trim(), email: row.newPersonEmail.trim() || undefined },
       });
       if (error) {
-        logLine(t('offeringsImport.batchFailed', { message: await extractFunctionErrorMessage(error) }), 'error');
+        const message = await extractFunctionErrorMessage(error);
+        window.alert(t('offeringsImport.batchFailed', { message }));
+        logLine(t('offeringsImport.batchFailed', { message }), 'error');
         importBtn.disabled = false;
         return;
       }
@@ -587,6 +589,7 @@ export function createOfferingsImportModal({ supabase, currentUserId, onImported
       if (key === thisMonth || periodIdByMonth.has(key)) continue;
       const { data: periodId, error } = await supabase.rpc('get_or_create_offering_period', { p_date: row.donation_date });
       if (error) {
+        window.alert(t('offeringsImport.batchFailed', { message: error.message }));
         logLine(t('offeringsImport.batchFailed', { message: error.message }), 'error');
         importBtn.disabled = false;
         return;
@@ -612,6 +615,7 @@ export function createOfferingsImportModal({ supabase, currentUserId, onImported
     }));
 
     if (insertError) {
+      window.alert(t('offeringsImport.batchFailed', { message: insertError.message }));
       logLine(t('offeringsImport.batchFailed', { message: insertError.message }), 'error');
       importBtn.disabled = false;
       return;
@@ -621,18 +625,35 @@ export function createOfferingsImportModal({ supabase, currentUserId, onImported
     if (duplicateCount > 0) logLine(t('offeringsImport.allDoneDuplicatesSkipped', { count: duplicateCount }), 'info');
 
     const pastPeriodIds = Array.from(periodIdByMonth.entries()).filter(([key]) => key !== thisMonth);
+    const pdfErrorPeriods = [];
     if (pastPeriodIds.length > 0) {
       logLine(t('offeringsImport.generatingPdfs'));
       for (const [key, periodId] of pastPeriodIds) {
         const { error } = await supabase.functions.invoke('offering-reports', {
           body: { action: 'generate_for_period', period_id: periodId },
         });
-        if (error) logLine(t('offeringsImport.pdfGenFailed', { period: key, message: error.message }), 'error');
+        if (error) {
+          logLine(t('offeringsImport.pdfGenFailed', { period: key, message: error.message }), 'error');
+          pdfErrorPeriods.push(key);
+        }
       }
     }
 
     importBtn.disabled = false;
     onImported?.();
+
+    // The progress log above sits below a preview table that can run
+    // to hundreds of rows -- easy to scroll past without ever seeing
+    // it, which is exactly why a completed import could look like it
+    // did nothing. A blocking alert (same as this file already uses
+    // for a parse failure) can't be missed, so success closes the
+    // modal and reports the same unambiguous way the error paths above
+    // already do.
+    let doneMessage = t('offeringsImport.allDone', { count: validRows.length });
+    if (duplicateCount > 0) doneMessage += ' ' + t('offeringsImport.allDoneDuplicatesSkipped', { count: duplicateCount });
+    if (pdfErrorPeriods.length > 0) doneMessage += ' ' + t('offeringsImport.allDonePdfErrors', { periods: pdfErrorPeriods.join(', ') });
+    window.alert(doneMessage);
+    close();
   }
 
   function open() {
