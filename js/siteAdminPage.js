@@ -48,6 +48,7 @@
 // meant to persist.
 import { t } from './i18n.js';
 import { confirmDialog } from './components/confirmDialog.js';
+import { createResetPasswordModal } from './components/resetPasswordModal.js';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { getEffectiveSupabase } from './departments.js';
 import { getTenant } from './tenant.js';
@@ -142,6 +143,12 @@ export async function renderSiteAdminTab() {
     ...(getIsPlatformOwner() ? { owner: container.querySelector('[data-panel="owner"]') } : {}),
   };
   const loaded = { inquiries: false, suggestions: false, requests: false, churches: false, 'promo-codes': false, usage: false, sandbox: false, manage: false, owner: false };
+  let churchUsersModal = null;
+  // Site Admin's own cross-tenant reset (site-admin-reset-password/
+  // index.ts), not the per-tenant admin-reset-password every church's
+  // own Super Admin uses -- same UI, deliberately separate Edge
+  // Function/gate/audit trail, see that function's header comment.
+  let siteAdminResetPasswordModal = null;
 
   tabBtns.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
@@ -443,6 +450,7 @@ export async function renderSiteAdminTab() {
           <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
             <tr>
               <th class="text-left px-3 py-2">${t('siteAdmin.colChurch')}</th>
+              <th class="text-left px-3 py-2">${t('siteAdmin.colOwner')}</th>
               <th class="text-left px-3 py-2">${t('siteAdmin.colStatus')}</th>
               <th class="text-right px-3 py-2">${t('siteAdmin.colMembers')}</th>
               <th class="text-right px-3 py-2">${t('siteAdmin.colStorage')}</th>
@@ -467,12 +475,17 @@ export async function renderSiteAdminTab() {
       return `
         <tr class="border-b border-slate-100 ${isDeleted ? 'bg-rose-50 opacity-70' : ''}" data-row-id="${row.id}">
           <td class="px-3 py-2 font-medium text-slate-800">${escapeHtml(row.name)}${isDeleted ? ` <span class="text-xs text-rose-600">(${t('siteAdmin.deleted')})</span>` : ''}</td>
+          <td class="px-3 py-2 text-slate-600">
+            ${row.owner_name ? `<div>${escapeHtml(row.owner_name)}</div>` : ''}
+            ${row.owner_email ? `<div class="text-xs text-slate-400">${escapeHtml(row.owner_email)}</div>` : (row.owner_name ? '' : '<span class="text-slate-300">—</span>')}
+          </td>
           <td class="px-3 py-2">${escapeHtml(row.status)}</td>
           <td class="px-3 py-2 text-right">${row.member_count} / ${row.department_count}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap">${centsOrBytesToSize(totalBytes)}</td>
           <td class="px-3 py-2 text-slate-500">${row.last_active_at ? new Date(row.last_active_at).toLocaleDateString() : '—'}</td>
           <td class="px-3 py-2 whitespace-nowrap">${promoCell}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap space-x-3">
+            <button type="button" data-action="users" class="text-xs text-slate-600 hover:text-slate-800 font-medium">${t('siteAdmin.colUsers')}</button>
             ${isDeleted
               ? `<button type="button" data-action="restore" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">${t('siteAdmin.restore')}</button>`
               : `
@@ -486,6 +499,13 @@ export async function renderSiteAdminTab() {
       `;
     }).join('');
 
+    rowsEl.querySelectorAll('[data-action="users"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.closest('[data-row-id]').dataset.rowId;
+        const tenantRow = (tenants || []).find((row) => row.id === id);
+        if (tenantRow) openChurchUsers(tenantRow);
+      });
+    });
     rowsEl.querySelectorAll('[data-action="delete"]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const row = btn.closest('[data-row-id]');
@@ -531,6 +551,114 @@ export async function renderSiteAdminTab() {
         loadChurches();
       });
     });
+  }
+
+  // Per-church user list for support -- so a Site Admin can actually
+  // find a member to help with (reset their password, answer a
+  // question about their account) without View-As, which only works
+  // inside your own tenant. Built fresh every open() rather than kept
+  // as a persistent modal -- this is a rarely-opened, read-mostly
+  // drill-down, not worth the extra state to keep in sync with
+  // whichever church was last viewed.
+  async function openChurchUsers(tenantRow) {
+    if (!churchUsersModal) churchUsersModal = buildChurchUsersModal();
+    churchUsersModal.open(tenantRow);
+  }
+
+  function buildChurchUsersModal() {
+    const root = document.createElement('div');
+    root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
+    root.innerHTML = `
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold" data-el="title"></h2>
+          <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div data-el="body"></div>
+      </div>
+    `;
+    document.body.appendChild(root);
+
+    const titleEl = root.querySelector('[data-el="title"]');
+    const bodyEl = root.querySelector('[data-el="body"]');
+    root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
+    root.addEventListener('click', (e) => { if (e.target === root) close(); });
+
+    if (!siteAdminResetPasswordModal) {
+      siteAdminResetPasswordModal = createResetPasswordModal({ supabase, functionName: 'site-admin-reset-password' });
+    }
+
+    async function open(tenantRow) {
+      titleEl.textContent = t('siteAdmin.usersModalTitle', { name: tenantRow.name });
+      bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
+      root.classList.remove('hidden');
+      root.classList.add('flex');
+
+      const { data: users, error } = await supabase.rpc('list_tenant_users_for_site_admin', { p_tenant_id: tenantRow.id });
+      if (error) {
+        bodyEl.innerHTML = `<p class="text-sm text-rose-600">${t('siteAdmin.loadFailed', { message: error.message })}</p>`;
+        return;
+      }
+      if (!users || users.length === 0) {
+        bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('siteAdmin.usersModalNone')}</p>`;
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.className = 'w-full text-sm';
+      table.innerHTML = `
+        <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+          <tr>
+            <th class="text-left px-3 py-2">${t('siteAdmin.usersColName')}</th>
+            <th class="text-left px-3 py-2">${t('siteAdmin.usersColContact')}</th>
+            <th class="text-left px-3 py-2">${t('siteAdmin.usersColDepartments')}</th>
+            <th class="text-left px-3 py-2">${t('siteAdmin.usersColLastLogin')}</th>
+            <th class="text-left px-3 py-2"></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      `;
+      const tbody = table.querySelector('tbody');
+      tbody.innerHTML = users.map((u) => {
+        const badges = [
+          u.global_role ? `<span class="ml-1 text-xs font-medium text-indigo-600">(${escapeHtml(u.global_role)})</span>` : '',
+          u.is_silent ? `<span class="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500">${t('users.silentBadge')}</span>` : '',
+          u.removed_at ? `<span class="ml-1 px-1.5 py-0.5 rounded text-xs bg-rose-50 text-rose-600">${t('siteAdmin.usersRemovedBadge')}</span>` : '',
+        ].join('');
+        return `
+          <tr class="border-b border-slate-100" data-user-id="${u.id}">
+            <td class="px-3 py-2 font-medium text-slate-800 whitespace-nowrap">${escapeHtml(u.full_name)}${badges}</td>
+            <td class="px-3 py-2 text-slate-600">
+              ${u.email ? `<div>${escapeHtml(u.email)}</div>` : ''}
+              ${u.phone ? `<div class="text-xs text-slate-400">${escapeHtml(u.phone)}</div>` : ''}
+            </td>
+            <td class="px-3 py-2 text-slate-500">${u.departments ? escapeHtml(u.departments) : '—'}</td>
+            <td class="px-3 py-2 text-slate-500 whitespace-nowrap">${u.last_sign_in_at ? formatDate(u.last_sign_in_at) : '—'}</td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <button type="button" data-action="reset-password" class="text-xs font-medium text-indigo-600 hover:text-indigo-800">${t('users.resetPassword')}</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.querySelectorAll('[data-action="reset-password"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const row = btn.closest('[data-user-id]');
+          const u = users.find((candidate) => candidate.id === row.dataset.userId);
+          if (u) siteAdminResetPasswordModal.open(u);
+        });
+      });
+
+      bodyEl.innerHTML = '';
+      bodyEl.appendChild(table);
+    }
+
+    function close() {
+      root.classList.add('hidden');
+      root.classList.remove('flex');
+    }
+
+    return { open };
   }
 
   // ---- Promo Codes (SAAS only -- billing is SAAS-only, see

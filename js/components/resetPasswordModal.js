@@ -5,9 +5,15 @@
 // Calls the admin-reset-password Edge Function (supabase/functions/)
 // since setting another user's password needs the service-role key,
 // which never ships to the browser.
+//
+// functionName lets siteAdminPage.js reuse this exact same UI for its
+// own cross-tenant version (site-admin-reset-password/index.ts) --
+// deliberately a separate Edge Function with its own Site-Admin-only
+// gate and audit log, not a bypass flag on this one; see that
+// function's own header comment for why.
 import { t } from '../i18n.js';
 
-export function createResetPasswordModal({ supabase }) {
+export function createResetPasswordModal({ supabase, functionName = 'admin-reset-password' }) {
   const root = document.createElement('div');
   root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
   root.innerHTML = `
@@ -84,7 +90,7 @@ export function createResetPasswordModal({ supabase }) {
     statusEl.className = 'text-sm text-slate-500';
     statusEl.textContent = t('common.loading');
 
-    const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+    const { data, error } = await supabase.functions.invoke(functionName, {
       body: { target_user_id: targetUserId, new_password: newPassword || undefined },
     });
 
