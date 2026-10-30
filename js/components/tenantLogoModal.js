@@ -34,18 +34,39 @@ export function createTenantLogoModal({ supabase, tenantId, userId, onSaved, onE
   async function load() {
     bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
     const [{ data, error }] = await Promise.all([
-      supabase.from('tenants').select('logo_url, address, email, phone, denomination_id').eq('id', tenantId).single(),
+      supabase.from('tenants').select('name, logo_url, address, email, phone, denomination_id').eq('id', tenantId).single(),
       loadMyDenominationInfo(userId),
     ]);
     if (error) {
       bodyEl.innerHTML = `<p class="text-sm text-rose-600">${t('logo.failedToLoad', { message: error.message })}</p>`;
       return;
     }
-    render(data?.logo_url || null, data?.address || '', data?.email || '', data?.phone || '', data?.denomination_id || null);
+    render(data?.name || '', data?.logo_url || null, data?.address || '', data?.email || '', data?.phone || '', data?.denomination_id || null);
   }
 
-  function render(logoUrl, address, email, phone, denominationId) {
+  function render(name, logoUrl, address, email, phone, denominationId) {
     bodyEl.innerHTML = '';
+
+    // Only name and logo_url are self-service on this table (see
+    // sql/saas_platform/09_tenant_logo.sql's own RLS + trigger-guard
+    // comment) -- status/trial_ends_at/plan_id/slug stay off-limits.
+    // The URL slug is deliberately never derived from this again after
+    // signup, so renaming here never changes anyone's login link.
+    const nameSection = document.createElement('div');
+    nameSection.className = 'mb-6 pb-6 border-b border-slate-200';
+    nameSection.innerHTML = `
+      <label class="block text-sm font-medium text-slate-600 mb-1">${t('logo.nameLabel')}</label>
+      <input type="text" data-el="name-input" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2" value="${escapeAttr(name)}" />
+      <p data-el="name-status" class="text-sm mb-2"></p>
+      <button type="button" data-action="save-name" class="w-full px-4 py-2 rounded-lg bg-slate-700 text-white font-medium hover:bg-slate-800 disabled:opacity-50">
+        ${t('logo.saveNameButton')}
+      </button>
+    `;
+    bodyEl.appendChild(nameSection);
+    const nameInput = nameSection.querySelector('[data-el="name-input"]');
+    const nameStatusEl = nameSection.querySelector('[data-el="name-status"]');
+    const saveNameBtn = nameSection.querySelector('[data-action="save-name"]');
+    saveNameBtn.addEventListener('click', () => saveName(nameInput, nameStatusEl, saveNameBtn));
 
     if (logoUrl) {
       const preview = document.createElement('img');
@@ -259,6 +280,31 @@ export function createTenantLogoModal({ supabase, tenantId, userId, onSaved, onE
     statusEl.className = 'text-sm text-emerald-600 mb-2';
     statusEl.textContent = t('extensions.grantSucceeded', { name: member.full_name });
     emailInput.value = '';
+  }
+
+  async function saveName(nameInput, statusEl, button) {
+    const name = nameInput.value.trim();
+    if (!name) {
+      statusEl.className = 'text-sm text-rose-600 mb-2';
+      statusEl.textContent = t('logo.nameRequired');
+      return;
+    }
+
+    button.disabled = true;
+    statusEl.className = 'text-sm text-slate-500 mb-2';
+    statusEl.textContent = t('common.saving');
+
+    const { error } = await supabase.from('tenants').update({ name }).eq('id', tenantId);
+    button.disabled = false;
+    if (error) {
+      statusEl.className = 'text-sm text-rose-600 mb-2';
+      statusEl.textContent = t('logo.nameSaveFailed', { message: error.message });
+      return;
+    }
+
+    statusEl.className = 'text-sm text-emerald-600 mb-2';
+    statusEl.textContent = t('logo.nameSaved');
+    onSaved?.();
   }
 
   async function saveContactInfo(addressInput, emailInput, phoneInput, statusEl, button) {
