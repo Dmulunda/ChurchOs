@@ -1,1 +1,1 @@
-{"version": "2026-10-31T09:00:00Z", "critical": false, "notes": {"en": ["Added a public Privacy Policy page (bilingual EN/FR), linked from the nav bar beside Pricing and from the footer."], "fr": ["Ajout d'une page publique de politique de confidentialité (bilingue EN/FR), accessible depuis la barre de navigation à côté de Tarifs et depuis le pied de page."]}}
+{"version": "2026-10-31T09:15:00Z", "critical": false, "notes": {"en": [], "fr": []}}
