@@ -82,23 +82,21 @@ Deno.serve(async (req) => {
   }
 
   // Referral bonus (sql/saas_platform/118_referral_program.sql): a referred
-  // church's first real invoice qualifies its referrer for a one-time 50%
-  // off their own next bill. billing_reason === 'subscription_create' is
-  // Stripe's own precise marker for "this subscription's first invoice" --
-  // distinct from a trial ending into paid billing with no card charge yet
-  // (amount_paid === 0) and from every later renewal (billing_reason
-  // 'subscription_cycle').
-  const REFERRAL_COUPON_ID = 'referral_bonus_50_once';
-  async function ensureReferralCoupon() {
-    try {
-      await stripe.coupons.create({ id: REFERRAL_COUPON_ID, percent_off: 50, duration: 'once', name: 'Referral bonus -- 50% off next invoice' });
-    } catch (err) {
-      // Stripe's "already exists" error -- expected on every call after the
-      // first; self-provisioning this way avoids a manual Dashboard step.
-      if (!(err?.code === 'resource_already_exists' || /already exists/i.test(err?.message || ''))) throw err;
-    }
-  }
-
+  // church's first real invoice qualifies its referrer for a one-time
+  // discount off their own next bill. billing_reason ===
+  // 'subscription_create' is Stripe's own precise marker for "this
+  // subscription's first invoice" -- distinct from a trial ending into
+  // paid billing with no card charge yet (amount_paid === 0) and from
+  // every later renewal (billing_reason 'subscription_cycle').
+  //
+  // The coupon applied is NOT self-provisioned here -- it's a real promo
+  // code created the normal way (Site Admin -> Promo Codes ->
+  // stripe-billing's create_promo_code, same Coupon+PromotionCode objects
+  // every other promo code uses), with is_referral_bonus flagged true on
+  // exactly one row (119_referral_bonus_promo_code.sql, set via the "Use
+  // for referral bonus" button in that same screen). This function only
+  // reads that row's stripe_coupon_id; it never talks to the Stripe
+  // coupons API itself.
   async function applyReferralBonusIfQualified(stripeSubscriptionId) {
     const { data: referredTenant } = await admin.from('tenants').select('id').eq('stripe_subscription_id', stripeSubscriptionId).maybeSingle();
     if (!referredTenant) return;
@@ -116,8 +114,15 @@ Deno.serve(async (req) => {
       return;
     }
 
-    await ensureReferralCoupon();
-    await stripe.subscriptions.update(referrerTenant.stripe_subscription_id, { coupon: REFERRAL_COUPON_ID });
+    const { data: bonusPromo } = await admin.from('promo_codes').select('stripe_coupon_id').eq('is_referral_bonus', true).eq('status', 'active').maybeSingle();
+    if (!bonusPromo?.stripe_coupon_id) {
+      // No promo code has been flagged as the referral bonus yet (Site
+      // Admin -> Promo Codes) -- left at 'qualified' so it still applies
+      // once one is, instead of silently dropping it.
+      return;
+    }
+
+    await stripe.subscriptions.update(referrerTenant.stripe_subscription_id, { coupon: bonusPromo.stripe_coupon_id });
     await admin.from('referrals').update({ status: 'applied', applied_at: new Date().toISOString() }).eq('id', referral.id);
   }
 

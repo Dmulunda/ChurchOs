@@ -783,7 +783,10 @@ export async function renderSiteAdminTab() {
       const usesLabel = c.usage_limit != null ? `${c.redemptionCount} / ${c.usage_limit}` : `${c.redemptionCount}`;
       return `
         <tr class="border-b border-slate-100" data-promo-id="${c.id}">
-          <td class="px-3 py-2 font-mono font-medium text-slate-800">${escapeHtml(c.code)}</td>
+          <td class="px-3 py-2 font-mono font-medium text-slate-800">
+            ${escapeHtml(c.code)}
+            ${c.is_referral_bonus ? `<span class="ml-1 text-xs font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">${t('siteAdmin.promoReferralBonusBadge')}</span>` : ''}
+          </td>
           <td class="px-3 py-2">${c.discount_percent}%</td>
           <td class="px-3 py-2 text-slate-600">${escapeHtml(plansLabel)}</td>
           <td class="px-3 py-2 text-slate-600">${durationLabel}</td>
@@ -794,7 +797,8 @@ export async function renderSiteAdminTab() {
           <td class="px-3 py-2 text-right">${formatCents(c.totalDiscountCents)}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap">
             <button type="button" data-action="view-redemptions" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium mr-2">${t('siteAdmin.promoViewUses')}</button>
-            <button type="button" data-action="toggle-status" class="text-xs ${c.status === 'active' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} font-medium">${c.status === 'active' ? t('siteAdmin.promoPause') : t('siteAdmin.promoResume')}</button>
+            <button type="button" data-action="toggle-status" class="text-xs ${c.status === 'active' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} font-medium mr-2">${c.status === 'active' ? t('siteAdmin.promoPause') : t('siteAdmin.promoResume')}</button>
+            ${c.is_referral_bonus ? '' : `<button type="button" data-action="set-referral-bonus" class="text-xs text-slate-500 hover:text-indigo-700 font-medium">${t('siteAdmin.promoUseForReferral')}</button>`}
           </td>
         </tr>
       `;
@@ -809,6 +813,22 @@ export async function renderSiteAdminTab() {
         btn.disabled = true;
         const { data: res, error: err } = await supabase.functions.invoke('stripe-billing', { body: { action: 'update_promo_code_status', promo_code_id: id, status: newStatus } });
         if (err || res?.error) { window.alert(res?.error || await extractFunctionErrorMessage(err)); btn.disabled = false; return; }
+        loaded['promo-codes'] = false;
+        loadPromoCodes();
+      });
+    });
+
+    // Flags this row as the one stripe-webhook's referral-bonus handler
+    // applies (119_referral_bonus_promo_code.sql) -- a plain DB write, no
+    // Stripe call, since the Coupon/PromotionCode already exist from this
+    // code's own creation. Re-renders the whole list so the flag (and the
+    // button it replaces) moves to the right row immediately.
+    rowsEl.querySelectorAll('[data-action="set-referral-bonus"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.closest('[data-promo-id]').dataset.promoId;
+        btn.disabled = true;
+        const { error } = await supabase.rpc('set_referral_bonus_promo_code', { p_promo_code_id: id });
+        if (error) { window.alert(error.message); btn.disabled = false; return; }
         loaded['promo-codes'] = false;
         loadPromoCodes();
       });
