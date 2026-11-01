@@ -32,6 +32,16 @@ onLangChange(() => {
 
 init();
 
+// A church sharing its referral link (js/components/referralModal.js)
+// points here as index.html?ref=<code>. Every "Get Started" link on this
+// page -- the static header/hero ones in index.html, and the ones the
+// pricing table renders below -- needs to carry that code through to
+// authScreen.js's signup form, or it's silently lost.
+function getStartedHref() {
+  const ref = new URLSearchParams(window.location.search).get('ref');
+  return ref ? `app.html?mode=new-church&ref=${encodeURIComponent(ref)}` : 'app.html?mode=new-church';
+}
+
 async function init() {
   // Best-effort, same as publicBooking.js -- menu_labels has never been
   // read by an anonymous visitor before now; the built-in TRANSLATIONS
@@ -41,6 +51,8 @@ async function init() {
     await loadLabelOverrides();
   } catch { /* fall through to built-in translations */ }
   applyStaticTranslations();
+
+  document.querySelectorAll('a[href="app.html?mode=new-church"]').forEach((a) => { a.href = getStartedHref(); });
 
   renderFeatures();
   loadPricing();
@@ -119,7 +131,7 @@ function renderPricing() {
       : '';
     return `<div class="font-bold text-slate-900">${formatPlanPrice(plan.price_cents, plan.billing_interval)}</div>${monthlyEquivalent}`;
   });
-  const actionCellsHtml = plans.map(() => `<a href="app.html?mode=new-church" class="inline-block px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">${escapeHtml(t('welcome.getStarted'))}</a>`);
+  const actionCellsHtml = plans.map(() => `<a href="${getStartedHref()}" class="inline-block px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">${escapeHtml(t('welcome.getStarted'))}</a>`);
 
   grid.innerHTML = `<div class="overflow-x-auto">${renderComparisonTable({ plans, currentPlanId: null, priceCellsHtml, actionCellsHtml })}</div>`;
 }

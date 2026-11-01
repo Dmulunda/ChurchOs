@@ -38,6 +38,7 @@ import { createRulesModal } from './components/rulesModal.js';
 import { createTenantLogoModal } from './components/tenantLogoModal.js';
 import { createPlansModal } from './components/plansModal.js';
 import { createInviteLinkModal } from './components/inviteLinkModal.js';
+import { createReferralModal } from './components/referralModal.js';
 import { createChurchAdminManagerModal } from './components/churchAdminManager.js';
 import { createMonthlyReportModal } from './components/monthlyReportModal.js';
 import { createAttendanceManagerModal } from './components/attendanceManager.js';
@@ -1178,6 +1179,7 @@ function updateSidebarToolsSelect() {
   if (getGlobalRole() === 'super_admin' && !isViewingAs()) options.push({ value: 'plans', label: t('plans.title') });
   if ((getGlobalRole() === 'super_admin' || isGlobalSuperAdminForAnyDenomination()) && !isViewingAs()) options.push({ value: 'church-logo', label: t('sidebar.churchLogo') });
   if (getGlobalRole() === 'super_admin' && !isViewingAs()) options.push({ value: 'invite-link', label: t('invite.title') });
+  if (getGlobalRole() === 'super_admin' && !isViewingAs()) options.push({ value: 'referral', label: t('referral.title') });
   if (getGlobalRole() === 'super_admin' && !isViewingAs()) options.push({ value: 'manage-church-admins', label: t('sidebar.manageChurchAdmins') });
   if (!isViewingAs()) options.push({ value: 'change-password', label: t('sidebar.changePassword') });
   if (!isViewingAs()) options.push({ value: 'my-profile', label: t('sidebar.myProfile') });
@@ -1273,6 +1275,8 @@ function runSidebarTool(value) {
     openPlansModal();
   } else if (value === 'invite-link') {
     createInviteLinkModal({ supabase: effectiveSupabase, tenantId: getTenantId(), tenantSlug: getTenant()?.slug }).open();
+  } else if (value === 'referral') {
+    createReferralModal({ supabase: effectiveSupabase, referralCode: getTenant()?.referral_code }).open();
   } else if (value === 'manage-church-admins') {
     createChurchAdminManagerModal({ supabase: effectiveSupabase }).open();
   } else if (value === 'church-logo') {

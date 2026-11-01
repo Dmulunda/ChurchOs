@@ -198,6 +198,13 @@ export function renderAuthScreen(container, { supabase }) {
   const requestedMode = new URLSearchParams(window.location.search).get('mode');
   setMode(requestedMode === 'new-church' ? 'new-church' : 'login');
 
+  // ?ref=<code> is the church-to-church referral code from a shared
+  // referral link (js/components/referralModal.js), forwarded here by
+  // welcomePage.js's "Get Started" links. Only meaningful for a brand-new
+  // church (mode === 'new-church'); recorded best-effort below, same as
+  // claim_tenant_admin() -- a bad or missing code must never block signup.
+  const referralCode = new URLSearchParams(window.location.search).get('ref');
+
   const joinSlug = new URLSearchParams(window.location.search).get('join');
   if (joinSlug) {
     supabase.rpc('get_tenant_by_slug', { p_slug: joinSlug }).then(({ data, error }) => {
@@ -358,6 +365,10 @@ export function renderAuthScreen(container, { supabase }) {
         // it'll catch up on the next profile refresh.
         const { error: claimError } = await supabase.rpc('claim_tenant_admin');
         if (claimError) console.error('claim_tenant_admin failed:', claimError.message);
+        if (referralCode) {
+          const { error: referralError } = await supabase.rpc('record_referral', { p_referral_code: referralCode });
+          if (referralError) console.error('record_referral failed:', referralError.message);
+        }
         // onAuthStateChange in app.js takes over the screen underneath
         // from here, same as always -- the plan picker is just an
         // overlay on top of it. Skipping (or Stripe Checkout itself

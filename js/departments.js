@@ -26,11 +26,16 @@ export const DEPARTMENT_KEYS = [
 ];
 
 // Mirrors sql/saas_platform/86_pricing_v2.sql's is_core_department_key()
-// exactly -- the 7 departments a Basic-plan SAAS tenant can use.
-// Main has no plans at all, so this constant is simply unused there
-// (loadMyDepartments()'s allowedDepartmentKeys param defaults to
-// undefined/no filter, same as every call site that doesn't pass it).
-export const CORE_DEPARTMENT_KEYS = ['media_tech', 'preaching', 'finance', 'ushers', 'ecodem', 'choir', 'cleaning'];
+// exactly -- the departments a Basic-plan SAAS tenant can use (the original
+// 7, plus church_program/welcoming_socialisation added in 116_core_
+// departments_basic_fix.sql). Main has no plans at all, so this constant is
+// simply unused there (loadMyDepartments()'s allowedDepartmentKeys param
+// defaults to undefined/no filter, same as every call site that doesn't
+// pass it).
+export const CORE_DEPARTMENT_KEYS = [
+  'media_tech', 'preaching', 'finance', 'ushers', 'ecodem', 'choir', 'cleaning',
+  'church_program', 'welcoming_socialisation',
+];
 
 let myDepartments = null; // [{ id, key, name, kind, meeting_link, role }] — synthesized: role is the global role string for a global-role holder, else their real department_role
 let literalDepartments = null; // the same shape, but always from their real department_memberships rows, ignoring any global role — what "Standard User Mode" below shows

@@ -14,8 +14,12 @@
 // Then register the deployed URL as a Stripe webhook endpoint (Stripe
 // Dashboard -> Developers -> Webhooks), listening for at least:
 //   checkout.session.completed, customer.subscription.updated,
-//   customer.subscription.deleted
-// which gives you the signing secret to set below.
+//   customer.subscription.deleted, invoice.paid
+// which gives you the signing secret to set below. invoice.paid is new as
+// of the referral-bonus feature (sql/saas_platform/118_referral_program.sql)
+// -- an existing webhook endpoint registered before this needs that event
+// added to its subscribed-events list in the Dashboard, or referral bonuses
+// will never fire (code alone can't add it).
 //
 // Needs two secrets — Dashboard -> Edge Functions -> stripe-webhook -> Secrets:
 //   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
@@ -77,6 +81,46 @@ Deno.serve(async (req) => {
     return plan?.id ?? null;
   }
 
+  // Referral bonus (sql/saas_platform/118_referral_program.sql): a referred
+  // church's first real invoice qualifies its referrer for a one-time 50%
+  // off their own next bill. billing_reason === 'subscription_create' is
+  // Stripe's own precise marker for "this subscription's first invoice" --
+  // distinct from a trial ending into paid billing with no card charge yet
+  // (amount_paid === 0) and from every later renewal (billing_reason
+  // 'subscription_cycle').
+  const REFERRAL_COUPON_ID = 'referral_bonus_50_once';
+  async function ensureReferralCoupon() {
+    try {
+      await stripe.coupons.create({ id: REFERRAL_COUPON_ID, percent_off: 50, duration: 'once', name: 'Referral bonus -- 50% off next invoice' });
+    } catch (err) {
+      // Stripe's "already exists" error -- expected on every call after the
+      // first; self-provisioning this way avoids a manual Dashboard step.
+      if (!(err?.code === 'resource_already_exists' || /already exists/i.test(err?.message || ''))) throw err;
+    }
+  }
+
+  async function applyReferralBonusIfQualified(stripeSubscriptionId) {
+    const { data: referredTenant } = await admin.from('tenants').select('id').eq('stripe_subscription_id', stripeSubscriptionId).maybeSingle();
+    if (!referredTenant) return;
+
+    const { data: referral } = await admin.from('referrals').select('id, referrer_tenant_id').eq('referred_tenant_id', referredTenant.id).eq('status', 'pending').maybeSingle();
+    if (!referral) return;
+
+    await admin.from('referrals').update({ status: 'qualified', qualified_at: new Date().toISOString() }).eq('id', referral.id);
+
+    const { data: referrerTenant } = await admin.from('tenants').select('stripe_subscription_id').eq('id', referral.referrer_tenant_id).maybeSingle();
+    if (!referrerTenant?.stripe_subscription_id) {
+      // Referrer has no active Stripe subscription yet (e.g. still on
+      // trial) -- nothing to apply a coupon to. Left at 'qualified'; no
+      // retry sweep in this version.
+      return;
+    }
+
+    await ensureReferralCoupon();
+    await stripe.subscriptions.update(referrerTenant.stripe_subscription_id, { coupon: REFERRAL_COUPON_ID });
+    await admin.from('referrals').update({ status: 'applied', applied_at: new Date().toISOString() }).eq('id', referral.id);
+  }
+
   try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
@@ -131,6 +175,11 @@ Deno.serve(async (req) => {
         p_plan_id: null,
         p_current_period_end: null,
       });
+    } else if (event.type === 'invoice.paid') {
+      const invoice = event.data.object;
+      if (invoice.billing_reason === 'subscription_create' && invoice.amount_paid > 0 && invoice.subscription) {
+        await applyReferralBonusIfQualified(invoice.subscription);
+      }
     }
     // Any other event type: acknowledged (200) without action -- Stripe
     // retries on non-2xx, and this app doesn't need every event kind.

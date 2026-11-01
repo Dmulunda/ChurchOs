@@ -594,13 +594,21 @@ export async function renderSiteAdminTab() {
       root.classList.remove('hidden');
       root.classList.add('flex');
 
-      const { data: users, error } = await supabase.rpc('list_tenant_users_for_site_admin', { p_tenant_id: tenantRow.id });
+      const [{ data: users, error }, { data: overrides, error: overridesError }] = await Promise.all([
+        supabase.rpc('list_tenant_users_for_site_admin', { p_tenant_id: tenantRow.id }),
+        supabase.rpc('list_tenant_feature_overrides_for_site_admin', { p_tenant_id: tenantRow.id }),
+      ]);
       if (error) {
         bodyEl.innerHTML = `<p class="text-sm text-rose-600">${t('siteAdmin.loadFailed', { message: error.message })}</p>`;
         return;
       }
+
+      const featuresBlock = buildFeatureOverridesBlock(tenantRow.id, overridesError ? [] : (overrides || []));
+
       if (!users || users.length === 0) {
-        bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('siteAdmin.usersModalNone')}</p>`;
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(featuresBlock);
+        bodyEl.insertAdjacentHTML('beforeend', `<p class="text-sm text-slate-500 mt-4">${t('siteAdmin.usersModalNone')}</p>`);
         return;
       }
 
@@ -650,12 +658,55 @@ export async function renderSiteAdminTab() {
       });
 
       bodyEl.innerHTML = '';
+      bodyEl.appendChild(featuresBlock);
       bodyEl.appendChild(table);
     }
 
     function close() {
       root.classList.add('hidden');
       root.classList.remove('flex');
+    }
+
+    // One row per catalog feature, with a 3-way select (Plan default /
+    // Force on / Force off) that calls the override RPC immediately on
+    // change -- same immediate-effect pattern as this modal's own Reset
+    // Password button, rather than a form+save step.
+    function buildFeatureOverridesBlock(tenantId, overrides) {
+      const wrap = document.createElement('div');
+      wrap.className = 'mb-5 pb-4 border-b border-slate-200';
+      wrap.innerHTML = `<h3 class="text-sm font-semibold text-slate-700 mb-2">${t('siteAdmin.featureOverridesTitle')}</h3>`;
+      if (!overrides.length) {
+        wrap.insertAdjacentHTML('beforeend', `<p class="text-xs text-slate-400">${t('siteAdmin.featureOverridesUnavailable')}</p>`);
+        return wrap;
+      }
+      const list = document.createElement('div');
+      list.className = 'space-y-1.5';
+      list.innerHTML = overrides.map((f) => `
+        <div class="flex items-center justify-between gap-3 text-sm" data-feature-row="${escapeHtml(f.feature_key)}">
+          <span class="text-slate-600">${escapeHtml(f.feature_name)}</span>
+          <select data-action="feature-override" class="border border-slate-300 rounded-lg px-2 py-1 text-xs">
+            <option value="" ${f.granted === null ? 'selected' : ''}>${t('siteAdmin.featureOverridePlanDefault')}</option>
+            <option value="true" ${f.granted === true ? 'selected' : ''}>${t('siteAdmin.featureOverrideForceOn')}</option>
+            <option value="false" ${f.granted === false ? 'selected' : ''}>${t('siteAdmin.featureOverrideForceOff')}</option>
+          </select>
+        </div>
+      `).join('');
+      wrap.appendChild(list);
+
+      list.querySelectorAll('[data-action="feature-override"]').forEach((select) => {
+        select.addEventListener('change', async () => {
+          const featureKey = select.closest('[data-feature-row]').dataset.featureRow;
+          select.disabled = true;
+          if (select.value === '') {
+            await supabase.rpc('clear_tenant_feature_override_for_site_admin', { p_tenant_id: tenantId, p_feature_key: featureKey });
+          } else {
+            await supabase.rpc('set_tenant_feature_override_for_site_admin', { p_tenant_id: tenantId, p_feature_key: featureKey, p_granted: select.value === 'true' });
+          }
+          select.disabled = false;
+        });
+      });
+
+      return wrap;
     }
 
     return { open };
