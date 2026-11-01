@@ -156,7 +156,7 @@ begin
     ('ecodem', 'Sunday School', 'lightweight', v_id),
     ('evangelism', 'Evangelism', 'lightweight', v_id),
     ('welcoming_socialisation', 'Welcoming and Socialisation', 'lightweight', v_id),
-    ('grand_jeunes_couples', 'Grand Jeune and Couple', 'lightweight', v_id),
+    ('grand_jeunes_couples', 'Youth and Couple', 'lightweight', v_id),
     ('finance', 'Finance', 'lightweight', v_id);
 
   insert into public.projection_themes (tenant_id, category, name, text_color, background_type, background_value, is_default) values

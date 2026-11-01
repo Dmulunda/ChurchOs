@@ -50,7 +50,7 @@ begin
     ('ecodem', 'Sunday School', 'lightweight', v_id),
     ('evangelism', 'Evangelism', 'lightweight', v_id),
     ('welcoming_socialisation', 'Welcoming and Socialisation', 'lightweight', v_id),
-    ('grand_jeunes_couples', 'Grand Jeune and Couple', 'lightweight', v_id),
+    ('grand_jeunes_couples', 'Youth and Couple', 'lightweight', v_id),
     ('finance', 'Finance', 'lightweight', v_id);
 
   return v_id;
