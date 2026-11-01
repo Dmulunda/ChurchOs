@@ -67,7 +67,6 @@ export function renderAttendanceManager(container, { supabase, currentUserId }) 
         <select data-el="guest-referral" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
           <option value="">${t('attendance.guestReferralPlaceholder')}</option>
           <option value="social_media">${t('attendance.referral.social_media')}</option>
-          <option value="vpd_elsewhere">${t('attendance.referral.vpd_elsewhere')}</option>
           <option value="word_of_mouth">${t('attendance.referral.word_of_mouth')}</option>
         </select>
 

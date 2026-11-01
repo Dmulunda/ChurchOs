@@ -26,7 +26,7 @@ import { supabase } from './supabaseClient.js';
 import { loadLabelOverrides, applyStaticTranslations, t } from './i18n.js';
 
 const SERVICE_TYPES = ['sunday_service', 'midweek_service', 'special_service'];
-const REFERRAL_SOURCES = ['social_media', 'vpd_elsewhere', 'word_of_mouth'];
+const REFERRAL_SOURCES = ['social_media', 'word_of_mouth'];
 const AGE_RANGES = ['under_18', '18_29', '30_40', '40_50', '50_plus'];
 
 function todayLocalDate() {
