@@ -171,6 +171,11 @@ function updateRoleBadge() {
   else if (denomRole === 'general_overseer') parts.push(t('extensions.badgeGeneralOverseer'));
   else if (denomRole === 'general_secretary') parts.push(t('extensions.badgeGeneralSecretary'));
 
+  // Site Admin (public.platform_admins) is a platform-wide role, entirely
+  // separate from the tenant-scoped roles above -- someone can hold both,
+  // so this is additive, never a replacement for the parts already built.
+  if (getIsSiteAdmin()) parts.push(t('sidebar.siteAdminBadge'));
+
   const text = [...new Set(parts)].join(' · ');
   forEachNavGroup('current-user-role-badge', (el) => {
     el.textContent = text;
@@ -1024,6 +1029,7 @@ accountMenuDialog.addEventListener('click', (e) => {
   if (actionBtn?.dataset.accountAction === 'my-profile') runSidebarTool('my-profile');
   else if (actionBtn?.dataset.accountAction === 'change-password') runSidebarTool('change-password');
   else if (actionBtn?.dataset.accountAction === 'view-as') openViewAsPicker();
+  else if (actionBtn?.dataset.accountAction === 'churchonpoint') runSidebarTool('churchonpoint');
   if (actionBtn) closeAccountMenu();
 });
 
@@ -1183,6 +1189,7 @@ function updateSidebarToolsSelect() {
   if (getGlobalRole() === 'super_admin' && !isViewingAs()) options.push({ value: 'manage-church-admins', label: t('sidebar.manageChurchAdmins') });
   if (!isViewingAs()) options.push({ value: 'change-password', label: t('sidebar.changePassword') });
   if (!isViewingAs()) options.push({ value: 'my-profile', label: t('sidebar.myProfile') });
+  options.push({ value: 'churchonpoint', label: t('sidebar.backToChurchonpoint') });
   if (!isViewingAs()) options.push({ value: 'my-letters', label: t('sidebar.myLetters') });
   if (getGlobalRole() === 'pastor_admin' || getGlobalRole() === 'super_admin') {
     options.push({ value: 'disciplinary-letters', label: t('sidebar.disciplinaryLetters') });
@@ -1254,7 +1261,9 @@ function runSidebarTool(value) {
   const active = getActiveDepartment();
   const effectiveSupabase = getEffectiveSupabase();
 
-  if (value === 'change-password') {
+  if (value === 'churchonpoint') {
+    window.open('https://www.churchonpoint.com', '_blank', 'noopener');
+  } else if (value === 'change-password') {
     createChangePasswordModal({ supabase: effectiveSupabase }).open();
   } else if (value === 'my-profile') {
     createMyProfileModal({ supabase: effectiveSupabase, userId: currentUserId }).open();
@@ -1816,6 +1825,10 @@ async function showApp(session, { isFreshSignIn = false } = {}) {
   await loadSchoolAdminStatus(session.user.id);
   await loadSiteAdminStatus();
   await loadPlatformOwnerStatus();
+  // getIsSiteAdmin() only resolves after the await above -- the earlier
+  // updateRoleBadge() call (before this status was known) couldn't have
+  // included it yet.
+  updateRoleBadge();
 
   // A fresh sign-in (not a page-refresh session restore) always resets
   // a global-role holder to Super Admin Mode and their Home console —

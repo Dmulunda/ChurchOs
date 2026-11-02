@@ -740,6 +740,8 @@ const TRANSLATIONS = {
     'sidebar.appSuggestion': 'App Suggestion',
     'sidebar.supportRequest': 'Contact Support',
     'sidebar.siteAdmin': 'Site Admin',
+    'sidebar.siteAdminBadge': 'Site Admin',
+    'sidebar.backToChurchonpoint': 'Back to churchonpoint.com',
     'sidebar.pastoralDashboard': 'Pastoral Dashboard',
     'sidebar.owner': 'Owner',
 
@@ -3596,6 +3598,8 @@ const TRANSLATIONS = {
     'sidebar.appSuggestion': "Suggestion pour l'appli",
     'sidebar.supportRequest': 'Contacter le support',
     'sidebar.siteAdmin': 'Admin du site',
+    'sidebar.siteAdminBadge': 'Admin du site',
+    'sidebar.backToChurchonpoint': 'Retour à churchonpoint.com',
     'sidebar.pastoralDashboard': 'Tableau de bord pastoral',
     'sidebar.owner': 'Propriétaire',
 
