@@ -181,6 +181,11 @@ function updateRoleBadge() {
     el.textContent = text;
     el.classList.toggle('hidden', !text);
   });
+
+  // Desktop Account dialog's own Site Admin shortcut button -- the
+  // existing sidebar-tools-select entry (updateSidebarToolsSelect) is
+  // mobile's equivalent path to the same tab.
+  forEachNavGroup('site-admin-wrap', (el) => el.classList.toggle('hidden', !getIsSiteAdmin()));
 }
 
 function escapeHtmlAttr(str) {
@@ -1029,6 +1034,7 @@ accountMenuDialog.addEventListener('click', (e) => {
   if (actionBtn?.dataset.accountAction === 'my-profile') runSidebarTool('my-profile');
   else if (actionBtn?.dataset.accountAction === 'change-password') runSidebarTool('change-password');
   else if (actionBtn?.dataset.accountAction === 'view-as') openViewAsPicker();
+  else if (actionBtn?.dataset.accountAction === 'site-admin') runSidebarTool('site-admin');
   else if (actionBtn?.dataset.accountAction === 'churchonpoint') runSidebarTool('churchonpoint');
   if (actionBtn) closeAccountMenu();
 });
