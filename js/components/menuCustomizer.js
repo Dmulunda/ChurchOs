@@ -55,6 +55,7 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
 
   let overridesByKey = new Map();
   let currentTheme = { ...THEME_DEFAULTS };
+  let iconByKey = new Map();
   let savedAnything = false;
 
   async function open() {
@@ -68,7 +69,7 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
     const [{ data, error }, { data: themeRow, error: themeError }, { data: deptRows }] = await Promise.all([
       supabase.from('menu_labels').select('key, label_en, label_fr'),
       supabase.from('app_theme').select('primary_color, text_color, background_color, font_family').maybeSingle(),
-      supabase.from('departments').select('key').order('key'),
+      supabase.from('departments').select('key, icon').order('key'),
     ]);
     if (error) {
       bodyEl.innerHTML = `<p class="text-sm text-rose-600">${t('menuCustomizer.loadFailed', { message: error.message })}</p>`;
@@ -76,6 +77,7 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
     }
     overridesByKey = new Map((data || []).map((r) => [r.key, r]));
     currentTheme = themeError || !themeRow ? { ...THEME_DEFAULTS } : themeRow;
+    iconByKey = new Map((deptRows || []).map((d) => [d.key, d.icon || '']));
     if (deptRows?.length) {
       const keys = new Set([...DEPARTMENT_KEYS, ...deptRows.map((d) => d.key)]);
       DEPARTMENT_LABEL_KEYS = Array.from(keys).sort().map((key) => `department.${key}`);
@@ -85,7 +87,7 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
       ${renderAppearanceSection()}
       ${renderSection(t('menuCustomizer.sectionNav'), NAV_KEYS)}
       ${renderSection(t('menuCustomizer.sectionSidebar'), SIDEBAR_KEYS)}
-      ${renderSection(t('menuCustomizer.sectionDepartments'), DEPARTMENT_LABEL_KEYS)}
+      ${renderSection(t('menuCustomizer.sectionDepartments'), DEPARTMENT_LABEL_KEYS, { withIcon: true })}
     `;
 
     bodyEl.querySelectorAll('[data-action="reset-row"]').forEach((btn) => {
@@ -170,22 +172,26 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
     `;
   }
 
-  function renderSection(title, keys) {
+  function renderSection(title, keys, { withIcon = false } = {}) {
     return `
       <div class="mb-5">
         <h3 class="text-sm font-semibold text-slate-700 mb-2">${escapeHtml(title)}</h3>
         <div class="space-y-3">
-          ${keys.map((key) => renderRow(key)).join('')}
+          ${keys.map((key) => renderRow(key, withIcon)).join('')}
         </div>
       </div>
     `;
   }
 
-  function renderRow(key) {
+  function renderRow(key, withIcon = false) {
     const builtIn = getBuiltInLabel(key);
     const existing = overridesByKey.get(key);
     const currentEn = existing?.label_en ?? builtIn.en;
     const currentFr = existing?.label_fr ?? builtIn.fr;
+    // Department rows only -- the department.<key>'s key, after the
+    // "department." prefix, maps straight onto departments.icon's key.
+    const deptKey = withIcon ? key.replace(/^department\./, '') : null;
+    const currentIcon = withIcon ? (iconByKey.get(deptKey) ?? '') : '';
     return `
       <div class="grid sm:grid-cols-2 gap-2 border border-slate-200 rounded-lg p-3" data-row="${escapeAttr(key)}">
         <div>
@@ -199,6 +205,12 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
             <button type="button" data-action="reset-row" data-key="${escapeAttr(key)}" class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">${t('menuCustomizer.resetRow')}</button>
           </div>
         </div>
+        ${withIcon ? `
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">${t('menuCustomizer.icon')}</label>
+          <input type="text" data-el="icon-${cssEscape(deptKey)}" data-dept-key="${escapeAttr(deptKey)}" value="${escapeAttr(currentIcon)}" maxlength="8"
+                 class="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center" />
+        </div>` : ''}
       </div>
     `;
   }
@@ -224,17 +236,32 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
       updated_at: new Date().toISOString(),
     };
 
-    const [{ error }, { error: themeError }] = await Promise.all([
+    // Icons live on departments.icon itself (sql/saas_platform/121), not
+    // menu_labels, since they're not translatable text -- only the
+    // rows whose value actually changed get written, each scoped to
+    // this tenant by the same "department admins update their
+    // department" RLS policy a Super Admin always satisfies.
+    const iconUpdates = [];
+    bodyEl.querySelectorAll('[data-dept-key]').forEach((input) => {
+      const deptKey = input.dataset.deptKey;
+      const newIcon = input.value.trim();
+      if (newIcon !== (iconByKey.get(deptKey) ?? '')) iconUpdates.push({ deptKey, icon: newIcon || null });
+    });
+
+    const [{ error }, { error: themeError }, iconResults] = await Promise.all([
       supabase.from('menu_labels').upsert(rows, { onConflict: 'tenant_id,key' }),
       supabase.from('app_theme').upsert(theme, { onConflict: 'tenant_id' }),
+      Promise.all(iconUpdates.map((u) => supabase.from('departments').update({ icon: u.icon }).eq('key', u.deptKey))),
     ]);
-    if (error || themeError) {
+    const iconError = iconResults.find((r) => r.error)?.error;
+    if (error || themeError || iconError) {
       statusEl.className = 'text-sm text-rose-600';
-      statusEl.textContent = t('menuCustomizer.saveFailed', { message: (error || themeError).message });
+      statusEl.textContent = t('menuCustomizer.saveFailed', { message: (error || themeError || iconError).message });
       return;
     }
 
     rows.forEach((r) => setLabelOverride(r.key, r.label_en, r.label_fr));
+    iconUpdates.forEach((u) => iconByKey.set(u.deptKey, u.icon || ''));
     applyAppTheme(theme);
     savedAnything = true;
     statusEl.className = 'text-sm text-emerald-600';
