@@ -58,7 +58,7 @@ export async function renderDeptDashboardTab() {
   container.innerHTML = `
     <div class="flex items-start justify-between flex-wrap gap-3 mb-4">
       <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base shrink-0 bg-indigo-50">${departmentIcon(active.key)}</div>
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base shrink-0 bg-indigo-50">${departmentIcon(active.key, active.icon)}</div>
         <div>
           <h1 class="text-lg sm:text-xl font-bold text-slate-900 leading-tight">${escapeHtml(departmentLabel(active.key))}</h1>
           <div class="text-xs text-slate-400">${escapeHtml(todayFormatted)}</div>

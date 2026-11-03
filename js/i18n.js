@@ -1885,6 +1885,8 @@ const TRANSLATIONS = {
     'createDepartment.intro': 'Adds a new department with the generic announcements + duty-shift board (the same one Social, Ushers, Cleaning, etc. use). Choir and departments with custom tools (Media & Tech, Preaching, Ecodem) still need real code.',
     'createDepartment.name': 'Department name',
     'createDepartment.namePlaceholder': 'e.g. Youth Ministry',
+    'createDepartment.icon': 'Icon (optional)',
+    'createDepartment.iconPlaceholder': '🎵',
     'createDepartment.create': 'Create',
     'createDepartment.creating': 'Creating…',
     'createDepartment.created': '"{name}" created. Reload the app to see it in the department switcher.',
@@ -4743,6 +4745,8 @@ const TRANSLATIONS = {
     'createDepartment.intro': "Ajoute un nouveau département avec le tableau générique d'annonces et de tours de service (le même que Social, Ushers, Ménage, etc.). Le Chœur et les départements avec des outils spécifiques (Média & Technique, Prédication, Ecodem) nécessitent toujours du code.",
     'createDepartment.name': 'Nom du département',
     'createDepartment.namePlaceholder': 'ex. Ministère des jeunes',
+    'createDepartment.icon': 'Icône (facultatif)',
+    'createDepartment.iconPlaceholder': '🎵',
     'createDepartment.create': 'Créer',
     'createDepartment.creating': 'Création…',
     'createDepartment.created': '« {name} » créé. Rechargez l\'application pour le voir dans le sélecteur de département.',
@@ -5805,11 +5809,13 @@ export function departmentLabel(key) {
   return key ? t(`department.${key}`) : key;
 }
 
-// Emoji per department key -- purely a visual lookup (sidebar icon,
-// dashboard header icon), no schema column for it. departments.key is
-// free text, slugified from whatever name an admin picks in
-// createDepartmentModal.js, so this can never be exhaustive --
-// unrecognized keys fall back to a plain building icon.
+// Emoji per department key -- a visual lookup for the built-in
+// departments seeded by sql/014_departments_rbac.sql and friends (these
+// never had a schema column for it). A department created via
+// createDepartmentModal.js has its own free-text `icon` column
+// (sql/saas_platform/121_department_icon.sql) instead -- the admin
+// picks it (or leaves it blank) at creation time, so there's no generic
+// fallback icon for an unrecognized key anymore.
 const DEPARTMENT_ICONS = {
   choir: '🎵',
   cleaning: '🧹',
@@ -5828,8 +5834,8 @@ const DEPARTMENT_ICONS = {
   welcoming_socialisation: '🤝',
   ecodem: '🌱',
 };
-export function departmentIcon(key) {
-  return DEPARTMENT_ICONS[key] || '⛪';
+export function departmentIcon(key, customIcon) {
+  return customIcon || DEPARTMENT_ICONS[key] || '';
 }
 
 // The built-in (pre-override) text for a key in each language — used

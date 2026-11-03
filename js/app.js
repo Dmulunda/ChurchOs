@@ -731,7 +731,7 @@ function populateDepartmentSwitcher() {
         class="w-full text-left px-2 py-1.5 rounded-lg text-[12.8px] font-medium transition-colors flex items-center gap-2.5 ${
           d.key === activeKey ? 'bg-[#2a2d3d] text-white' : 'text-slate-300 hover:bg-[#1e2130] hover:text-white'
         }">
-      <span class="w-[18px] text-center shrink-0">${departmentIcon(d.key)}</span>
+      <span class="w-[18px] text-center shrink-0">${departmentIcon(d.key, d.icon)}</span>
       <span class="truncate">${departmentLabel(d.key)}</span>
     </button>
   `).join('');

@@ -57,7 +57,7 @@ export async function loadMyDepartments(userId, { allowedDepartmentKeys } = {}) 
     supabase.from('profiles').select('global_role').eq('id', userId).single(),
     supabase
       .from('department_memberships')
-      .select('role, departments ( id, key, name, kind, meeting_link )')
+      .select('role, departments ( id, key, name, kind, meeting_link, icon )')
       .eq('user_id', userId)
       .eq('status', 'approved'),
   ]);
@@ -69,7 +69,7 @@ export async function loadMyDepartments(userId, { allowedDepartmentKeys } = {}) 
     .sort((a, b) => a.name.localeCompare(b.name));
 
   if (globalRole) {
-    const { data: allDepartments } = await supabase.from('departments').select('id, key, name, kind, meeting_link').order('name');
+    const { data: allDepartments } = await supabase.from('departments').select('id, key, name, kind, meeting_link, icon').order('name');
     const visible = allowedDepartmentKeys ? (allDepartments || []).filter((d) => allowedDepartmentKeys.includes(d.key)) : allDepartments;
     myDepartments = (visible || []).map((d) => ({ ...d, role: globalRole }));
   } else {
@@ -229,12 +229,12 @@ export async function startViewAs(targetUserId, targetFullName) {
   const targetGlobalRole = profile?.global_role || null;
 
   if (targetGlobalRole) {
-    const { data: allDepartments } = await supabase.from('departments').select('id, key, name, kind, meeting_link').order('name');
+    const { data: allDepartments } = await supabase.from('departments').select('id, key, name, kind, meeting_link, icon').order('name');
     viewAsDepartments = (allDepartments || []).map((d) => ({ ...d, role: targetGlobalRole }));
   } else {
     const { data: memberships } = await supabase
       .from('department_memberships')
-      .select('role, departments ( id, key, name, kind, meeting_link )')
+      .select('role, departments ( id, key, name, kind, meeting_link, icon )')
       .eq('user_id', targetUserId)
       .eq('status', 'approved');
     viewAsDepartments = (memberships || [])

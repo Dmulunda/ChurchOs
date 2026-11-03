@@ -21,6 +21,9 @@ export function createDepartmentModal({ supabase, currentUserId, onCreated }) {
         <label class="block text-sm font-medium text-slate-600 mb-1">${t('createDepartment.name')}</label>
         <input type="text" name="name" required placeholder="${t('createDepartment.namePlaceholder')}"
                class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3" />
+        <label class="block text-sm font-medium text-slate-600 mb-1">${t('createDepartment.icon')}</label>
+        <input type="text" name="icon" maxlength="8" placeholder="${t('createDepartment.iconPlaceholder')}"
+               class="w-24 border border-slate-300 rounded-lg px-3 py-2 mb-3 text-center text-lg" />
         <div class="flex items-center gap-3">
           <button type="submit" data-el="submit-btn"
                   class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50">
@@ -64,6 +67,7 @@ export function createDepartmentModal({ supabase, currentUserId, onCreated }) {
     }
 
     const key = slugify(name);
+    const icon = form.elements.icon.value.trim() || null;
 
     submitBtn.disabled = true;
     statusEl.className = 'text-sm text-slate-500';
@@ -72,7 +76,7 @@ export function createDepartmentModal({ supabase, currentUserId, onCreated }) {
     try {
       const { error: insertError } = await supabase
         .from('departments')
-        .insert({ key, name, kind: 'lightweight' });
+        .insert({ key, name, kind: 'lightweight', icon });
       if (insertError) {
         if (insertError.code === '23505') throw new Error(t('createDepartment.duplicateKey'));
         throw insertError;
