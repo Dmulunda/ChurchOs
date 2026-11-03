@@ -112,6 +112,7 @@ export async function renderSiteAdminTab() {
       <button type="button" data-tab="requests" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('siteAdmin.tabRequests')}</button>
       <button type="button" data-tab="churches" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('siteAdmin.tabChurches')}</button>
       <button type="button" data-tab="promo-codes" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('siteAdmin.tabPromoCodes')}</button>
+      <button type="button" data-tab="referrals" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('siteAdmin.tabReferrals')}</button>
       <button type="button" data-tab="usage" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('siteAdmin.tabUsage')}</button>
       <button type="button" data-tab="sandbox" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('siteAdmin.tabSandbox')}</button>
       <button type="button" data-tab="manage" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('siteAdmin.tabManage')}</button>
@@ -123,6 +124,7 @@ export async function renderSiteAdminTab() {
     <div data-panel="requests" class="hidden"></div>
     <div data-panel="churches" class="hidden"></div>
     <div data-panel="promo-codes" class="hidden"></div>
+    <div data-panel="referrals" class="hidden"></div>
     <div data-panel="usage" class="hidden"></div>
     <div data-panel="sandbox" class="hidden"></div>
     <div data-panel="manage" class="hidden"></div>
@@ -137,12 +139,13 @@ export async function renderSiteAdminTab() {
     requests: container.querySelector('[data-panel="requests"]'),
     churches: container.querySelector('[data-panel="churches"]'),
     'promo-codes': container.querySelector('[data-panel="promo-codes"]'),
+    referrals: container.querySelector('[data-panel="referrals"]'),
     usage: container.querySelector('[data-panel="usage"]'),
     sandbox: container.querySelector('[data-panel="sandbox"]'),
     manage: container.querySelector('[data-panel="manage"]'),
     ...(getIsPlatformOwner() ? { owner: container.querySelector('[data-panel="owner"]') } : {}),
   };
-  const loaded = { inquiries: false, suggestions: false, requests: false, churches: false, 'promo-codes': false, usage: false, sandbox: false, manage: false, owner: false };
+  const loaded = { inquiries: false, suggestions: false, requests: false, churches: false, 'promo-codes': false, referrals: false, usage: false, sandbox: false, manage: false, owner: false };
   let churchUsersModal = null;
   // Site Admin's own cross-tenant reset (site-admin-reset-password/
   // index.ts), not the per-tenant admin-reset-password every church's
@@ -166,6 +169,7 @@ export async function renderSiteAdminTab() {
     if (tab === 'requests' && !loaded.requests) loadRequests();
     if (tab === 'churches' && !loaded.churches) loadChurches();
     if (tab === 'promo-codes' && !loaded['promo-codes']) loadPromoCodes();
+    if (tab === 'referrals' && !loaded.referrals) loadReferrals();
     if (tab === 'usage' && !loaded.usage) loadUsageDashboard();
     if (tab === 'sandbox' && !loaded.sandbox) loadSandbox();
     if (tab === 'manage' && !loaded.manage) loadManage();
@@ -423,6 +427,18 @@ export async function renderSiteAdminTab() {
   }
 
   // ---- Churches (SAAS only) ----
+  const CHURCH_SORT_COLUMNS = {
+    name: (row) => (row.name || '').toLowerCase(),
+    owner: (row) => (row.owner_name || row.owner_email || '').toLowerCase(),
+    status: (row) => row.status || '',
+    members: (row) => row.member_count || 0,
+    storage: (row) => row.totalBytes || 0,
+    lastActive: (row) => (row.last_active_at ? new Date(row.last_active_at).getTime() : 0),
+    code: (row) => (row.promo?.promo_codes?.code || '').toLowerCase(),
+  };
+  let churchSortState = { col: 'name', dir: 'asc' };
+  let churchRowsData = [];
+
   async function loadChurches() {
     panels.churches.innerHTML = `<p class="text-slate-500">${t('common.loading')}</p>`;
     const [{ data: tenants, error }, usageResp, { data: redemptions }] = await Promise.all([
@@ -444,18 +460,24 @@ export async function renderSiteAdminTab() {
     const promoByTenant = new Map();
     (redemptions || []).forEach((r) => { if (!promoByTenant.has(r.tenant_id)) promoByTenant.set(r.tenant_id, r); });
 
+    churchRowsData = (tenants || []).map((row) => ({
+      ...row,
+      totalBytes: Number(row.storage_bytes || 0) + Number(r2ByTenant[row.id] || 0),
+      promo: promoByTenant.get(row.id) || null,
+    }));
+
     panels.churches.innerHTML = `
       <div class="overflow-x-auto border border-slate-200 rounded-lg mb-2">
         <table class="w-full text-sm">
           <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
             <tr>
-              <th class="text-left px-3 py-2">${t('siteAdmin.colChurch')}</th>
-              <th class="text-left px-3 py-2">${t('siteAdmin.colOwner')}</th>
-              <th class="text-left px-3 py-2">${t('siteAdmin.colStatus')}</th>
-              <th class="text-right px-3 py-2">${t('siteAdmin.colMembers')}</th>
-              <th class="text-right px-3 py-2">${t('siteAdmin.colStorage')}</th>
-              <th class="text-left px-3 py-2">${t('siteAdmin.colLastActive')}</th>
-              <th class="text-left px-3 py-2">${t('siteAdmin.promoColCode')}</th>
+              <th class="text-left px-3 py-2"><button type="button" data-sort-col="name" class="hover:text-slate-800">${t('siteAdmin.colChurch')}</button></th>
+              <th class="text-left px-3 py-2"><button type="button" data-sort-col="owner" class="hover:text-slate-800">${t('siteAdmin.colOwner')}</button></th>
+              <th class="text-left px-3 py-2"><button type="button" data-sort-col="status" class="hover:text-slate-800">${t('siteAdmin.colStatus')}</button></th>
+              <th class="text-right px-3 py-2"><button type="button" data-sort-col="members" class="hover:text-slate-800">${t('siteAdmin.colMembers')}</button></th>
+              <th class="text-right px-3 py-2"><button type="button" data-sort-col="storage" class="hover:text-slate-800">${t('siteAdmin.colStorage')}</button></th>
+              <th class="text-left px-3 py-2"><button type="button" data-sort-col="lastActive" class="hover:text-slate-800">${t('siteAdmin.colLastActive')}</button></th>
+              <th class="text-left px-3 py-2"><button type="button" data-sort-col="code" class="hover:text-slate-800">${t('siteAdmin.promoColCode')}</button></th>
               <th class="text-left px-3 py-2"></th>
             </tr>
           </thead>
@@ -464,11 +486,44 @@ export async function renderSiteAdminTab() {
       </div>
       <p class="text-xs text-slate-500">${t('siteAdmin.churchesCount', { count: (tenants || []).filter((t2) => !t2.deleted_at).length })}</p>
     `;
+
+    panels.churches.querySelectorAll('[data-sort-col]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const col = btn.dataset.sortCol;
+        churchSortState = col === churchSortState.col
+          ? { col, dir: churchSortState.dir === 'asc' ? 'desc' : 'asc' }
+          : { col, dir: 'asc' };
+        renderChurchesTable();
+      });
+    });
+
+    renderChurchesTable();
+  }
+
+  function renderChurchesTable() {
     const rowsEl = panels.churches.querySelector('[data-el="rows"]');
-    rowsEl.innerHTML = (tenants || []).map((row) => {
-      const totalBytes = Number(row.storage_bytes || 0) + Number(r2ByTenant[row.id] || 0);
+    const valueOf = CHURCH_SORT_COLUMNS[churchSortState.col];
+    const sorted = [...churchRowsData].sort((a, b) => {
+      const va = valueOf(a);
+      const vb = valueOf(b);
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      return churchSortState.dir === 'asc' ? cmp : -cmp;
+    });
+
+    const churchSortLabels = {
+      name: t('siteAdmin.colChurch'), owner: t('siteAdmin.colOwner'), status: t('siteAdmin.colStatus'),
+      members: t('siteAdmin.colMembers'), storage: t('siteAdmin.colStorage'),
+      lastActive: t('siteAdmin.colLastActive'), code: t('siteAdmin.promoColCode'),
+    };
+    panels.churches.querySelectorAll('[data-sort-col]').forEach((btn) => {
+      const col = btn.dataset.sortCol;
+      const arrow = col === churchSortState.col ? (churchSortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      btn.textContent = churchSortLabels[col] + arrow;
+    });
+
+    rowsEl.innerHTML = sorted.map((row) => {
       const isDeleted = !!row.deleted_at;
-      const promo = promoByTenant.get(row.id);
+      const promo = row.promo;
       const promoCell = promo
         ? `<span class="font-mono font-medium">${escapeHtml(promo.promo_codes?.code || '—')}</span> <span class="text-slate-400">(${promo.discount_percent}% · ${promoDurationLabel(promo.duration, promo.duration_in_months)})</span>`
         : '<span class="text-slate-300">—</span>';
@@ -481,7 +536,7 @@ export async function renderSiteAdminTab() {
           </td>
           <td class="px-3 py-2">${escapeHtml(row.status)}</td>
           <td class="px-3 py-2 text-right">${row.member_count} / ${row.department_count}</td>
-          <td class="px-3 py-2 text-right whitespace-nowrap">${centsOrBytesToSize(totalBytes)}</td>
+          <td class="px-3 py-2 text-right whitespace-nowrap">${centsOrBytesToSize(row.totalBytes)}</td>
           <td class="px-3 py-2 text-slate-500">${row.last_active_at ? new Date(row.last_active_at).toLocaleDateString() : '—'}</td>
           <td class="px-3 py-2 whitespace-nowrap">${promoCell}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap space-x-3">
@@ -502,7 +557,7 @@ export async function renderSiteAdminTab() {
     rowsEl.querySelectorAll('[data-action="users"]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const id = btn.closest('[data-row-id]').dataset.rowId;
-        const tenantRow = (tenants || []).find((row) => row.id === id);
+        const tenantRow = churchRowsData.find((row) => row.id === id);
         if (tenantRow) openChurchUsers(tenantRow);
       });
     });
@@ -797,8 +852,10 @@ export async function renderSiteAdminTab() {
           <td class="px-3 py-2 text-right">${formatCents(c.totalDiscountCents)}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap">
             <button type="button" data-action="view-redemptions" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium mr-2">${t('siteAdmin.promoViewUses')}</button>
+            <button type="button" data-action="edit-promo-code" class="text-xs text-slate-600 hover:text-slate-800 font-medium mr-2">${t('siteAdmin.promoEdit')}</button>
             <button type="button" data-action="toggle-status" class="text-xs ${c.status === 'active' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'} font-medium mr-2">${c.status === 'active' ? t('siteAdmin.promoPause') : t('siteAdmin.promoResume')}</button>
-            ${c.is_referral_bonus ? '' : `<button type="button" data-action="set-referral-bonus" class="text-xs text-slate-500 hover:text-indigo-700 font-medium">${t('siteAdmin.promoUseForReferral')}</button>`}
+            ${c.is_referral_bonus ? '' : `<button type="button" data-action="set-referral-bonus" class="text-xs text-slate-500 hover:text-indigo-700 font-medium mr-2">${t('siteAdmin.promoUseForReferral')}</button>`}
+            <button type="button" data-action="delete-promo-code" class="text-xs text-rose-600 hover:text-rose-700 font-medium">${t('siteAdmin.promoDelete')}</button>
           </td>
         </tr>
       `;
@@ -829,6 +886,28 @@ export async function renderSiteAdminTab() {
         btn.disabled = true;
         const { error } = await supabase.rpc('set_referral_bonus_promo_code', { p_promo_code_id: id });
         if (error) { window.alert(error.message); btn.disabled = false; return; }
+        loaded['promo-codes'] = false;
+        loadPromoCodes();
+      });
+    });
+
+    rowsEl.querySelectorAll('[data-action="edit-promo-code"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.closest('[data-promo-id]').dataset.promoId;
+        const codeRow = codes.find((c) => c.id === id);
+        if (codeRow) renderPromoCodeEditForm(codeRow, planGroups);
+      });
+    });
+
+    rowsEl.querySelectorAll('[data-action="delete-promo-code"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.closest('[data-promo-id]').dataset.promoId;
+        const codeRow = codes.find((c) => c.id === id);
+        const ok = await confirmDialog({ message: t('siteAdmin.promoDeleteConfirm', { code: codeRow?.code || '' }), danger: true });
+        if (!ok) return;
+        btn.disabled = true;
+        const { data: res, error: err } = await supabase.functions.invoke('stripe-billing', { body: { action: 'delete_promo_code', promo_code_id: id } });
+        if (err || res?.error) { window.alert(res?.error || await extractFunctionErrorMessage(err)); btn.disabled = false; return; }
         loaded['promo-codes'] = false;
         loadPromoCodes();
       });
@@ -989,6 +1068,188 @@ export async function renderSiteAdminTab() {
       loaded['promo-codes'] = false;
       loadPromoCodes();
     });
+  }
+
+  // Only the fields updatePromoCode() (stripe-billing/index.ts) actually
+  // persists -- code/discount/duration/usage-limit are shown read-only
+  // since Stripe's Coupon/Promotion Code objects can't change those
+  // after creation (see that function's own comment); delete and create
+  // a new code instead if one of those needs to change.
+  function renderPromoCodeEditForm(promo, planGroups) {
+    const formEl = panels['promo-codes'].querySelector('[data-el="promo-form"]');
+    const startsAtValue = promo.starts_at ? new Date(promo.starts_at).toISOString().slice(0, 10) : '';
+    const endsAtValue = promo.ends_at ? new Date(promo.ends_at).toISOString().slice(0, 10) : '';
+    formEl.innerHTML = `
+      <div class="border border-slate-200 rounded-lg p-4 mb-4 bg-slate-50">
+        <p class="text-sm font-medium text-slate-700 mb-1">${t('siteAdmin.promoEditTitle', { code: promo.code })}</p>
+        <p class="text-xs text-slate-500 mb-3">${t('siteAdmin.promoEditNotice')}</p>
+        <div class="grid sm:grid-cols-2 gap-3 mb-3 text-sm text-slate-500">
+          <div>${t('siteAdmin.promoFormDiscount')}: <span class="font-medium text-slate-700">${promo.discount_percent}%</span></div>
+          <div>${t('siteAdmin.promoFormDuration')}: <span class="font-medium text-slate-700">${promoDurationLabel(promo.duration, promo.duration_in_months)}</span></div>
+          <div>${t('siteAdmin.promoFormUsageLimit')}: <span class="font-medium text-slate-700">${promo.usage_limit ?? t('siteAdmin.promoFormUnlimited')}</span></div>
+        </div>
+        <div class="mb-3">
+          <label class="block text-xs font-medium text-slate-600 mb-1">${t('siteAdmin.promoFormPlans')}</label>
+          <div class="flex flex-wrap gap-3">
+            ${planGroups.map((p) => `
+              <label class="flex items-center gap-1.5 text-sm">
+                <input type="checkbox" data-plan-group="${escapeAttr(p.group)}" ${promo.applies_to_plan_groups?.includes(p.group) ? 'checked' : ''} /> ${escapeHtml(p.name)}
+              </label>
+            `).join('')}
+          </div>
+          <p class="text-xs text-slate-400 mt-1">${t('siteAdmin.promoFormPlansHint')}</p>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">${t('siteAdmin.promoFormStartsAt')}</label>
+            <input type="date" data-el="starts-at" value="${startsAtValue}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">${t('siteAdmin.promoFormEndsAt')}</label>
+            <input type="date" data-el="ends-at" value="${endsAtValue}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-4 mb-3">
+          <label class="flex items-center gap-1.5 text-sm">
+            <input type="checkbox" data-el="one-use-per-church" ${promo.one_use_per_church !== false ? 'checked' : ''} /> ${t('siteAdmin.promoFormOneUsePerChurch')}
+          </label>
+          <label class="flex items-center gap-1.5 text-sm">
+            <input type="checkbox" data-el="new-customers-only" ${promo.new_customers_only ? 'checked' : ''} /> ${t('siteAdmin.promoFormNewCustomersOnly')}
+          </label>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" data-action="save-promo-code-edit" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">${t('siteAdmin.promoFormSave')}</button>
+          <button type="button" data-action="cancel-promo-code" class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">${t('common.cancel')}</button>
+          <span data-el="promo-form-status" class="text-sm"></span>
+        </div>
+      </div>
+    `;
+
+    formEl.querySelector('[data-action="cancel-promo-code"]').addEventListener('click', () => { formEl.innerHTML = ''; });
+
+    formEl.querySelector('[data-action="save-promo-code-edit"]').addEventListener('click', async () => {
+      const statusEl = formEl.querySelector('[data-el="promo-form-status"]');
+      const appliesToPlanGroups = [...formEl.querySelectorAll('[data-plan-group]:checked')].map((el) => el.dataset.planGroup);
+      const startsAtRaw = formEl.querySelector('[data-el="starts-at"]').value;
+      const endsAtRaw = formEl.querySelector('[data-el="ends-at"]').value;
+      const oneUsePerChurch = formEl.querySelector('[data-el="one-use-per-church"]').checked;
+      const newCustomersOnly = formEl.querySelector('[data-el="new-customers-only"]').checked;
+
+      statusEl.className = 'text-sm text-slate-500';
+      statusEl.textContent = t('common.saving');
+
+      const { data: res, error } = await supabase.functions.invoke('stripe-billing', {
+        body: {
+          action: 'update_promo_code',
+          promo_code_id: promo.id,
+          appliesToPlanGroups,
+          oneUsePerChurch,
+          newCustomersOnly,
+          startsAt: startsAtRaw ? new Date(startsAtRaw).toISOString() : null,
+          endsAt: endsAtRaw ? new Date(endsAtRaw).toISOString() : null,
+        },
+      });
+
+      if (error || res?.error) {
+        statusEl.className = 'text-sm text-rose-600';
+        statusEl.textContent = res?.error || await extractFunctionErrorMessage(error);
+        return;
+      }
+
+      formEl.innerHTML = '';
+      loaded['promo-codes'] = false;
+      loadPromoCodes();
+    });
+  }
+
+  // ---- Referrals (SAAS only -- sql/saas_platform/118_referral_program.sql
+  // for the table/record_referral()/list_my_referrals() (a tenant's own
+  // view), 122_referral_site_admin_view.sql for this cross-tenant one).
+  // "applied" is the only status where the referrer actually got their
+  // bonus -- see stripe-webhook's applyReferralBonusIfQualified(), which
+  // leaves a referral at 'qualified' rather than 'applied' whenever no
+  // promo code is currently flagged is_referral_bonus, or the referrer
+  // has no active Stripe subscription yet to apply a coupon to.
+  async function loadReferrals() {
+    panels.referrals.innerHTML = `<p class="text-slate-500">${t('common.loading')}</p>`;
+    const { data, error } = await supabase.rpc('list_referrals_for_site_admin');
+    if (error) {
+      panels.referrals.innerHTML = `<p class="text-rose-600">${t('siteAdmin.loadFailed', { message: error.message })}</p>`;
+      return;
+    }
+    loaded.referrals = true;
+    const rows = data || [];
+
+    if (!rows.length) {
+      panels.referrals.innerHTML = `<p class="text-slate-400">${t('siteAdmin.noReferrals')}</p>`;
+      return;
+    }
+
+    const byReferrer = new Map();
+    rows.forEach((r) => {
+      const stats = byReferrer.get(r.referrer_tenant_id) || { name: r.referrer_name, total: 0, applied: 0 };
+      stats.total += 1;
+      if (r.status === 'applied') stats.applied += 1;
+      byReferrer.set(r.referrer_tenant_id, stats);
+    });
+    const summary = [...byReferrer.values()].sort((a, b) => b.total - a.total);
+
+    panels.referrals.innerHTML = `
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">${t('siteAdmin.referralSummaryTitle')}</h3>
+      <div class="overflow-x-auto border border-slate-200 rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+            <tr>
+              <th class="text-left px-3 py-2">${t('siteAdmin.referralColReferrer')}</th>
+              <th class="text-right px-3 py-2">${t('siteAdmin.referralColCount')}</th>
+              <th class="text-right px-3 py-2">${t('siteAdmin.referralColRewarded')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${summary.map((s) => `
+              <tr class="border-b border-slate-100">
+                <td class="px-3 py-2 font-medium text-slate-800">${escapeHtml(s.name)}</td>
+                <td class="px-3 py-2 text-right">${s.total}</td>
+                <td class="px-3 py-2 text-right">${s.applied} / ${s.total}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">${t('siteAdmin.referralDetailTitle')}</h3>
+      <div class="overflow-x-auto border border-slate-200 rounded-lg">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+            <tr>
+              <th class="text-left px-3 py-2">${t('siteAdmin.referralColReferrer')}</th>
+              <th class="text-left px-3 py-2">${t('siteAdmin.referralColReferred')}</th>
+              <th class="text-left px-3 py-2">${t('siteAdmin.referralColStatus')}</th>
+              <th class="text-left px-3 py-2">${t('siteAdmin.referralColCreated')}</th>
+              <th class="text-left px-3 py-2">${t('siteAdmin.referralColApplied')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r) => `
+              <tr class="border-b border-slate-100">
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(r.referrer_name)}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(r.referred_name)}</td>
+                <td class="px-3 py-2">
+                  <span class="text-xs font-semibold px-1.5 py-0.5 rounded ${referralStatusBadgeClass(r.status)}">${t(`siteAdmin.referralStatus.${r.status}`)}</span>
+                </td>
+                <td class="px-3 py-2 text-slate-500">${new Date(r.created_at).toLocaleDateString()}</td>
+                <td class="px-3 py-2 text-slate-500">${r.applied_at ? new Date(r.applied_at).toLocaleDateString() : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function referralStatusBadgeClass(status) {
+    if (status === 'applied') return 'bg-emerald-100 text-emerald-700';
+    if (status === 'qualified') return 'bg-amber-100 text-amber-700';
+    return 'bg-slate-100 text-slate-500';
   }
 
   // ---- Usage Dashboard (SAAS only -- sql/saas_platform/76/77_*.sql).

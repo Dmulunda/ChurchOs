@@ -35,7 +35,11 @@
 //       real inside create_checkout_session once a plan IS chosen.
 //   Platform (JWT required, caller must be a Site Admin --
 //   public.platform_admins, unrelated to any one tenant):
-//     'create_promo_code', 'list_promo_codes', 'update_promo_code_status'.
+//     'create_promo_code', 'list_promo_codes', 'update_promo_code_status',
+//     'update_promo_code' (plan groups/one-use-per-church/new-customers-
+//     only/starts-ends dates only -- see updatePromoCode()'s own comment
+//     for why the rest of a code can't be edited), 'delete_promo_code'
+//     (soft delete -- see sql/saas_platform/123).
 //   Cron (no JWT -- shared-secret header, see sql/saas_platform/75):
 //     'send_discount_ending_email' — { redemption_id }.
 //
@@ -134,7 +138,8 @@ Deno.serve(async (req) => {
     if (callerError || !caller) return json({ error: 'Invalid session' }, 401);
 
     // ---- Platform actions: Site Admin only, unrelated to any tenant ----
-    if (action === 'create_promo_code' || action === 'list_promo_codes' || action === 'update_promo_code_status' || action === 'list_promo_code_redemptions') {
+    if (action === 'create_promo_code' || action === 'list_promo_codes' || action === 'update_promo_code_status'
+      || action === 'list_promo_code_redemptions' || action === 'update_promo_code' || action === 'delete_promo_code') {
       if (!(await callerIsSiteAdmin(admin, caller.id))) return json({ error: 'Only a Site Admin can manage promo codes' }, 403);
 
       const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
@@ -144,6 +149,8 @@ Deno.serve(async (req) => {
       if (action === 'create_promo_code') return await createPromoCode(admin, stripe, caller.id, body);
       if (action === 'list_promo_codes') return await listPromoCodes(admin);
       if (action === 'list_promo_code_redemptions') return await listPromoCodeRedemptions(admin, body.promo_code_id);
+      if (action === 'update_promo_code') return await updatePromoCode(admin, body);
+      if (action === 'delete_promo_code') return await deletePromoCode(admin, stripe, body);
       return await updatePromoCodeStatus(admin, stripe, body);
     }
 
@@ -383,7 +390,7 @@ async function createPromoCode(admin, stripe, callerId, body) {
 }
 
 async function listPromoCodes(admin) {
-  const { data: codes, error } = await admin.from('promo_codes').select('*').order('created_at', { ascending: false });
+  const { data: codes, error } = await admin.from('promo_codes').select('*').is('deleted_at', null).order('created_at', { ascending: false });
   if (error) return json({ error: error.message }, 500);
 
   const { data: redemptions } = await admin.from('promo_code_redemptions').select('promo_code_id, original_price_cents, discounted_price_cents');
@@ -425,6 +432,49 @@ async function updatePromoCodeStatus(admin, stripe, body) {
 
   await stripe.promotionCodes.update(promo.stripe_promotion_code_id, { active: status === 'active' });
   const { error } = await admin.from('promo_codes').update({ status, updated_at: new Date().toISOString() }).eq('id', promo_code_id);
+  if (error) return json({ error: error.message }, 500);
+  return json({ success: true });
+}
+
+// Only fields Stripe has no immutable Coupon/Promotion Code equivalent
+// for -- code, discount_percent, duration/duration_in_months, and
+// usage_limit (Stripe's max_redemptions) can't be changed on an
+// existing Coupon/Promotion Code via the API at all, so those stay
+// fixed for this code's lifetime (delete + create a new one instead).
+// applies_to_plan_groups/one_use_per_church are purely local concepts
+// Stripe doesn't model; starts_at/ends_at are this app's own gate in
+// loadActivePromoCode/checkTenantEligibility above, checked before
+// Stripe is ever reached -- none of these five need a Stripe call.
+async function updatePromoCode(admin, body) {
+  const { promo_code_id, appliesToPlanGroups, oneUsePerChurch, newCustomersOnly, startsAt, endsAt } = body;
+  if (!promo_code_id) return json({ error: 'promo_code_id is required' }, 400);
+
+  const { error } = await admin.from('promo_codes').update({
+    applies_to_plan_groups: Array.isArray(appliesToPlanGroups) && appliesToPlanGroups.length > 0 ? appliesToPlanGroups : null,
+    one_use_per_church: oneUsePerChurch !== false,
+    new_customers_only: !!newCustomersOnly,
+    starts_at: startsAt || new Date().toISOString(),
+    ends_at: endsAt || null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', promo_code_id);
+  if (error) return json({ error: error.message }, 500);
+  return json({ success: true });
+}
+
+// Soft delete -- see sql/saas_platform/123_promo_code_soft_delete.sql's
+// header for why this isn't a real row delete. Deactivating the
+// Promotion Code in Stripe (same call as Pause) is what actually
+// stops it from being redeemable ever again; deleted_at just hides it
+// from the admin's active list from here on.
+async function deletePromoCode(admin, stripe, body) {
+  const { promo_code_id } = body;
+  if (!promo_code_id) return json({ error: 'promo_code_id is required' }, 400);
+
+  const { data: promo } = await admin.from('promo_codes').select('stripe_promotion_code_id').eq('id', promo_code_id).maybeSingle();
+  if (!promo) return json({ error: 'Promo code not found' }, 404);
+
+  await stripe.promotionCodes.update(promo.stripe_promotion_code_id, { active: false });
+  const { error } = await admin.from('promo_codes').update({ status: 'paused', deleted_at: new Date().toISOString() }).eq('id', promo_code_id);
   if (error) return json({ error: error.message }, 500);
   return json({ success: true });
 }
