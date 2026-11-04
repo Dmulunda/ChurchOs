@@ -15,7 +15,7 @@
 // (Part 6) can mount this directly into a tab panel.
 import { confirmDialog } from './confirmDialog.js';
 import { getGlobalRole, getMyDepartments } from '../departments.js';
-import { t } from '../i18n.js';
+import { t, departmentLabel } from '../i18n.js';
 
 const STATUSES = ['open', 'resolved'];
 
@@ -178,13 +178,13 @@ export function renderUrgentPrayerCases(container, { supabase, currentUserId }) 
   async function loadAdmins() {
     const { data } = await supabase
       .from('department_memberships')
-      .select('user_id, member:profiles!user_id ( id, full_name ), departments ( name )')
+      .select('user_id, member:profiles!user_id ( id, full_name ), departments ( key )')
       .eq('role', 'admin').eq('status', 'approved');
     const byId = new Map();
     (data || []).forEach((r) => {
       if (!r.member) return;
       if (!byId.has(r.member.id)) byId.set(r.member.id, { id: r.member.id, full_name: r.member.full_name, departments: [] });
-      if (r.departments?.name) byId.get(r.member.id).departments.push(r.departments.name);
+      if (r.departments?.key) byId.get(r.member.id).departments.push(departmentLabel(r.departments.key));
     });
     admins = Array.from(byId.values()).filter((a) => a.id !== currentUserId).sort((a, b) => a.full_name.localeCompare(b.full_name));
   }

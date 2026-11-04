@@ -9,7 +9,7 @@ import { getMyDepartments, getGlobalRole } from '../departments.js';
 import { confirmDialog } from './confirmDialog.js';
 import { renderMemberIdCard } from './memberIdCard.js';
 import { createSignaturePad } from './signaturePad.js';
-import { t, roleLabel } from '../i18n.js';
+import { t, roleLabel, departmentLabel } from '../i18n.js';
 import { hasFeature } from '../entitlements.js';
 
 // Member Card is a plan-gated feature (sql/saas_platform/86_pricing_v2.sql)
@@ -255,7 +255,7 @@ export function createUserEditModal({ supabase, currentUserId, onSaved }) {
       const approvable = canApprove(m.department_id);
       return `
         <div class="flex items-center gap-2 border border-slate-200 rounded-lg p-2" data-membership-row="${m.id}">
-          <span class="flex-1 text-sm">${escapeHtml(m.departments.name)}</span>
+          <span class="flex-1 text-sm">${escapeHtml(departmentLabel(m.departments.key))}</span>
           ${m.status === 'pending' ? `<span class="text-xs font-medium text-amber-600">${t('users.pending')}</span>` : ''}
           <select data-el="role-select" class="border border-slate-300 rounded-lg px-2 py-1 text-sm" ${approvable ? '' : 'disabled'}>
             ${DEPARTMENT_ROLES.map((r) => `<option value="${r}" ${r === m.role ? 'selected' : ''}>${roleLabel(r)}</option>`).join('')}
@@ -278,10 +278,13 @@ export function createUserEditModal({ supabase, currentUserId, onSaved }) {
 
   function renderAddDeptSelect() {
     const assignedIds = new Set(memberships.map((m) => m.department_id));
-    const available = allDepartments.filter((d) => !assignedIds.has(d.id));
+    const available = allDepartments
+      .filter((d) => !assignedIds.has(d.id))
+      .map((d) => ({ ...d, label: departmentLabel(d.key) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
     addDeptSelectEl.innerHTML = available.length === 0
       ? `<option value="">${t('userEdit.selectDepartmentPlaceholder')}</option>`
-      : available.map((d) => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
+      : available.map((d) => `<option value="${d.id}">${escapeHtml(d.label)}</option>`).join('');
   }
 
   async function updateRole(membership, newRole) {
@@ -298,7 +301,7 @@ export function createUserEditModal({ supabase, currentUserId, onSaved }) {
     const confirmed = await confirmDialog({
       message: t('userEdit.confirmRemoveDepartment', {
         name: targetUser.full_name,
-        department: membership.departments.name,
+        department: departmentLabel(membership.departments.key),
       }),
     });
     if (!confirmed) return;

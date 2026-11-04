@@ -14,6 +14,17 @@ import { t, getBuiltInLabel, setLabelOverride } from '../i18n.js';
 import { DEPARTMENT_KEYS } from '../departments.js';
 import { getFontChoices, applyAppTheme } from '../theme.js';
 import { getTenant, isActingAsExtension } from '../tenant.js';
+import { hasFeature } from '../entitlements.js';
+import { CARD_SETTINGS_DEFAULTS } from './memberIdCard.js';
+
+const CARD_SETTINGS_TOGGLES = [
+  ['show_sex', 'menuCustomizer.cardShowSex'],
+  ['show_birth_date', 'menuCustomizer.cardShowBirthDate'],
+  ['show_function', 'menuCustomizer.cardShowFunction'],
+  ['show_parish', 'menuCustomizer.cardShowParish'],
+  ['show_address', 'menuCustomizer.cardShowAddress'],
+  ['show_birth_info', 'menuCustomizer.cardShowBirthInfo'],
+];
 
 const NAV_KEYS = ['nav.dashboard', 'nav.scheduling', 'nav.songbook', 'nav.voiceExercises', 'nav.members', 'nav.home', 'nav.training'];
 const SIDEBAR_KEYS = ['sidebar.churchRules', 'sidebar.attendance', 'sidebar.appSuggestion', 'sidebar.reportAbsence', 'sidebar.departmentRules', 'sidebar.monthlyReport', 'sidebar.guestCases', 'sidebar.memberCases'];
@@ -55,6 +66,7 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
 
   let overridesByKey = new Map();
   let currentTheme = { ...THEME_DEFAULTS };
+  let currentCardSettings = { ...CARD_SETTINGS_DEFAULTS };
   let iconByKey = new Map();
   let savedAnything = false;
 
@@ -66,10 +78,15 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
     statusEl.textContent = '';
     renderEditingBanner();
 
-    const [{ data, error }, { data: themeRow, error: themeError }, { data: deptRows }] = await Promise.all([
+    const cardSettingsQuery = hasFeature('member_card')
+      ? supabase.from('card_settings').select('card_color, show_sex, show_birth_date, show_function, show_parish, show_address, show_birth_info').maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+
+    const [{ data, error }, { data: themeRow, error: themeError }, { data: deptRows }, { data: cardSettingsRow }] = await Promise.all([
       supabase.from('menu_labels').select('key, label_en, label_fr'),
       supabase.from('app_theme').select('primary_color, text_color, background_color, font_family').maybeSingle(),
       supabase.from('departments').select('key, icon').order('key'),
+      cardSettingsQuery,
     ]);
     if (error) {
       bodyEl.innerHTML = `<p class="text-sm text-rose-600">${t('menuCustomizer.loadFailed', { message: error.message })}</p>`;
@@ -77,6 +94,7 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
     }
     overridesByKey = new Map((data || []).map((r) => [r.key, r]));
     currentTheme = themeError || !themeRow ? { ...THEME_DEFAULTS } : themeRow;
+    currentCardSettings = { ...CARD_SETTINGS_DEFAULTS, ...(cardSettingsRow || {}) };
     iconByKey = new Map((deptRows || []).map((d) => [d.key, d.icon || '']));
     if (deptRows?.length) {
       const keys = new Set([...DEPARTMENT_KEYS, ...deptRows.map((d) => d.key)]);
@@ -85,6 +103,7 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
 
     bodyEl.innerHTML = `
       ${renderAppearanceSection()}
+      ${renderMemberCardSection()}
       ${renderSection(t('menuCustomizer.sectionNav'), NAV_KEYS)}
       ${renderSection(t('menuCustomizer.sectionSidebar'), SIDEBAR_KEYS)}
       ${renderSection(t('menuCustomizer.sectionDepartments'), DEPARTMENT_LABEL_KEYS, { withIcon: true })}
@@ -109,6 +128,12 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
       bodyEl.querySelector('[data-el="theme-bg"]').value = THEME_DEFAULTS.background_color;
       bodyEl.querySelector('[data-el="theme-font"]').value = THEME_DEFAULTS.font_family;
       previewTheme();
+    });
+    bodyEl.querySelector('[data-action="reset-card"]')?.addEventListener('click', () => {
+      bodyEl.querySelector('[data-el="card-color"]').value = CARD_SETTINGS_DEFAULTS.card_color;
+      CARD_SETTINGS_TOGGLES.forEach(([field]) => {
+        bodyEl.querySelector(`[data-el="card-${field}"]`).checked = CARD_SETTINGS_DEFAULTS[field];
+      });
     });
   }
 
@@ -166,6 +191,32 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">${t('menuCustomizer.fontFamily')}</label>
             <select data-el="theme-font" class="w-full h-9 border border-slate-300 rounded-lg px-2 text-sm">${fontOptions}</select>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMemberCardSection() {
+    if (!hasFeature('member_card')) return '';
+    return `
+      <div class="mb-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-semibold text-slate-700">${t('menuCustomizer.sectionMemberCard')}</h3>
+          <button type="button" data-action="reset-card" class="text-xs text-slate-400 hover:text-slate-600">${t('menuCustomizer.resetAppearance')}</button>
+        </div>
+        <div class="border border-slate-200 rounded-lg p-3 space-y-3">
+          <div class="max-w-[200px]">
+            <label class="block text-xs font-medium text-slate-500 mb-1">${t('menuCustomizer.cardColor')}</label>
+            <input type="color" data-el="card-color" value="${escapeAttr(currentCardSettings.card_color)}" class="w-full h-9 border border-slate-300 rounded-lg" />
+          </div>
+          <div class="grid sm:grid-cols-2 gap-2">
+            ${CARD_SETTINGS_TOGGLES.map(([field, labelKey]) => `
+              <label class="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" data-el="card-${field}" ${currentCardSettings[field] ? 'checked' : ''} />
+                ${t(labelKey)}
+              </label>
+            `).join('')}
           </div>
         </div>
       </div>
@@ -248,15 +299,25 @@ export function createMenuCustomizerModal({ supabase, currentUserId }) {
       if (newIcon !== (iconByKey.get(deptKey) ?? '')) iconUpdates.push({ deptKey, icon: newIcon || null });
     });
 
-    const [{ error }, { error: themeError }, iconResults] = await Promise.all([
+    const cardSettingsQuery = hasFeature('member_card') && bodyEl.querySelector('[data-el="card-color"]')
+      ? supabase.from('card_settings').upsert({
+          card_color: bodyEl.querySelector('[data-el="card-color"]').value,
+          ...Object.fromEntries(CARD_SETTINGS_TOGGLES.map(([field]) => [field, bodyEl.querySelector(`[data-el="card-${field}"]`).checked])),
+          updated_by: currentUserId,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'tenant_id' })
+      : Promise.resolve({ error: null });
+
+    const [{ error }, { error: themeError }, iconResults, { error: cardError }] = await Promise.all([
       supabase.from('menu_labels').upsert(rows, { onConflict: 'tenant_id,key' }),
       supabase.from('app_theme').upsert(theme, { onConflict: 'tenant_id' }),
       Promise.all(iconUpdates.map((u) => supabase.from('departments').update({ icon: u.icon }).eq('key', u.deptKey))),
+      cardSettingsQuery,
     ]);
     const iconError = iconResults.find((r) => r.error)?.error;
-    if (error || themeError || iconError) {
+    if (error || themeError || iconError || cardError) {
       statusEl.className = 'text-sm text-rose-600';
-      statusEl.textContent = t('menuCustomizer.saveFailed', { message: (error || themeError || iconError).message });
+      statusEl.textContent = t('menuCustomizer.saveFailed', { message: (error || themeError || iconError || cardError).message });
       return;
     }
 

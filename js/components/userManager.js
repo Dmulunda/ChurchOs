@@ -21,7 +21,7 @@ import { reassignAdminDialog } from './reassignAdminDialog.js';
 import { openMeetingWindow, navigateMeetingWindow } from './videoMeeting.js';
 import { isViewingAs, getGlobalRole } from '../departments.js';
 import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
-import { t, voicePartLabel, roleLabel, mediaTechRoleLabel } from '../i18n.js';
+import { t, voicePartLabel, roleLabel, mediaTechRoleLabel, departmentLabel } from '../i18n.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DELETION_GRACE_DAYS = 60;
@@ -172,8 +172,8 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
       (memberships || []).forEach((m) => {
         if (!m.departments) return;
         if (!byUser.has(m.user_id)) byUser.set(m.user_id, []);
-        byUser.get(m.user_id).push({ key: m.departments.key, name: m.departments.name, role: m.role });
-        departmentOptions.set(m.departments.key, m.departments.name);
+        byUser.get(m.user_id).push({ key: m.departments.key, name: departmentLabel(m.departments.key), role: m.role });
+        departmentOptions.set(m.departments.key, departmentLabel(m.departments.key));
       });
 
       rows = (profiles || []).map((p) => ({
@@ -603,7 +603,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
   async function getSoleAdminDepartments(userId) {
     const { data: targetAdminRows } = await supabase
       .from('department_memberships')
-      .select('department_id, departments ( name )')
+      .select('department_id, departments ( key, name )')
       .eq('user_id', userId)
       .eq('role', 'admin')
       .eq('status', 'approved');
@@ -641,7 +641,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
       .filter((r) => soleDeptIds.includes(r.department_id))
       .map((r) => ({
         id: r.department_id,
-        name: r.departments?.name || '',
+        name: r.departments ? departmentLabel(r.departments.key) : '',
         candidates: candidatesByDept.get(r.department_id) || [],
       }));
   }

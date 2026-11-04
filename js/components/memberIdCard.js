@@ -1,7 +1,7 @@
 // Digital Member ID Card — a two-sided official-style card (front:
 // photo, name, sex, member_code, function, parish, issue/expiration
-// dates, QR; back: birth country/city, birthday, address, signatures)
-// in this app's own navy/gold branding — modeled on a reference design
+// dates; back: birth country/city, birthday, address, signatures) in
+// this app's own navy/gold branding — modeled on a reference design
 // the user provided, with our own colors/logo rather than copying its
 // color scheme. The back used to show "Member since" (profiles.created_at)
 // in that slot; this is the first place profiles.birth_date is
@@ -17,8 +17,7 @@
 // Expiration is never stored — it's always computed as card_issued_at
 // + 2 years, so the "2 years from issue" rule can't drift from what's
 // actually displayed. A revoked card (card_revoked_at set) shows a
-// clear stamp and skips the QR entirely, rather than continuing to
-// display a scannable code for a card that's no longer valid.
+// clear stamp.
 //
 // Signatures: a member's own signature_data (self-set in
 // myProfileModal.js) renders as their line on the back; the pastor's
@@ -30,20 +29,32 @@
 // Renders as live DOM (not a popup window like certificate.js) so
 // html2canvas/jsPDF — loaded via CDN in index.html — can rasterize it
 // into an actual PNG/PDF file, not just a browser print-to-PDF.
+//
+// card_settings (sql/saas_platform/124_card_settings.sql) lets a
+// tenant's Super Admin pick the card's body color and which optional
+// fields show, via the "Member Card" section of Customize Menu
+// (menuCustomizer.js) -- same color-picker/checkbox pattern as that
+// tool's existing app_theme section, just for the card instead of the
+// whole app.
 import { t } from '../i18n.js';
 import { publicPageUrl } from '../utils/publicUrl.js';
 import { getTenant } from '../tenant.js';
-// The `qrcode` npm package ships no browser <script> bundle (only
-// bundler-ready CommonJS source) — jsdelivr's "+esm" endpoint converts
-// it on the fly, same convention already used for @supabase/supabase-js
-// elsewhere in this app.
-import { toCanvas as qrToCanvas } from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm';
 
 const CARD_WIDTH = 400;
 const CARD_HEIGHT = 252;
 const NAVY = '#0B1F3A';
 const GOLD = '#D4AF37';
 const CARD_VALID_YEARS = 2;
+
+export const CARD_SETTINGS_DEFAULTS = {
+  card_color: NAVY,
+  show_sex: true,
+  show_birth_date: true,
+  show_function: true,
+  show_parish: true,
+  show_address: true,
+  show_birth_info: true,
+};
 
 function functionLabel(memberTitle) {
   return memberTitle ? t(`memberCard.function.${memberTitle}`) : '—';
@@ -52,7 +63,7 @@ function functionLabel(memberTitle) {
 export async function renderMemberIdCard(container, { supabase, userId }) {
   container.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
 
-  const [{ data: profile, error }, { data: pastorRow }] = await Promise.all([
+  const [{ data: profile, error }, { data: pastorRow }, { data: settingsRow }] = await Promise.all([
     supabase
       .from('profiles')
       .select(`
@@ -63,12 +74,16 @@ export async function renderMemberIdCard(container, { supabase, userId }) {
       .eq('id', userId)
       .single(),
     supabase.from('profiles').select('signature_data').eq('member_title', 'pastor_principal').limit(1).maybeSingle(),
+    supabase.from('card_settings').select('card_color, show_sex, show_birth_date, show_function, show_parish, show_address, show_birth_info').maybeSingle(),
   ]);
 
   if (error || !profile) {
     container.innerHTML = `<p class="text-sm text-rose-600">${t('memberCard.loadFailed', { message: error?.message || '' })}</p>`;
     return;
   }
+
+  const cardSettings = { ...CARD_SETTINGS_DEFAULTS, ...(settingsRow || {}) };
+  const cardColor = cardSettings.card_color || NAVY;
 
   let photoUrl = null;
   if (profile.photo_path) {
@@ -98,7 +113,7 @@ export async function renderMemberIdCard(container, { supabase, userId }) {
 
   container.innerHTML = `
     <div data-el="cards-wrap">
-      <div data-el="card-front" style="${cardOuterStyle()}position:relative;">
+      <div data-el="card-front" style="${cardOuterStyle(cardColor)}position:relative;">
         ${headerBar(logoUrl, churchName, true)}
         <div style="display:flex;gap:12px;padding:12px 16px;flex:1;">
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
@@ -109,10 +124,10 @@ export async function renderMemberIdCard(container, { supabase, userId }) {
           </div>
           <div style="flex:1;font-size:11px;line-height:1.55;">
             ${fieldRow(t('memberCard.fullName'), profile.full_name)}
-            ${fieldRow(t('memberCard.sex'), sexLabel)}
-            ${fieldRow(t('memberCard.birthDate'), birthDateFmt)}
-            ${fieldRow(t('memberCard.function'), functionLabel(profile.member_title))}
-            ${fieldRow(t('memberCard.parish'), profile.parish || '—')}
+            ${cardSettings.show_sex ? fieldRow(t('memberCard.sex'), sexLabel) : ''}
+            ${cardSettings.show_birth_date ? fieldRow(t('memberCard.birthDate'), birthDateFmt) : ''}
+            ${cardSettings.show_function ? fieldRow(t('memberCard.function'), functionLabel(profile.member_title)) : ''}
+            ${cardSettings.show_parish ? fieldRow(t('memberCard.parish'), profile.parish || '—') : ''}
             ${fieldRow(t('memberCard.issuedOn'), dateFmt(issuedDate))}
             ${fieldRow(t('memberCard.expiresOn'), dateFmt(expirationDate))}
           </div>
@@ -120,21 +135,16 @@ export async function renderMemberIdCard(container, { supabase, userId }) {
         ${isRevoked ? revokedStamp() : ''}
       </div>
 
-      <div data-el="card-back" style="${cardOuterStyle()}margin-top:14px;position:relative;">
+      <div data-el="card-back" style="${cardOuterStyle(cardColor)}margin-top:14px;position:relative;">
         ${headerBar(logoUrl, churchName, false)}
-        <div style="display:flex;gap:12px;padding:12px 16px;flex:1;">
-          <div style="flex:1;font-size:11px;line-height:1.55;">
-            ${fieldRow(t('memberCard.birthInfo'), birthLine)}
-            ${fieldRow(t('memberCard.address'), profile.address || '—')}
+        <div style="padding:12px 16px;flex:1;">
+          <div style="font-size:11px;line-height:1.55;">
+            ${cardSettings.show_birth_info ? fieldRow(t('memberCard.birthInfo'), birthLine) : ''}
+            ${cardSettings.show_address ? fieldRow(t('memberCard.address'), profile.address || '—') : ''}
             <div style="display:flex;gap:24px;margin-top:12px;">
               ${signatureBlock(t('memberCard.memberSignature'), profile.signature_data)}
               ${signatureBlock(t('memberCard.pastorSignature'), pastorRow?.signature_data)}
             </div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;">
-            ${isRevoked || !profile.member_code
-              ? `<div style="width:60px;height:60px;background:#1e2f4d;border:2px solid #93a5c4;border-radius:4px;display:flex;align-items:center;justify-content:center;text-align:center;"><span style="font-size:8px;color:#93a5c4;">${escapeHtml(t('memberCard.qrUnavailable'))}</span></div>`
-              : `<canvas data-el="qr" width="60" height="60" style="width:60px;height:60px;background:white;border:2px solid ${GOLD};border-radius:4px;"></canvas>`}
           </div>
         </div>
         <div style="background:${GOLD};color:${NAVY};font-size:10px;font-weight:700;text-align:center;padding:5px;letter-spacing:0.5px;">
@@ -151,20 +161,16 @@ export async function renderMemberIdCard(container, { supabase, userId }) {
   `;
 
   const wrapEl = container.querySelector('[data-el="cards-wrap"]');
-  const qrEl = container.querySelector('[data-el="qr"]');
   const statusEl = container.querySelector('[data-el="status"]');
 
-  if (qrEl && profile.member_code) {
-    try { await qrToCanvas(qrEl, profile.member_code, { width: 60, margin: 0 }); } catch { /* QR is a nice-to-have, not worth failing the whole card over */ }
-  }
   await recolorSignatureImages(container);
 
   container.querySelector('[data-action="download-png"]').addEventListener('click', () => downloadPng(wrapEl, statusEl));
   container.querySelector('[data-action="download-pdf"]').addEventListener('click', () => downloadPdf(container, statusEl));
 }
 
-function cardOuterStyle() {
-  return `width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;background:${NAVY};color:white;border-radius:14px;overflow:hidden;font-family:system-ui,sans-serif;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,0.3);`;
+function cardOuterStyle(color) {
+  return `width:${CARD_WIDTH}px;height:${CARD_HEIGHT}px;background:${color};color:white;border-radius:14px;overflow:hidden;font-family:system-ui,sans-serif;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,0.3);`;
 }
 
 function headerBar(logoUrl, churchName, isFront) {
