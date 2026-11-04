@@ -3,22 +3,43 @@
 // offeringsImport.js, but a preaching-schedule line has no numeric
 // anchor the way an offering line has a trailing dollar amount, so
 // splitting "moderator / preacher / theme" out of one line of text is
-// inherently less reliable. The parser tries to split the remainder
-// (after the date is removed) on whichever column separator the PDF
-// actually used -- a pipe, 2+ consecutive spaces, or a comma, in that
-// order of preference. When no separator is found at all, the whole
-// remainder is kept as the sermon theme and the moderator/preacher
-// fields are left blank rather than guessed -- the admin reviews and
-// assigns those by hand, per the "advise so the admin can match it"
-// ask. Each resolved name is then fuzzy-matched (findBestMatch,
-// js/utils/nameMatch.js, same 80% threshold used everywhere else)
-// against this department's members: a moderator match pre-fills
-// moderator_id (moderator has no free-text fallback in the schema --
-// an unmatched moderator name is just flagged for manual selection);
-// a preacher match pre-fills preacher_id, and an unmatched preacher
-// name is treated as a guest preacher (guest_name), mirroring exactly
-// how the manual entry form already treats an outside preacher with
-// no account.
+// inherently less reliable.
+//
+// Two input shapes are supported, tried in this order:
+//
+// 1. A "poster" monthly program (a grid of 2-4 styled cards per row,
+//    one per date, each with a "DD/MM" badge -- no year printed
+//    anywhere per-date -- followed by "Thème :", "Orateur :"/
+//    "Oratrice :", and "Modérateur :"/"Modératrice :" lines). This is
+//    reconstructed via parsePosterRows(): pdf.js gives every text run
+//    an (x, y); rows are grouped by y as before, but cells within a
+//    row are now split on a large x-gap (CELL_GAP_PT) instead of
+//    joined into one string, so two side-by-side cards on the same
+//    row don't get blended together. Each date cell opens a new
+//    "card" tracked by its x position; every later cell is routed to
+//    whichever open card's x it's closest to (COLUMN_TOLERANCE_PT),
+//    and labeled by whichever of Thème/Orateur/Modérateur it starts
+//    with -- a day/month badge has no year on the page, so the admin
+//    picks one in the Year field, applied to every date found this
+//    way.
+// 2. The older simple format: one PDF line already contains a full
+//    date (YYYY-MM-DD or DD/MM/YYYY) plus moderator/preacher/theme,
+//    separated by a pipe, 2+ consecutive spaces, or a comma, in that
+//    order of preference (parsePdfLineToPreachingRow()). When no
+//    separator is found at all, the whole remainder is kept as the
+//    sermon theme and the moderator/preacher fields are left blank
+//    rather than guessed -- the admin reviews and assigns those by
+//    hand, per the "advise so the admin can match it" ask.
+//
+// Whichever shape actually produced rows, each resolved name is then
+// fuzzy-matched (findBestMatch, js/utils/nameMatch.js, same 80%
+// threshold used everywhere else) against this department's members:
+// a moderator match pre-fills moderator_id (moderator has no
+// free-text fallback in the schema -- an unmatched moderator name is
+// just flagged for manual selection); a preacher match pre-fills
+// preacher_id, and an unmatched preacher name is treated as a guest
+// preacher (guest_name), mirroring exactly how the manual entry form
+// already treats an outside preacher with no account.
 import { t } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 import { findBestMatch } from '../utils/nameMatch.js';
@@ -35,11 +56,18 @@ function loadPdfJs() {
   return pdfjsLibPromise;
 }
 
-async function extractPdfLines(file) {
+// Groups pdf.js text runs into visual rows by y (as before), but -- new --
+// also splits each row into separate "cells" on a wide x-gap, instead of
+// joining the whole row into one string. A gap this big only occurs
+// between two side-by-side cards in a poster grid; normal word/label
+// spacing within one card's text is a few points at most.
+const CELL_GAP_PT = 20;
+
+async function extractPdfRows(file) {
   const pdfjsLib = await loadPdfJs();
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-  const lines = [];
+  const rows = [];
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
     const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
@@ -51,13 +79,28 @@ async function extractPdfLines(file) {
     }
     const sortedYs = Array.from(byLineY.keys()).sort((a, b) => b - a);
     for (const y of sortedYs) {
-      const text = byLineY.get(y)
-        .sort((a, b) => a.transform[4] - b.transform[4])
-        .map((i) => i.str).join(' ').replace(/\s+/g, ' ').trim();
-      if (text) lines.push(text);
+      const items = byLineY.get(y)
+        .filter((i) => i.str && i.str.trim())
+        .sort((a, b) => a.transform[4] - b.transform[4]);
+      const cells = [];
+      let current = null;
+      for (const item of items) {
+        const x = item.transform[4];
+        const endX = x + (item.width || 0);
+        if (current && x - current.endX < CELL_GAP_PT) {
+          current.text += ' ' + item.str;
+          current.endX = endX;
+        } else {
+          if (current) cells.push(current);
+          current = { x, endX, text: item.str };
+        }
+      }
+      if (current) cells.push(current);
+      const cleaned = cells.map((c) => ({ x: c.x, text: c.text.replace(/\s+/g, ' ').trim() })).filter((c) => c.text);
+      if (cleaned.length) rows.push({ y, cells: cleaned });
     }
   }
-  return lines;
+  return rows;
 }
 
 function toIsoDate(raw) {
@@ -67,6 +110,97 @@ function toIsoDate(raw) {
 }
 
 const PDF_DATE_RE = /\b(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/;
+
+// A poster date badge: day/month only, nothing else in the cell.
+const DATE_ONLY_RE = /^(\d{1,2})\/(\d{1,2})$/;
+// Column tolerance: a non-date cell is routed to whichever open card's
+// x is closest, as long as it's within this many points -- generous
+// enough for a label's slight indent under its card's date badge, far
+// smaller than the gap between two side-by-side cards.
+const COLUMN_TOLERANCE_PT = 40;
+const POSTER_FIELD_LABELS = [
+  { key: 'theme', re: /^Th[eè]me\s*:\s*/i },
+  { key: 'speaker', re: /^(?:Orateur|Oratrice)\s*:\s*/i },
+  { key: 'moderator', re: /^(?:Mod[ée]rateur|Mod[ée]ratrice)\s*:\s*/i },
+];
+
+// Decorative headers/badges on the poster ("CULTES DU DIMANCHE",
+// "SEMAINE 1 - 4", "TOUT LE MOIS") are always all-caps, unlike the
+// "Thème :"/"Orateur :" card labels -- skipped outright so they never
+// get appended onto a card's last field as a stray continuation line.
+function looksLikeAllCapsHeader(text) {
+  const letters = text.replace(/[^a-zA-ZÀ-ÿ]/g, '');
+  return letters.length >= 3 && letters === letters.toUpperCase();
+}
+
+function newPosterCard(x, day, month, year) {
+  const d = Number(day);
+  const m = Number(month);
+  const validYear = Number.isInteger(year) && year > 0;
+  const date = validYear && m >= 1 && m <= 12 && d >= 1 && d <= 31
+    ? `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    : '';
+  return { columnX: x, date, rawDate: `${day}/${month}`, fields: { theme: '', speaker: '', moderator: '' }, currentLabel: null };
+}
+
+function parsePosterRows(rows, year) {
+  const openByColumn = [];
+  const finished = [];
+
+  function findColumnIndex(x) {
+    let bestIdx = -1;
+    let bestDist = Infinity;
+    openByColumn.forEach((col, idx) => {
+      const dist = Math.abs(col.columnX - x);
+      if (dist < bestDist) { bestDist = dist; bestIdx = idx; }
+    });
+    return bestDist <= COLUMN_TOLERANCE_PT ? bestIdx : -1;
+  }
+
+  for (const row of rows) {
+    for (const cell of row.cells) {
+      const dateMatch = cell.text.match(DATE_ONLY_RE);
+      if (dateMatch) {
+        const idx = findColumnIndex(cell.x);
+        if (idx !== -1) finished.push(openByColumn[idx]);
+        const card = newPosterCard(cell.x, dateMatch[1], dateMatch[2], year);
+        if (idx !== -1) openByColumn[idx] = card;
+        else openByColumn.push(card);
+        continue;
+      }
+
+      if (looksLikeAllCapsHeader(cell.text)) continue;
+
+      const idx = findColumnIndex(cell.x);
+      if (idx === -1) continue; // nothing open yet at this x -- a page title/footer, not card content
+      const col = openByColumn[idx];
+      let text = cell.text;
+      let matchedLabel = null;
+      for (const { key, re } of POSTER_FIELD_LABELS) {
+        if (re.test(text)) { matchedLabel = key; text = text.replace(re, '').trim(); break; }
+      }
+      if (matchedLabel) {
+        col.currentLabel = matchedLabel;
+        col.fields[matchedLabel] = col.fields[matchedLabel] ? `${col.fields[matchedLabel]} ${text}` : text;
+      } else if (col.currentLabel && text) {
+        // a wrapped second line of the previous label's value (e.g. a long Thème)
+        col.fields[col.currentLabel] += ` ${text}`;
+      }
+    }
+  }
+  finished.push(...openByColumn);
+
+  return finished
+    .map((card) => ({
+      date: card.date,
+      rawLine: `${card.rawDate} | ${card.fields.theme} | ${card.fields.speaker} | ${card.fields.moderator}`.trim(),
+      noColumnSplit: false,
+      moderatorText: card.fields.moderator,
+      preacherText: card.fields.speaker,
+      theme: card.fields.theme,
+    }))
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+}
 
 function splitRemainderIntoSegments(remainder) {
   let segments;
@@ -110,6 +244,10 @@ export function createPreachingScheduleImportModal({ supabase, departmentId, cur
       <p class="text-xs text-amber-600 mb-4">${t('preachingImport.pdfWarning')}</p>
 
       <div data-el="upload-step">
+        <label class="block text-xs font-medium text-slate-600 mb-1">${t('preachingImport.yearLabel')}</label>
+        <input type="number" data-el="year-input" value="${new Date().getFullYear()}" min="2000" max="2100"
+               class="w-28 border border-slate-300 rounded-lg px-2 py-1.5 text-sm mb-2" />
+        <p class="text-xs text-slate-500 mb-3">${t('preachingImport.yearHint')}</p>
         <input type="file" data-el="file-input" accept=".pdf" class="block w-full text-sm mb-2" />
       </div>
 
@@ -148,6 +286,7 @@ export function createPreachingScheduleImportModal({ supabase, departmentId, cur
   document.body.appendChild(root);
 
   const fileInput = root.querySelector('[data-el="file-input"]');
+  const yearInput = root.querySelector('[data-el="year-input"]');
   const uploadStepEl = root.querySelector('[data-el="upload-step"]');
   const previewStepEl = root.querySelector('[data-el="preview-step"]');
   const previewBodyEl = root.querySelector('[data-el="preview-body"]');
@@ -206,8 +345,15 @@ export function createPreachingScheduleImportModal({ supabase, departmentId, cur
 
     let parsedRows;
     try {
-      const lines = await extractPdfLines(file);
-      parsedRows = lines.map(parsePdfLineToPreachingRow).filter(Boolean);
+      const pdfRows = await extractPdfRows(file);
+      const year = Number(yearInput.value) || null;
+      parsedRows = year ? parsePosterRows(pdfRows, year) : [];
+      if (parsedRows.length === 0) {
+        // Not a poster-grid PDF (or no year given) -- fall back to the
+        // older one-full-date-per-line format.
+        const lines = pdfRows.map((r) => r.cells.map((c) => c.text).join(' '));
+        parsedRows = lines.map(parsePdfLineToPreachingRow).filter(Boolean);
+      }
     } catch (err) {
       window.alert(t('deptCalendarImport.parseFailed', { message: err.message }));
       fileInput.value = '';
