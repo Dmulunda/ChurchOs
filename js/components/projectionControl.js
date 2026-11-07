@@ -737,8 +737,12 @@ export function renderProjectionControl(container, { supabase }) {
         if (screenDetails.screens.length > 1) {
           const chosen = await pickScreen(screenDetails.screens);
           if (!chosen) return; // picker cancelled
+          // No sl/st query params needed any more -- projectorPage.js's
+          // enterFullscreen() just fullscreens whatever screen the
+          // window already sits on, which these left/top/width/height
+          // window-open features already place it on correctly.
           projectorWindowRef = window.open(
-            `projector.html?sl=${chosen.left}&st=${chosen.top}`,
+            'projector.html',
             '_blank',
             `left=${chosen.left},top=${chosen.top},width=${chosen.width},height=${chosen.height}`,
           );

@@ -27,29 +27,25 @@ const presentationSlideEl = document.getElementById('presentation-slide');
 // opened via window.open() from a genuine click (the operator's "Open
 // Projector Screen" button) inherits that activation in every browser
 // that matters here, so calling this straight from page load works.
-// If it's ever denied (e.g. the page was opened by typing the URL
-// directly, with no click behind it), the page still works — just
-// with browser chrome visible — rather than getting stuck.
+//
+// This used to try a multi-screen-specific `requestFullscreen({
+// screen })` first and fall back to a plain call if that failed --
+// but a window's one-shot transient activation is spent by the FIRST
+// attempt regardless of whether it actually succeeds, so a failing
+// first try (that overload isn't universally supported, and a second
+// getScreenDetails() permission check in this fresh window could
+// itself eat into the same short activation window) silently burned
+// the only shot, leaving the "safe" fallback nothing to use. The
+// result: stuck non-fullscreen, needing a manual click on the
+// browser's own maximize/fullscreen control -- which, on Windows,
+// still leaves the taskbar showing, since only true Fullscreen API
+// mode actually covers it. Multi-screen placement is already handled
+// by window.open()'s own left/top/width/height (see
+// projectionControl.js's "open-screen" handler), so by the time this
+// runs the window already sits on the right screen -- a plain
+// requestFullscreen() (no `screen` option, one attempt) fullscreens
+// exactly that screen.
 async function enterFullscreen() {
-  const params = new URLSearchParams(location.search);
-  const targetLeft = params.get('sl');
-  const targetTop = params.get('st');
-
-  if (targetLeft !== null && targetTop !== null && 'getScreenDetails' in window) {
-    try {
-      const screenDetails = await window.getScreenDetails();
-      const target = screenDetails.screens.find((s) => String(s.left) === targetLeft && String(s.top) === targetTop);
-      if (target) {
-        await document.documentElement.requestFullscreen({ screen: target });
-        return;
-      }
-    } catch {
-      // Permission not granted or API not actually usable here — fall
-      // through to a plain fullscreen on whichever screen this window
-      // already sits on.
-    }
-  }
-
   try {
     await document.documentElement.requestFullscreen();
   } catch {
@@ -58,6 +54,14 @@ async function enterFullscreen() {
 }
 
 enterFullscreen();
+// Belt-and-suspenders: if the automatic attempt above still got denied
+// for some browser/version-specific reason, the very first interaction
+// with this window (dragging it onto the projector, or just clicking
+// anywhere) carries its own fresh activation, so this quietly finishes
+// the job without needing a dedicated "click here" control.
+document.addEventListener('pointerdown', () => {
+  if (!document.fullscreenElement) enterFullscreen();
+}, { once: true });
 exitFullscreenBtn.addEventListener('click', () => document.exitFullscreen?.());
 document.addEventListener('fullscreenchange', () => {
   document.body.classList.toggle('is-fullscreen', !!document.fullscreenElement);
