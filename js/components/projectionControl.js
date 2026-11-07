@@ -726,33 +726,34 @@ export function renderProjectionControl(container, { supabase }) {
     });
   };
 
-  container.querySelector('[data-action="open-screen"]').addEventListener('click', async () => {
-    // The Window Management API (getScreenDetails) only exists in
-    // Chromium browsers — everywhere else this just opens the page
-    // normally, same as before, and the operator drags it to the
-    // right display and clicks fullscreen there themselves.
-    if ('getScreenDetails' in window && window.isSecureContext) {
-      try {
-        const screenDetails = await window.getScreenDetails();
-        if (screenDetails.screens.length > 1) {
-          const chosen = await pickScreen(screenDetails.screens);
-          if (!chosen) return; // picker cancelled
-          // No sl/st query params needed any more -- projectorPage.js's
-          // enterFullscreen() just fullscreens whatever screen the
-          // window already sits on, which these left/top/width/height
-          // window-open features already place it on correctly.
-          projectorWindowRef = window.open(
-            'projector.html',
-            '_blank',
-            `left=${chosen.left},top=${chosen.top},width=${chosen.width},height=${chosen.height}`,
-          );
-          return;
-        }
-      } catch {
-        // Permission denied — fall through to a plain open below.
-      }
-    }
+  container.querySelector('[data-action="open-screen"]').addEventListener('click', () => {
+    // Opened synchronously, directly inside this click, with nothing
+    // awaited first -- that's what actually lets the new window's own
+    // on-load requestFullscreen() (projectorPage.js) succeed. An
+    // `await window.getScreenDetails()` (even just to check how many
+    // screens exist) *before* this call was tested for real and found
+    // to drop the one-shot "transient activation" window.open()/
+    // requestFullscreen() need, leaving the projector window stuck
+    // without a usable gesture -- regardless of single- or multi-
+    // screen setups, since getScreenDetails() is async either way.
     projectorWindowRef = window.open('projector.html', '_blank');
+
+    // Multi-monitor placement is layered on top, after the fact, via
+    // moveTo/resizeTo (neither needs activation) -- so it never has to
+    // gate the open/fullscreen above. The Window Management API only
+    // exists in Chromium; everywhere else this just leaves the window
+    // where it opened, same as before.
+    if ('getScreenDetails' in window && window.isSecureContext) {
+      window.getScreenDetails()
+        .then((screenDetails) => {
+          if (screenDetails.screens.length <= 1) return;
+          pickScreen(screenDetails.screens, (chosen) => {
+            projectorWindowRef?.moveTo(chosen.left, chosen.top);
+            projectorWindowRef?.resizeTo(chosen.width, chosen.height);
+          });
+        })
+        .catch(() => { /* permission denied — leave the window where it opened */ });
+    }
   });
 
   container.querySelector('[data-action="blank"]').addEventListener('click', () => {
@@ -1997,11 +1998,13 @@ export function renderProjectionControl(container, { supabase }) {
   };
 }
 
-// One-off screen picker for the "Open Projector Screen" button —
+// One-off screen picker for the "Open Projector Screen" button --
 // not reused elsewhere, so it's a plain function rather than a
-// separate component module. Resolves the chosen ScreenDetailed
-// object, or null if dismissed.
-function pickScreen(screens) {
+// separate component module. Resolves once dismissed (chosen or
+// cancelled), but repositioning the already-open projector window
+// happens through onChoose, called synchronously from inside the
+// picked button's own click handler.
+function pickScreen(screens, onChoose) {
   return new Promise((resolve) => {
     const root = document.createElement('div');
     root.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4';
@@ -2025,7 +2028,11 @@ function pickScreen(screens) {
     }
 
     root.querySelectorAll('[data-screen-idx]').forEach((btn) => {
-      btn.addEventListener('click', () => finish(screens[Number(btn.dataset.screenIdx)]));
+      btn.addEventListener('click', () => {
+        const chosen = screens[Number(btn.dataset.screenIdx)];
+        onChoose(chosen);
+        finish(chosen);
+      });
     });
     root.addEventListener('click', (e) => { if (e.target === root) finish(null); });
   });
