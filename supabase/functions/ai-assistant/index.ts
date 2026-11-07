@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
         ...(workspaceId ? { 'anthropic-workspace-id': workspaceId } : {}),
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: 'claude-sonnet-5-5',
         max_tokens: 2048,
         system: buildSystemPrompt(knowledgeRows || [], locale),
         messages,

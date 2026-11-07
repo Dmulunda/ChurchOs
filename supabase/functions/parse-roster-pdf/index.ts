@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
         ...(workspaceId ? { 'anthropic-workspace-id': workspaceId } : {}),
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: 'claude-sonnet-5-5',
         max_tokens: 16384,
         system: SYSTEM_PROMPT,
         // Matches PDF_TEXT_LIMIT in js/components/peopleImportModal.js --
