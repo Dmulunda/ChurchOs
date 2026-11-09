@@ -1,13 +1,18 @@
-// Prayer requests (sql/067). Two entry points sharing one table:
+// Prayer requests (sql/067, extended by sql/saas_platform/125 for the
+// public prayer link). Two entry points sharing one table:
 // createPrayerRequestModal is the member-facing self-service form
 // (plus their own request history), opened from the sidebar "More"
 // menu; createPrayerRequestQueueModal is the handlers' queue —
 // Intercession's own admins/secretaries, plus the pastoral team —
-// opened from Intercession's Dashboard and from Super Admin Home.
+// opened from Intercession's Dashboard and from Super Admin Home. It
+// shows BOTH sources (source='member'/'public_link') in one merged
+// list, no separate "public requests" view anywhere.
 // mark_prayer_request_prayed() (the RPC) is the only way a request
 // gets marked handled, so handled_by/handled_at are always the real
 // actor and the real server time.
 import { t } from '../i18n.js';
+
+const PASTORAL_TEAM_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
 
 export function createPrayerRequestModal({ supabase, currentUserId }) {
   const root = document.createElement('div');
@@ -138,40 +143,96 @@ export function createPrayerRequestModal({ supabase, currentUserId }) {
 // it, same split userManager.js's renderUserManager/
 // createUserManagerModal already uses.
 export function renderPrayerRequestQueue(container, { supabase }) {
-  container.innerHTML = `<div data-el="list" class="space-y-2"></div>`;
+  container.innerHTML = `
+    <label class="flex items-center gap-1.5 text-sm text-slate-600 mb-3">
+      <select data-el="source-filter" class="border border-slate-300 rounded-lg px-2 py-1 text-sm">
+        <option value="all">${t('prayerRequest.filterAll')}</option>
+        <option value="named">${t('prayerRequest.filterNamed')}</option>
+        <option value="anonymous">${t('prayerRequest.filterAnonymous')}</option>
+      </select>
+    </label>
+    <div data-el="list" class="space-y-2"></div>
+  `;
   const listEl = container.querySelector('[data-el="list"]');
+  const sourceFilterEl = container.querySelector('[data-el="source-filter"]');
+  let rows = [];
+  let handlers = [];
+
+  sourceFilterEl.addEventListener('change', renderList);
   load();
 
   async function load() {
     listEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
 
-    const { data, error } = await supabase
-      .from('prayer_requests')
-      .select('id, request_text, status, created_at, admin_note, requester:profiles!user_id ( full_name )')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true });
+    const [{ data, error }, { data: handlerRows }] = await Promise.all([
+      supabase
+        .from('prayer_requests')
+        .select(`
+          id, request_text, status, created_at, admin_note, source,
+          is_anonymous, name, phone, email, wants_contact, is_private, assigned_to,
+          requester:profiles!user_id ( full_name ),
+          assignee:profiles!assigned_to ( full_name )
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true }),
+      supabase.from('profiles').select('id, full_name').in('global_role', PASTORAL_TEAM_ROLES),
+    ]);
 
     if (error) {
       listEl.innerHTML = `<p class="text-sm text-rose-600">${t('prayerRequest.loadFailed', { message: error.message })}</p>`;
       return;
     }
 
-    if (!data || data.length === 0) {
+    rows = data || [];
+    handlers = handlerRows || [];
+    renderList();
+  }
+
+  function renderList() {
+    const filter = sourceFilterEl.value;
+    const filtered = rows.filter((row) => {
+      if (filter === 'all') return true;
+      const anonymous = row.source === 'public_link' ? row.is_anonymous : !row.requester?.full_name;
+      return filter === 'anonymous' ? anonymous : !anonymous;
+    });
+
+    if (filtered.length === 0) {
       listEl.innerHTML = `<p class="text-sm text-slate-500">${t('prayerRequest.noPending')}</p>`;
       return;
     }
 
     listEl.innerHTML = '';
-    data.forEach((row) => listEl.appendChild(buildRow(row)));
+    filtered.forEach((row) => listEl.appendChild(buildRow(row)));
+  }
+
+  function submitterName(row) {
+    if (row.source === 'public_link') {
+      return row.is_anonymous
+        ? `<span class="italic text-slate-400">${t('prayerRequest.anonymousSubmitter')}</span>`
+        : escapeHtml(row.name || t('prayerRequest.anonymousSubmitter'));
+    }
+    return row.requester?.full_name
+      ? escapeHtml(row.requester.full_name)
+      : `<span class="italic text-slate-400">${t('prayerRequest.anonymousSubmitter')}</span>`;
   }
 
   function buildRow(row) {
     const el = document.createElement('div');
     el.className = 'border border-slate-200 rounded-lg p-3';
+    const contactBits = [];
+    if (row.source === 'public_link' && !row.is_anonymous) {
+      if (row.phone) contactBits.push(escapeHtml(row.phone));
+      if (row.email) contactBits.push(escapeHtml(row.email));
+      if (row.wants_contact) contactBits.push(`<span class="text-indigo-600 font-medium">${t('prayerRequest.wantsContact')}</span>`);
+    }
     el.innerHTML = `
       <div class="flex items-start justify-between gap-3">
         <div>
-          <div class="font-medium text-slate-800">${row.requester?.full_name ? escapeHtml(row.requester.full_name) : `<span class="italic text-slate-400">${t('prayerRequest.anonymousSubmitter')}</span>`}</div>
+          <div class="font-medium text-slate-800 flex items-center gap-1.5">
+            ${row.is_private ? `<span title="${t('prayerRequest.keepPrivate')}">🔒</span>` : ''}
+            ${submitterName(row)}
+          </div>
+          ${contactBits.length > 0 ? `<div class="text-xs text-slate-500">${contactBits.join(' · ')}</div>` : ''}
           <div class="text-xs text-slate-400">${escapeHtml(new Date(row.created_at).toLocaleDateString())}</div>
           <p class="text-sm text-slate-600 mt-1">${escapeHtml(row.request_text)}</p>
         </div>
@@ -179,6 +240,13 @@ export function renderPrayerRequestQueue(container, { supabase }) {
                 class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 whitespace-nowrap">
           ${t('prayerRequest.markPrayed')}
         </button>
+      </div>
+      <div class="mt-2">
+        <label class="block text-xs font-medium text-slate-500 mb-1">${t('prayerRequest.assignTo')}</label>
+        <select data-el="assign-select" class="border border-slate-300 rounded-lg px-2 py-1 text-sm">
+          <option value="">${t('prayerRequest.unassigned')}</option>
+          ${handlers.map((h) => `<option value="${h.id}" ${h.id === row.assigned_to ? 'selected' : ''}>${escapeHtml(h.full_name)}</option>`).join('')}
+        </select>
       </div>
       <div class="mt-2">
         <textarea data-el="admin-note" rows="2" placeholder="${t('prayerRequest.notePlaceholder')}"
@@ -196,7 +264,15 @@ export function renderPrayerRequestQueue(container, { supabase }) {
 
     el.querySelector('[data-action="mark-prayed"]').addEventListener('click', () => markPrayed(row.id, el));
     el.querySelector('[data-action="save-note"]').addEventListener('click', () => saveNote(row.id, el));
+    el.querySelector('[data-el="assign-select"]').addEventListener('change', (e) => assignTo(row.id, e.target.value || null, el));
     return el;
+  }
+
+  async function assignTo(id, assigneeId, el) {
+    const { error } = await supabase.from('prayer_requests').update({ assigned_to: assigneeId }).eq('id', id);
+    if (error) {
+      el.querySelector('[data-el="row-status"]').textContent = t('common.saveFailed', { message: error.message });
+    }
   }
 
   async function saveNote(id, el) {

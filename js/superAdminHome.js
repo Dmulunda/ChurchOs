@@ -28,6 +28,7 @@ import { createBibleImportModal } from './components/bibleImportTool.js';
 import { createPeopleImportModal } from './components/peopleImportModal.js';
 import { createPastorMeetingQueueModal } from './components/pastorMeetingRequests.js';
 import { createPrayerRequestQueueModal } from './components/prayerRequests.js';
+import { createPublicLinkQrModal } from './components/publicLinkQrModal.js';
 import { renderUpcomingChurchEvents } from './components/upcomingChurchEvents.js';
 import { renderBirthdaysWidget, renderPrayerRequestsWidget, renderPendingRequestsWidget, renderAttendanceWidget, renderAnnouncementsWidget } from './components/homeWidgets.js';
 import { createAttendanceManagerModal } from './components/attendanceManager.js';
@@ -51,6 +52,7 @@ let currentBibleImportModal = null;
 let currentPeopleImportModal = null;
 let currentPastorMeetingQueueModal = null;
 let currentPrayerRequestQueueModal = null;
+let currentPrayerLinkQrModal = null;
 let currentAttendanceModal = null;
 
 // Every open*() below follows the same shape: if Home hasn't rendered
@@ -76,6 +78,10 @@ export async function openMemberCases() {
 export async function openPrayerRequests() {
   if (!currentPrayerRequestQueueModal) await renderSuperAdminHomeTab();
   currentPrayerRequestQueueModal?.open();
+}
+export async function openPrayerLinkQr() {
+  if (!currentPrayerLinkQrModal) await renderSuperAdminHomeTab();
+  currentPrayerLinkQrModal?.open();
 }
 export async function openPastorMeetings() {
   if (!currentPastorMeetingQueueModal) await renderSuperAdminHomeTab();
@@ -178,6 +184,7 @@ export async function renderSuperAdminHomeTab() {
   currentPeopleImportModal?.root.remove();
   currentPastorMeetingQueueModal?.root.remove();
   currentPrayerRequestQueueModal?.root.remove();
+  currentPrayerLinkQrModal?.root.remove();
   currentAttendanceModal?.root.remove();
 
   // Modals are still created here unconditionally-per-role (not gated
@@ -202,6 +209,11 @@ export async function renderSuperAdminHomeTab() {
     currentGuestHubModal = createGuestOnboardingModal({ supabase, currentUserId: user.id });
     currentMemberCaseModal = createMemberCaseModal({ supabase, currentUserId: user.id, scope: { type: 'pastoral' } });
     currentPrayerRequestQueueModal = createPrayerRequestQueueModal({ supabase });
+    currentPrayerLinkQrModal = createPublicLinkQrModal({
+      pageFile: 'prayer.html',
+      titleKey: 'prayerLinkQr.title',
+      hintKey: 'prayerLinkQr.hint',
+    });
     currentAttendanceModal = createAttendanceManagerModal({ supabase, currentUserId: user.id });
   }
 
