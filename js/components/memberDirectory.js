@@ -5,14 +5,17 @@
 // visibility/filter/sort conventions.
 //
 // Newcomer rows are highlighted orange, Left rows are greyed out --
-// per the spec. "Mark as left" isn't wired yet (Feature 3's exit
-// tracking modal doesn't exist yet); it'll be added as a row action
-// once that ships, same as every other admin tool in this app that
-// only gained its full action set over several commits.
+// per the spec. "Mark as left" (Feature 3) opens the shared exit-
+// reason dialog and calls record_member_exit() directly rather than
+// remove_user_from_church() -- a member here can have no linked
+// login (profile_id null), so there's no profiles.id to pass that
+// RPC, and it's super-admin-only while this Directory is pastoral-
+// team-gated.
 import { t } from '../i18n.js';
 import { GENDERS, MARITAL_STATUSES, AGE_GROUPS, SKILLS } from './memberRegistrationFields.js';
 import { exportRowsToExcel, exportRowsToCsv } from '../utils/tableExport.js';
 import { exportMemberDirectoryPdf } from './memberDirectoryPdf.js';
+import { openMemberExitModal } from './memberExitModal.js';
 
 const COLUMN_DEFS = [
   { key: 'gender', label: 'memberDirectory.colGender' },
@@ -322,13 +325,23 @@ export function renderMemberDirectory(container, { supabase }) {
         keepBtn.textContent = t('memberDirectory.keepAsNew');
         keepBtn.addEventListener('click', () => keepAsNew(row));
         actionsCell.appendChild(keepBtn);
-      } else if (row.status === 'Newcomer') {
-        const markBtn = document.createElement('button');
-        markBtn.type = 'button';
-        markBtn.className = 'text-xs font-medium text-indigo-600 hover:text-indigo-800';
-        markBtn.textContent = t('memberDirectory.markAsMember');
-        markBtn.addEventListener('click', () => markAsMember(row));
-        actionsCell.appendChild(markBtn);
+      } else {
+        if (row.status === 'Newcomer') {
+          const markBtn = document.createElement('button');
+          markBtn.type = 'button';
+          markBtn.className = 'text-xs font-medium text-indigo-600 hover:text-indigo-800';
+          markBtn.textContent = t('memberDirectory.markAsMember');
+          markBtn.addEventListener('click', () => markAsMember(row));
+          actionsCell.appendChild(markBtn);
+        }
+        if (row.status !== 'Left') {
+          const leftBtn = document.createElement('button');
+          leftBtn.type = 'button';
+          leftBtn.className = 'text-xs font-medium text-rose-600 hover:text-rose-800';
+          leftBtn.textContent = t('memberDirectory.markAsLeft');
+          leftBtn.addEventListener('click', () => markAsLeft(row));
+          actionsCell.appendChild(leftBtn);
+        }
       }
       tr.appendChild(actionsCell);
 
@@ -390,13 +403,18 @@ export function renderMemberDirectory(container, { supabase }) {
     load();
   }
 
+  async function markAsLeft(row) {
+    await openMemberExitModal({ supabase, member: row, onDone: load });
+  }
+
   async function openDetail(row) {
     detailEl.innerHTML = `<div class="border-t border-slate-200 mt-3 pt-3"><p class="text-sm text-slate-500">${t('common.loading')}</p></div>`;
-    const { data: history } = await supabase
-      .from('member_history')
-      .select('field, old_value, new_value, changed_at')
-      .eq('member_id', row.id)
-      .order('changed_at', { ascending: false });
+    const [{ data: history }, { data: exit }] = await Promise.all([
+      supabase.from('member_history').select('field, old_value, new_value, changed_at').eq('member_id', row.id).order('changed_at', { ascending: false }),
+      row.status === 'Left'
+        ? supabase.from('member_exits').select('date_left, main_reason, reason_title, notes').eq('member_id', row.id).order('date_left', { ascending: false }).limit(1).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
     detailEl.innerHTML = `
       <div class="border-t border-slate-200 mt-3 pt-3">
@@ -407,6 +425,15 @@ export function renderMemberDirectory(container, { supabase }) {
         <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-600 mb-3">
           ${COLUMN_DEFS.map((c) => `<div><span class="text-slate-400">${t(c.label)}:</span> ${escapeHtml(cellValue(row, c.key) || '—')}</div>`).join('')}
         </div>
+        ${exit ? `
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3 text-sm text-slate-600">
+            <p class="font-semibold text-slate-700 mb-1">${t('memberExit.exitRecordTitle')}</p>
+            <p>${t('memberExit.colDateLeft')}: ${escapeHtml(exit.date_left)}</p>
+            <p>${t('memberExit.colMainReason')}: ${escapeHtml(t(`exitReasons.${exit.main_reason}`))}</p>
+            ${exit.reason_title ? `<p>${t('memberExit.colReasonTitle')}: ${escapeHtml(exit.reason_title)}</p>` : ''}
+            ${exit.notes ? `<p>${t('memberExit.colNotes')}: ${escapeHtml(exit.notes)}</p>` : ''}
+          </div>
+        ` : ''}
         <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">${t('memberDirectory.changeHistory')}</h4>
         <div class="space-y-1 max-h-48 overflow-y-auto">
           ${(history || []).length > 0 ? history.map((h) => `

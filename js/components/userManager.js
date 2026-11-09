@@ -18,6 +18,7 @@ import { createBulkAddMembersModal } from './bulkAddMembersModal.js';
 import { createResetPasswordModal } from './resetPasswordModal.js';
 import { confirmDialog } from './confirmDialog.js';
 import { reassignAdminDialog } from './reassignAdminDialog.js';
+import { exitReasonDialog } from './memberExitModal.js';
 import { openMeetingWindow, navigateMeetingWindow } from './videoMeeting.js';
 import { isViewingAs, getGlobalRole } from '../departments.js';
 import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
@@ -568,7 +569,19 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
       if (!confirmed) return;
     }
 
-    const { error } = await supabase.rpc('remove_user_from_church', { target_user_id: row.id });
+    const reason = await exitReasonDialog({ skippable: false });
+    if (!reason) return;
+
+    const { error } = await supabase.rpc('remove_user_from_church', {
+      target_user_id: row.id,
+      p_main_reason: reason.main_reason,
+      p_other_reasons: reason.other_reasons,
+      p_reason_title: reason.reason_title,
+      p_notes: reason.notes,
+      p_how_we_know: reason.how_we_know,
+      p_joined_other_church: reason.joined_other_church,
+      p_open_to_follow_up: reason.open_to_follow_up,
+    });
     if (error) {
       window.alert(t('users.removeFailed', { message: error.message }));
       return;

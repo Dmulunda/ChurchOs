@@ -21,6 +21,7 @@ import { renderAllDepartmentApprovals } from './components/allDepartmentApproval
 import { createGuestOnboardingModal } from './components/guestOnboardingHub.js';
 import { createMemberCaseModal } from './components/memberCaseManager.js';
 import { createMemberDirectoryModal } from './components/memberDirectory.js';
+import { createExitTrackingModal } from './components/exitTrackingModal.js';
 import { createMenuCustomizerModal } from './components/menuCustomizer.js';
 import { createMessageModerationModal } from './components/messageModeration.js';
 import { createLoginActivityModal } from './components/loginActivity.js';
@@ -46,6 +47,7 @@ let currentReportsModal = null;
 let currentGuestHubModal = null;
 let currentMemberCaseModal = null;
 let currentMemberDirectoryModal = null;
+let currentExitTrackingModal = null;
 let currentMenuCustomizerModal = null;
 let currentMessageModerationModal = null;
 let currentLoginActivityModal = null;
@@ -81,6 +83,10 @@ export async function openMemberCases() {
 export async function openMemberDirectory() {
   if (!currentMemberDirectoryModal) await renderSuperAdminHomeTab();
   currentMemberDirectoryModal?.open();
+}
+export async function openExitTracking() {
+  if (!currentExitTrackingModal) await renderSuperAdminHomeTab();
+  currentExitTrackingModal?.open();
 }
 export async function openPrayerRequests() {
   if (!currentPrayerRequestQueueModal) await renderSuperAdminHomeTab();
@@ -188,6 +194,7 @@ export async function renderSuperAdminHomeTab() {
   currentGuestHubModal?.root.remove();
   currentMemberCaseModal?.root.remove();
   currentMemberDirectoryModal?.root.remove();
+  currentExitTrackingModal?.root.remove();
   currentMenuCustomizerModal?.root.remove();
   currentMessageModerationModal?.root.remove();
   currentLoginActivityModal?.root.remove();
@@ -222,6 +229,7 @@ export async function renderSuperAdminHomeTab() {
     currentGuestHubModal = createGuestOnboardingModal({ supabase, currentUserId: user.id });
     currentMemberCaseModal = createMemberCaseModal({ supabase, currentUserId: user.id, scope: { type: 'pastoral' } });
     currentMemberDirectoryModal = createMemberDirectoryModal({ supabase, title: t('memberDirectory.title') });
+    currentExitTrackingModal = createExitTrackingModal({ supabase });
     currentPrayerRequestQueueModal = createPrayerRequestQueueModal({ supabase });
     currentPrayerLinkQrModal = createPublicLinkQrModal({
       pageFile: 'prayer.html',
