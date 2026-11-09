@@ -45,7 +45,6 @@ declare
   v_email text;
   v_recent_count integer;
   v_match record;
-  v_old public.members%rowtype;
   v_member_id uuid;
   v_result_status text;
 begin
@@ -116,8 +115,10 @@ begin
 
   if v_match.id is not null and v_match.total >= 70 then
     v_member_id := v_match.id;
-    select * into v_old from public.members where id = v_member_id;
 
+    -- sql/saas_platform/131_member_profile_sync.sql's log_member_changes()
+    -- trigger records every changed field to member_history automatically
+    -- -- no manual logging needed here.
     update public.members set
       full_name = coalesce(nullif(trim(p_full_name), ''), full_name),
       gender = coalesce(p_gender, gender),
@@ -135,25 +136,6 @@ begin
       profile_id = coalesce(profile_id, p_profile_id),
       last_updated_at = now()
     where id = v_member_id;
-
-    insert into public.member_history (tenant_id, member_id, field, old_value, new_value, changed_by)
-    select v_tenant_id, v_member_id, f.field, f.old_value, f.new_value, p_profile_id
-    from (values
-      ('full_name', v_old.full_name, nullif(trim(p_full_name), '')),
-      ('gender', v_old.gender, p_gender),
-      ('marital_status', v_old.marital_status, p_marital_status),
-      ('address_street', v_old.address_street, nullif(trim(p_address_street), '')),
-      ('address_city', v_old.address_city, nullif(trim(p_address_city), '')),
-      ('address_province', v_old.address_province, nullif(trim(p_address_province), '')),
-      ('address_postal', v_old.address_postal, nullif(trim(p_address_postal), '')),
-      ('age_group', v_old.age_group, p_age_group),
-      ('career', v_old.career, nullif(trim(p_career), '')),
-      ('phone', v_old.phone, nullif(trim(p_phone), '')),
-      ('email', v_old.email, v_email),
-      ('skills', v_old.skills::text, case when p_skills is not null and array_length(p_skills, 1) > 0 then p_skills::text else null end),
-      ('skills_other', v_old.skills_other, nullif(trim(p_skills_other), ''))
-    ) as f(field, old_value, new_value)
-    where f.new_value is not null and f.new_value is distinct from f.old_value;
 
     v_result_status := 'updated';
 
