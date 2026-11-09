@@ -18,6 +18,8 @@ import { loadLabelOverrides, applyStaticTranslations, t } from './i18n.js';
 
 const MAX_LENGTH = 2000;
 
+const COP_LOGO = 'img/church-on-point-icon.png';
+
 async function main() {
   try {
     await loadLabelOverrides();
@@ -28,7 +30,19 @@ async function main() {
   const params = new URLSearchParams(window.location.search);
   const tenantSlug = params.get('church');
 
+  renderHeader(tenantSlug);
   renderForm(container, { tenantSlug });
+}
+
+async function renderHeader(tenantSlug) {
+  const imgEl = document.querySelector('#prayer-header img');
+  const nameEl = document.querySelector('#prayer-header h1');
+  if (!tenantSlug) return; // no church context on the link -- keep the COP default already in the HTML
+
+  const { data } = await supabase.rpc('get_public_church_info', { p_tenant_slug: tenantSlug });
+  if (!data) return;
+  imgEl.src = data.logo_url || COP_LOGO;
+  if (data.name) nameEl.textContent = data.name;
 }
 
 function renderForm(container, { tenantSlug }) {
@@ -59,11 +73,6 @@ function renderForm(container, { tenantSlug }) {
           ${t('prayerRequest.wantsContact')}
         </label>
       </div>
-
-      <label class="flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" name="is_private" class="rounded border-slate-300">
-        ${t('prayerRequest.keepPrivate')}
-      </label>
 
       <!-- Honeypot: left visually and from assistive tech, a real
            visitor never fills it; a filled value makes the RPC
@@ -107,7 +116,7 @@ function renderForm(container, { tenantSlug }) {
       p_phone: fd.get('phone') || null,
       p_email: fd.get('email') || null,
       p_wants_contact: fd.get('wants_contact') === 'on',
-      p_is_private: fd.get('is_private') === 'on',
+      p_is_private: false,
       p_honeypot: fd.get('website') || null,
     });
 

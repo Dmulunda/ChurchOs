@@ -9,11 +9,14 @@
 </head>
 <body class="bg-slate-50 min-h-screen">
   <div class="max-w-md mx-auto px-4 py-8 sm:py-12">
-    <div class="flex items-center gap-3 mb-2">
-      <img src="img/church-on-point-icon.png" alt="" class="h-10 w-10 object-contain" />
-      <h1 class="text-xl font-bold text-slate-800" data-i18n="prayerRequest.publicFormTitle">Prayer Request</h1>
+    <div id="prayer-header" class="mb-6">
+      <div class="flex items-center gap-3 mb-1">
+        <img src="img/church-on-point-icon.png" alt="" class="h-10 w-10 object-contain rounded" />
+        <h1 class="text-lg font-bold text-slate-800">&nbsp;</h1>
+      </div>
+      <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide" data-i18n="prayerRequest.publicFormTitle">Prayer Request</h2>
+      <p class="text-sm text-slate-500 mt-1" data-i18n="prayerRequest.publicFormIntro">Share what's on your heart. Our church is praying for you.</p>
     </div>
-    <p class="text-sm text-slate-500 mb-6" data-i18n="prayerRequest.publicFormIntro">Share what's on your heart. Our church is praying for you.</p>
     <div id="public-prayer-content">
       <p class="text-slate-500 bg-white rounded-xl shadow p-4 sm:p-6">Loading…</p>
     </div>
