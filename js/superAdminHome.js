@@ -20,6 +20,7 @@ import { createSilentDirectoryModal } from './components/silentDirectory.js';
 import { renderAllDepartmentApprovals } from './components/allDepartmentApprovals.js';
 import { createGuestOnboardingModal } from './components/guestOnboardingHub.js';
 import { createMemberCaseModal } from './components/memberCaseManager.js';
+import { createMemberDirectoryModal } from './components/memberDirectory.js';
 import { createMenuCustomizerModal } from './components/menuCustomizer.js';
 import { createMessageModerationModal } from './components/messageModeration.js';
 import { createLoginActivityModal } from './components/loginActivity.js';
@@ -44,6 +45,7 @@ let currentSilentDirectoryModal = null;
 let currentReportsModal = null;
 let currentGuestHubModal = null;
 let currentMemberCaseModal = null;
+let currentMemberDirectoryModal = null;
 let currentMenuCustomizerModal = null;
 let currentMessageModerationModal = null;
 let currentLoginActivityModal = null;
@@ -75,6 +77,10 @@ export async function openSilentDirectory() {
 export async function openMemberCases() {
   if (!currentMemberCaseModal) await renderSuperAdminHomeTab();
   currentMemberCaseModal?.open();
+}
+export async function openMemberDirectory() {
+  if (!currentMemberDirectoryModal) await renderSuperAdminHomeTab();
+  currentMemberDirectoryModal?.open();
 }
 export async function openPrayerRequests() {
   if (!currentPrayerRequestQueueModal) await renderSuperAdminHomeTab();
@@ -181,6 +187,7 @@ export async function renderSuperAdminHomeTab() {
   currentSilentDirectoryModal?.root.remove();
   currentGuestHubModal?.root.remove();
   currentMemberCaseModal?.root.remove();
+  currentMemberDirectoryModal?.root.remove();
   currentMenuCustomizerModal?.root.remove();
   currentMessageModerationModal?.root.remove();
   currentLoginActivityModal?.root.remove();
@@ -214,6 +221,7 @@ export async function renderSuperAdminHomeTab() {
   if (isPastoralTeam) {
     currentGuestHubModal = createGuestOnboardingModal({ supabase, currentUserId: user.id });
     currentMemberCaseModal = createMemberCaseModal({ supabase, currentUserId: user.id, scope: { type: 'pastoral' } });
+    currentMemberDirectoryModal = createMemberDirectoryModal({ supabase, title: t('memberDirectory.title') });
     currentPrayerRequestQueueModal = createPrayerRequestQueueModal({ supabase });
     currentPrayerLinkQrModal = createPublicLinkQrModal({
       pageFile: 'prayer.html',
