@@ -18,7 +18,8 @@ import { t, tn, monthName } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 
 const MAX_GENERATED_SLOTS = 500;
-const DEFAULT_PAUSE_MESSAGE = "We're sorry to let you know that our pastor will not be available this week. We apologize for any inconvenience this may cause, and we appreciate your patience and understanding.\nIf you need pastoral care or have an urgent matter, please contact the church office and we will do our best to assist you. Regular services and activities will resume as usual next week.\nThank you for your understanding, and may God bless you all.";
+const DEFAULT_PAUSE_MESSAGE_EN = "We're sorry to let you know that our pastor will not be available this week. We apologize for any inconvenience this may cause, and we appreciate your patience and understanding.\nIf you need pastoral care or have an urgent matter, please contact the church office and we will do our best to assist you. Regular services and activities will resume as usual next week.\nThank you for your understanding, and may God bless you all.";
+const DEFAULT_PAUSE_MESSAGE_FR = "Nous sommes désolés de vous informer que notre pasteur ne sera pas disponible cette semaine. Nous nous excusons pour tout inconvénient que cela pourrait causer, et nous apprécions votre patience et votre compréhension.\nSi vous avez besoin de soins pastoraux ou d'une question urgente, veuillez contacter le bureau de l'église et nous ferons de notre mieux pour vous aider. Les services et activités habituels reprendront normalement la semaine prochaine.\nMerci de votre compréhension, et que Dieu vous bénisse tous.";
 
 export function renderPastorAvailabilityCalendar(container, { supabase, pastorId }) {
   let viewDate = new Date();
@@ -48,11 +49,11 @@ export function renderPastorAvailabilityCalendar(container, { supabase, pastorId
   loadPauseState();
 
   async function loadPauseState() {
-    const { data } = await supabase.from('pastor_meeting_pause').select('paused, message').eq('pastor_id', pastorId).maybeSingle();
-    renderPauseControl(data?.paused || false, data?.message || DEFAULT_PAUSE_MESSAGE);
+    const { data } = await supabase.from('pastor_meeting_pause').select('paused, message_en, message_fr').eq('pastor_id', pastorId).maybeSingle();
+    renderPauseControl(data?.paused || false, data?.message_en || DEFAULT_PAUSE_MESSAGE_EN, data?.message_fr || DEFAULT_PAUSE_MESSAGE_FR);
   }
 
-  function renderPauseControl(paused, message) {
+  function renderPauseControl(paused, messageEn, messageFr) {
     if (!paused) {
       pauseControlEl.innerHTML = `
         <button type="button" data-action="open-pause-form" class="px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 text-sm font-medium hover:bg-amber-200">
@@ -65,7 +66,16 @@ export function renderPastorAvailabilityCalendar(container, { supabase, pastorId
         wrap.classList.remove('hidden');
         wrap.innerHTML = `
           <p class="text-sm text-slate-500 mb-2">${t('pastorAvailability.pauseIntro')}</p>
-          <textarea data-el="pause-message" rows="5" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(message)}</textarea>
+          <div class="grid sm:grid-cols-2 gap-2 mb-2">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">${t('menuCustomizer.english')}</label>
+              <textarea data-el="pause-message-en" rows="5" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">${escapeHtml(messageEn)}</textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">${t('menuCustomizer.french')}</label>
+              <textarea data-el="pause-message-fr" rows="5" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">${escapeHtml(messageFr)}</textarea>
+            </div>
+          </div>
           <div class="flex items-center gap-2">
             <button type="button" data-action="confirm-pause" class="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700">${t('pastorAvailability.confirmPause')}</button>
             <button type="button" data-action="cancel-pause-form" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">${t('common.cancel')}</button>
@@ -78,7 +88,13 @@ export function renderPastorAvailabilityCalendar(container, { supabase, pastorId
           statusEl.className = 'text-sm text-slate-500';
           statusEl.textContent = t('common.saving');
           const { error } = await supabase.from('pastor_meeting_pause').upsert(
-            { pastor_id: pastorId, paused: true, message: wrap.querySelector('[data-el="pause-message"]').value.trim() || DEFAULT_PAUSE_MESSAGE, updated_at: new Date().toISOString() },
+            {
+              pastor_id: pastorId,
+              paused: true,
+              message_en: wrap.querySelector('[data-el="pause-message-en"]').value.trim() || DEFAULT_PAUSE_MESSAGE_EN,
+              message_fr: wrap.querySelector('[data-el="pause-message-fr"]').value.trim() || DEFAULT_PAUSE_MESSAGE_FR,
+              updated_at: new Date().toISOString(),
+            },
             { onConflict: 'pastor_id' },
           );
           if (error) {
@@ -93,7 +109,16 @@ export function renderPastorAvailabilityCalendar(container, { supabase, pastorId
       pauseControlEl.innerHTML = `
         <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
           <p class="text-sm font-medium text-amber-800 mb-1">${t('pastorAvailability.pausedNotice')}</p>
-          <p class="text-sm text-amber-700 whitespace-pre-wrap mb-3">${escapeHtml(message)}</p>
+          <div class="grid sm:grid-cols-2 gap-3 mb-3">
+            <div>
+              <p class="text-xs font-medium text-amber-700 mb-0.5">${t('menuCustomizer.english')}</p>
+              <p class="text-sm text-amber-700 whitespace-pre-wrap">${escapeHtml(messageEn)}</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-amber-700 mb-0.5">${t('menuCustomizer.french')}</p>
+              <p class="text-sm text-amber-700 whitespace-pre-wrap">${escapeHtml(messageFr)}</p>
+            </div>
+          </div>
           <button type="button" data-action="resume" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">${t('pastorAvailability.resumeButton')}</button>
           <span data-el="resume-status" class="text-sm ml-2"></span>
         </div>

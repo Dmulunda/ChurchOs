@@ -94,13 +94,15 @@ Deno.serve(async (req) => {
   if (booking.status !== 'confirmed') return json({ skipped: 'booking is not confirmed' });
 
   const [{ data: settings }, { data: tenant }] = await Promise.all([
-    admin.from('pastor_meeting_settings').select('church_timezone').eq('tenant_id', booking.tenant_id).maybeSingle(),
-    admin.from('tenants').select('name, email, phone').eq('id', booking.tenant_id).maybeSingle(),
+    admin.from('pastor_meeting_settings').select('church_timezone, booking_note_en').eq('tenant_id', booking.tenant_id).maybeSingle(),
+    admin.from('tenants').select('name, address, email, phone').eq('id', booking.tenant_id).maybeSingle(),
   ]);
   const churchTimezone = settings?.church_timezone || 'America/Toronto';
+  const bookingNote = settings?.booking_note_en || null;
   const churchName = tenant?.name || 'the church';
   const churchEmail = tenant?.email || null;
   const churchPhone = tenant?.phone || null;
+  const officeAddress = tenant?.address || null;
 
   const isOnline = booking.meeting_type === 'online';
   let accessLine;
@@ -121,11 +123,14 @@ Deno.serve(async (req) => {
     : 'If you need to cancel or have questions, please contact the church office.';
 
   const html = `
+    <h2>${escapeHtml(churchName)}</h2>
     <p>Hi ${escapeHtml(booking.contact_name || '')},</p>
-    <p>Your meeting with ${escapeHtml(pastorName)} at ${escapeHtml(churchName)} is confirmed.</p>
+    <p>Your meeting with ${escapeHtml(pastorName)} is confirmed.</p>
     <p><strong>${escapeHtml(dateLine)}</strong></p>
     <p>${accessLine}</p>
+    ${!isOnline && officeAddress ? `<p>Address: ${escapeHtml(officeAddress)}</p>` : ''}
     <p>${contactLine}</p>
+    ${bookingNote ? `<p>${escapeHtml(bookingNote)}</p>` : ''}
   `;
 
   const resendKey = Deno.env.get('RESEND_API_KEY');
@@ -141,7 +146,7 @@ Deno.serve(async (req) => {
       from: fromAddress,
       to: [booking.guest_email],
       ...(churchEmail ? { reply_to: churchEmail } : {}),
-      subject: `Your meeting with ${pastorName} at ${churchName} is confirmed`,
+      subject: `${churchName}: Your meeting with ${pastorName} is confirmed`,
       html,
     }),
   });

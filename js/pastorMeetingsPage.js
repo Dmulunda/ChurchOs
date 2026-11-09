@@ -362,7 +362,7 @@ async function renderSettingsTab(container, { supabase, currentUserId }) {
   // SELECT to the caller's own tenant -- no explicit filter needed, at
   // most one row exists per tenant (tenant_id is the PK).
   const { data, error } = await supabase.from('pastor_meeting_settings')
-    .select('selection_mode, min_booking_notice_hours, max_booking_lead_days, church_timezone, online_meeting_link')
+    .select('selection_mode, min_booking_notice_hours, max_booking_lead_days, church_timezone, online_meeting_link, booking_note_en, booking_note_fr')
     .maybeSingle();
   if (error) {
     container.innerHTML = `<p class="text-sm text-rose-600">${t('pastorBooking.loadFailed', { message: error.message })}</p>`;
@@ -428,6 +428,26 @@ async function renderSettingsTab(container, { supabase, currentUserId }) {
         <button type="button" data-action="save-online-link" class="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">${t('pastorBooking.saveNotice')}</button>
       </div>
       <p data-el="online-link-status" class="text-sm mt-2"></p>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 sm:p-6 mb-4">
+      <h3 class="font-semibold text-slate-800 mb-2">${t('pastorBooking.bookingNoteTitle')}</h3>
+      <p class="text-sm text-slate-500 mb-2">${t('pastorBooking.bookingNoteIntro')}</p>
+      <div class="grid sm:grid-cols-2 gap-2">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">${t('menuCustomizer.english')}</label>
+          <textarea data-el="booking-note-en" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">${escapeHtml(data?.booking_note_en || '')}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">${t('menuCustomizer.french')}</label>
+          <textarea data-el="booking-note-fr" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">${escapeHtml(data?.booking_note_fr || '')}</textarea>
+        </div>
+      </div>
+      <button type="button" data-action="save-booking-note" class="mt-2 px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">${t('pastorBooking.saveNotice')}</button>
+      <p data-el="booking-note-status" class="text-sm mt-2"></p>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 sm:p-6 mb-4">
+      <h3 class="font-semibold text-slate-800 mb-2">${t('pastorBooking.officeAddressHintTitle')}</h3>
+      <p class="text-sm text-slate-500">${t('pastorBooking.officeAddressHint')}</p>
     </div>
     <div class="bg-white rounded-xl shadow p-4 sm:p-6">
       <h3 class="font-semibold text-slate-800 mb-2">${t('pastorBooking.publicLinkTitle')}</h3>
@@ -539,6 +559,25 @@ async function renderSettingsTab(container, { supabase, currentUserId }) {
     }
     onlineLinkStatusEl.className = 'text-sm text-emerald-600 mt-2';
     onlineLinkStatusEl.textContent = t('pastorBooking.saved');
+  });
+
+  const bookingNoteStatusEl = container.querySelector('[data-el="booking-note-status"]');
+  container.querySelector('[data-action="save-booking-note"]').addEventListener('click', async () => {
+    const noteEn = container.querySelector('[data-el="booking-note-en"]').value.trim();
+    const noteFr = container.querySelector('[data-el="booking-note-fr"]').value.trim();
+    bookingNoteStatusEl.className = 'text-sm text-slate-500 mt-2';
+    bookingNoteStatusEl.textContent = t('common.saving');
+    const { error: saveError } = await supabase.from('pastor_meeting_settings').upsert(
+      { tenant_id: getTenantId(), booking_note_en: noteEn || null, booking_note_fr: noteFr || null, updated_by: currentUserId, updated_at: new Date().toISOString() },
+      { onConflict: 'tenant_id' },
+    );
+    if (saveError) {
+      bookingNoteStatusEl.className = 'text-sm text-rose-600 mt-2';
+      bookingNoteStatusEl.textContent = t('pastorBooking.saveFailed', { message: saveError.message });
+      return;
+    }
+    bookingNoteStatusEl.className = 'text-sm text-emerald-600 mt-2';
+    bookingNoteStatusEl.textContent = t('pastorBooking.saved');
   });
 
   container.querySelector('[data-action="copy-link"]').addEventListener('click', async () => {

@@ -32,7 +32,7 @@
 // this app doesn't otherwise attempt anywhere, and getting it wrong
 // here means showing someone the wrong meeting time.
 import { formatDateLocal, todayLocal } from '../utils/date.js';
-import { t, tn, monthName } from '../i18n.js';
+import { t, tn, monthName, getLang } from '../i18n.js';
 import { openMeetingWindow, navigateMeetingWindow } from './videoMeeting.js';
 import { DateTime } from 'https://cdn.jsdelivr.net/npm/luxon@3.5.0/+esm';
 
@@ -42,6 +42,12 @@ export function renderPastorBookingCalendar(container, { supabase, currentUserPr
   let slotsByDate = new Map();
   let selectedDate = null;
   let churchTimezone = 'America/Toronto';
+  // get_public_church_info() is dual-mode (auth.uid() OR slug) as of
+  // sql/saas_platform/137 -- works for both the authenticated in-app
+  // tab (tenantSlug is undefined, falls back to current_tenant_id())
+  // and the guest public page (tenantSlug from booking.html's own
+  // ?church= param).
+  let churchName = '';
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   container.innerHTML = `
@@ -76,8 +82,12 @@ export function renderPastorBookingCalendar(container, { supabase, currentUserPr
   init();
 
   async function init() {
-    const { data: tz } = await supabase.rpc('get_church_timezone', { p_tenant_slug: tenantSlug || null });
+    const [{ data: tz }, { data: info }] = await Promise.all([
+      supabase.rpc('get_church_timezone', { p_tenant_slug: tenantSlug || null }),
+      supabase.rpc('get_public_church_info', { p_tenant_slug: tenantSlug || null }),
+    ]);
     if (tz) churchTimezone = tz;
+    churchName = info?.name || '';
     if (churchTimezone !== browserTimezone) {
       tzNoteEl.classList.remove('hidden');
       tzNoteEl.textContent = t('pastorBooking.tzNote', { tz: browserTimezone });
@@ -118,9 +128,10 @@ export function renderPastorBookingCalendar(container, { supabase, currentUserPr
       return;
     }
     pauseBannerEl.classList.remove('hidden');
-    pauseBannerEl.innerHTML = notices.map((n) => `
-      <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3 text-sm mb-2 whitespace-pre-wrap">${escapeHtml(n.message || t('pastorBooking.defaultPauseMessage'))}</div>
-    `).join('');
+    pauseBannerEl.innerHTML = notices.map((n) => {
+      const message = getLang() === 'fr' ? (n.message_fr || n.message_en) : (n.message_en || n.message_fr);
+      return `<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3 text-sm mb-2 whitespace-pre-wrap">${escapeHtml(message || t('pastorBooking.defaultPauseMessage'))}</div>`;
+    }).join('');
   }
 
   // Converts a church-timezone wall-clock date+time to the browser's
@@ -298,7 +309,9 @@ export function renderPastorBookingCalendar(container, { supabase, currentUserPr
     const { display, churchTime, dayShift } = convertForDisplay(selectedDate, slot.start_time);
     const endTimeConverted = convertForDisplay(selectedDate, slot.end_time).display;
     const canJoin = booking?.meeting_room || booking?.meeting_link;
+    const bookingNote = getLang() === 'fr' ? (booking?.booking_note_fr || booking?.booking_note_en) : (booking?.booking_note_en || booking?.booking_note_fr);
     confirmationView.innerHTML = `
+      ${churchName ? `<div class="text-base font-bold text-slate-800 mb-0.5">${escapeHtml(churchName)}</div>` : ''}
       <div class="text-emerald-600 text-lg font-semibold mb-2">${t('pastorBooking.bookedTitle')}</div>
       <p class="text-slate-700 mb-4">
         ${escapeHtml(selectedDate)} · ${display} – ${endTimeConverted}
@@ -306,6 +319,8 @@ export function renderPastorBookingCalendar(container, { supabase, currentUserPr
         ${churchTime ? `<br /><span class="text-xs text-slate-400">${churchTime}${dayShift ? ` · ${dayShift}` : ''}</span>` : ''}
       </p>
       ${canJoin ? `<button type="button" data-action="join-now" class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700">${t('meeting.join')}</button>` : `<p class="text-sm text-slate-500">${t('pastorBooking.officeReminder')}</p>`}
+      ${booking?.office_address ? `<p class="text-sm text-slate-500 mt-2">${t('pastorBooking.addressLabel')}: ${escapeHtml(booking.office_address)}</p>` : ''}
+      ${bookingNote ? `<p class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 mt-3 whitespace-pre-wrap">${escapeHtml(bookingNote)}</p>` : ''}
       <div class="mt-4">
         <button type="button" data-action="book-another" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">${t('pastorBooking.bookAnother')}</button>
       </div>
