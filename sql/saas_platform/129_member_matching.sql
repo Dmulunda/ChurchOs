@@ -83,21 +83,36 @@ begin
 
   v_email := nullif(lower(trim(p_email)), '');
 
-  select m.id, m.profile_id,
-    (
-      (case when v_email is not null and lower(m.email) = v_email then 30 else 0 end)
-      + (case when nullif(regexp_replace(coalesce(m.phone, ''), '\D', '', 'g'), '') is not null
-               and regexp_replace(coalesce(m.phone, ''), '\D', '', 'g') = regexp_replace(coalesce(p_phone, ''), '\D', '', 'g')
-          then 30 else 0 end)
-      + (similarity(coalesce(m.full_name, ''), p_full_name) * 30)
-      + (case when m.gender is not null and m.gender = p_gender then 5 else 0 end)
-      + (case when m.age_group is not null and m.age_group = p_age_group then 5 else 0 end)
-    ) as total
-  into v_match
-  from public.members m
-  where m.tenant_id = v_tenant_id
-  order by total desc
-  limit 1;
+  -- profile_id is unique on members -- if this submitter already has a
+  -- linked row, THAT is the match, full stop. Skipping this and
+  -- relying on the fuzzy score alone can (and did) pick a different
+  -- row, or no row, and then try to INSERT a second row with the same
+  -- profile_id, violating the unique constraint -- a logged-in
+  -- member's own identity is never in doubt, so it must short-circuit
+  -- the scoring entirely rather than just adding points toward it.
+  if p_profile_id is not null then
+    select m.id, m.profile_id, 100 as total into v_match
+    from public.members m
+    where m.tenant_id = v_tenant_id and m.profile_id = p_profile_id;
+  end if;
+
+  if v_match.id is null then
+    select m.id, m.profile_id,
+      (
+        (case when v_email is not null and lower(m.email) = v_email then 30 else 0 end)
+        + (case when nullif(regexp_replace(coalesce(m.phone, ''), '\D', '', 'g'), '') is not null
+                 and regexp_replace(coalesce(m.phone, ''), '\D', '', 'g') = regexp_replace(coalesce(p_phone, ''), '\D', '', 'g')
+            then 30 else 0 end)
+        + (similarity(coalesce(m.full_name, ''), p_full_name) * 30)
+        + (case when m.gender is not null and m.gender = p_gender then 5 else 0 end)
+        + (case when m.age_group is not null and m.age_group = p_age_group then 5 else 0 end)
+      ) as total
+    into v_match
+    from public.members m
+    where m.tenant_id = v_tenant_id
+    order by total desc
+    limit 1;
+  end if;
 
   if v_match.id is not null and v_match.total >= 70 then
     v_member_id := v_match.id;
