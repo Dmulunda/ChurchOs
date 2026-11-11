@@ -147,6 +147,7 @@ export async function renderSiteAdminTab() {
   };
   const loaded = { inquiries: false, suggestions: false, requests: false, churches: false, 'promo-codes': false, referrals: false, usage: false, sandbox: false, manage: false, owner: false };
   let churchUsersModal = null;
+  let churchNotesModal = null;
   // Site Admin's own cross-tenant reset (site-admin-reset-password/
   // index.ts), not the per-tenant admin-reset-password every church's
   // own Super Admin uses -- same UI, deliberately separate Edge
@@ -430,6 +431,7 @@ export async function renderSiteAdminTab() {
   const CHURCH_SORT_COLUMNS = {
     name: (row) => (row.name || '').toLowerCase(),
     owner: (row) => (row.owner_name || row.owner_email || '').toLowerCase(),
+    country: (row) => (row.country || '').toLowerCase(),
     status: (row) => row.status || '',
     members: (row) => row.member_count || 0,
     storage: (row) => row.totalBytes || 0,
@@ -467,12 +469,14 @@ export async function renderSiteAdminTab() {
     }));
 
     panels.churches.innerHTML = `
+      <div data-el="country-summary" class="text-sm text-slate-600 mb-3"></div>
       <div class="overflow-x-auto border border-slate-200 rounded-lg mb-2">
         <table class="w-full text-sm">
           <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
             <tr>
               <th class="text-left px-3 py-2"><button type="button" data-sort-col="name" class="hover:text-slate-800">${t('siteAdmin.colChurch')}</button></th>
               <th class="text-left px-3 py-2"><button type="button" data-sort-col="owner" class="hover:text-slate-800">${t('siteAdmin.colOwner')}</button></th>
+              <th class="text-left px-3 py-2"><button type="button" data-sort-col="country" class="hover:text-slate-800">${t('siteAdmin.colCountry')}</button></th>
               <th class="text-left px-3 py-2"><button type="button" data-sort-col="status" class="hover:text-slate-800">${t('siteAdmin.colStatus')}</button></th>
               <th class="text-right px-3 py-2"><button type="button" data-sort-col="members" class="hover:text-slate-800">${t('siteAdmin.colMembers')}</button></th>
               <th class="text-right px-3 py-2"><button type="button" data-sort-col="storage" class="hover:text-slate-800">${t('siteAdmin.colStorage')}</button></th>
@@ -486,6 +490,7 @@ export async function renderSiteAdminTab() {
       </div>
       <p class="text-xs text-slate-500">${t('siteAdmin.churchesCount', { count: (tenants || []).filter((t2) => !t2.deleted_at).length })}</p>
     `;
+    renderCountrySummary();
 
     panels.churches.querySelectorAll('[data-sort-col]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -500,6 +505,25 @@ export async function renderSiteAdminTab() {
     renderChurchesTable();
   }
 
+  function renderCountrySummary() {
+    const el = panels.churches.querySelector('[data-el="country-summary"]');
+    if (!el) return;
+    const active = churchRowsData.filter((row) => !row.deleted_at);
+    const counts = new Map();
+    active.forEach((row) => {
+      const key = (row.country || '').trim() || t('siteAdmin.countryUnknown');
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    const chips = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([country, count]) => `<span class="inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs mr-1 mb-1">${escapeHtml(country)} (${count})</span>`)
+      .join('');
+    el.innerHTML = `
+      <p class="mb-1">${t('siteAdmin.countrySummary', { total: active.length, countries: counts.size })}</p>
+      <div>${chips}</div>
+    `;
+  }
+
   function renderChurchesTable() {
     const rowsEl = panels.churches.querySelector('[data-el="rows"]');
     const valueOf = CHURCH_SORT_COLUMNS[churchSortState.col];
@@ -511,7 +535,7 @@ export async function renderSiteAdminTab() {
     });
 
     const churchSortLabels = {
-      name: t('siteAdmin.colChurch'), owner: t('siteAdmin.colOwner'), status: t('siteAdmin.colStatus'),
+      name: t('siteAdmin.colChurch'), owner: t('siteAdmin.colOwner'), country: t('siteAdmin.colCountry'), status: t('siteAdmin.colStatus'),
       members: t('siteAdmin.colMembers'), storage: t('siteAdmin.colStorage'),
       lastActive: t('siteAdmin.colLastActive'), code: t('siteAdmin.promoColCode'),
     };
@@ -534,12 +558,17 @@ export async function renderSiteAdminTab() {
             ${row.owner_name ? `<div>${escapeHtml(row.owner_name)}</div>` : ''}
             ${row.owner_email ? `<div class="text-xs text-slate-400">${escapeHtml(row.owner_email)}</div>` : (row.owner_name ? '' : '<span class="text-slate-300">—</span>')}
           </td>
+          <td class="px-3 py-2">
+            <input type="text" data-el="country" value="${escapeHtml(row.country || '')}" placeholder="${escapeHtml(t('siteAdmin.countryPlaceholder'))}"
+                   class="w-28 border border-transparent hover:border-slate-300 focus:border-indigo-400 rounded px-1.5 py-1 text-sm" />
+          </td>
           <td class="px-3 py-2">${escapeHtml(row.status)}</td>
           <td class="px-3 py-2 text-right">${row.member_count} / ${row.department_count}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap">${centsOrBytesToSize(row.totalBytes)}</td>
           <td class="px-3 py-2 text-slate-500">${row.last_active_at ? new Date(row.last_active_at).toLocaleDateString() : '—'}</td>
           <td class="px-3 py-2 whitespace-nowrap">${promoCell}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap space-x-3">
+            <button type="button" data-action="notes" class="text-xs text-slate-600 hover:text-slate-800 font-medium">${t('siteAdmin.colNotes')}</button>
             <button type="button" data-action="users" class="text-xs text-slate-600 hover:text-slate-800 font-medium">${t('siteAdmin.colUsers')}</button>
             ${isDeleted
               ? `<button type="button" data-action="restore" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">${t('siteAdmin.restore')}</button>`
@@ -559,6 +588,27 @@ export async function renderSiteAdminTab() {
         const id = btn.closest('[data-row-id]').dataset.rowId;
         const tenantRow = churchRowsData.find((row) => row.id === id);
         if (tenantRow) openChurchUsers(tenantRow);
+      });
+    });
+    rowsEl.querySelectorAll('[data-action="notes"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.closest('[data-row-id]').dataset.rowId;
+        const tenantRow = churchRowsData.find((row) => row.id === id);
+        if (tenantRow) openChurchNotes(tenantRow);
+      });
+    });
+    rowsEl.querySelectorAll('[data-el="country"]').forEach((input) => {
+      input.addEventListener('change', async () => {
+        const id = input.closest('[data-row-id]').dataset.rowId;
+        const value = input.value.trim();
+        const { error } = await supabase.rpc('update_tenant_country', { p_tenant_id: id, p_country: value || null });
+        if (error) {
+          window.alert(t('siteAdmin.countrySaveFailed', { message: error.message }));
+          return;
+        }
+        const row = churchRowsData.find((r) => r.id === id);
+        if (row) row.country = value || null;
+        renderCountrySummary();
       });
     });
     rowsEl.querySelectorAll('[data-action="delete"]').forEach((btn) => {
@@ -762,6 +812,95 @@ export async function renderSiteAdminTab() {
       });
 
       return wrap;
+    }
+
+    return { open };
+  }
+
+  // Running, dated comment log per church -- deliberately append-only
+  // (no edit/delete), unlike the single admin_note field used
+  // elsewhere, since the point is a history multiple Site Admins can
+  // add to over time.
+  async function openChurchNotes(tenantRow) {
+    if (!churchNotesModal) churchNotesModal = buildChurchNotesModal();
+    churchNotesModal.open(tenantRow);
+  }
+
+  function buildChurchNotesModal() {
+    const root = document.createElement('div');
+    root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
+    root.innerHTML = `
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold" data-el="title"></h2>
+          <button type="button" data-action="close" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="flex gap-2 mb-4">
+          <textarea data-el="new-note" rows="2" placeholder="${escapeHtml(t('siteAdmin.notesPlaceholder'))}"
+                    class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
+          <button type="button" data-action="add-note" class="self-start px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">${t('siteAdmin.addNote')}</button>
+        </div>
+        <p data-el="note-status" class="text-xs text-rose-600 mb-2 hidden"></p>
+        <div data-el="notes-list" class="space-y-3"></div>
+      </div>
+    `;
+    document.body.appendChild(root);
+
+    const titleEl = root.querySelector('[data-el="title"]');
+    const listEl = root.querySelector('[data-el="notes-list"]');
+    const newNoteEl = root.querySelector('[data-el="new-note"]');
+    const statusEl = root.querySelector('[data-el="note-status"]');
+    let currentTenantId = null;
+
+    root.querySelectorAll('[data-action="close"]').forEach((btn) => btn.addEventListener('click', close));
+    root.addEventListener('click', (e) => { if (e.target === root) close(); });
+
+    root.querySelector('[data-action="add-note"]').addEventListener('click', async () => {
+      const body = newNoteEl.value.trim();
+      if (!body || !currentTenantId) return;
+      statusEl.classList.add('hidden');
+      const { error } = await supabase.rpc('add_tenant_note', { p_tenant_id: currentTenantId, p_body: body });
+      if (error) {
+        statusEl.textContent = t('siteAdmin.noteSaveFailed', { message: error.message });
+        statusEl.classList.remove('hidden');
+        return;
+      }
+      newNoteEl.value = '';
+      await loadNotes();
+    });
+
+    async function loadNotes() {
+      listEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
+      const { data, error } = await supabase.rpc('list_tenant_notes', { p_tenant_id: currentTenantId });
+      if (error) {
+        listEl.innerHTML = `<p class="text-sm text-rose-600">${t('siteAdmin.loadFailed', { message: error.message })}</p>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        listEl.innerHTML = `<p class="text-sm text-slate-500">${t('siteAdmin.noNotes')}</p>`;
+        return;
+      }
+      listEl.innerHTML = data.map((note) => `
+        <div class="border border-slate-200 rounded-lg p-3">
+          <p class="text-xs text-slate-400 mb-1">${t('siteAdmin.noteByOn', { name: note.author_name || '—', date: new Date(note.created_at).toLocaleString() })}</p>
+          <p class="text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(note.body)}</p>
+        </div>
+      `).join('');
+    }
+
+    async function open(tenantRow) {
+      currentTenantId = tenantRow.id;
+      titleEl.textContent = t('siteAdmin.notesModalTitle', { name: tenantRow.name });
+      newNoteEl.value = '';
+      statusEl.classList.add('hidden');
+      root.classList.remove('hidden');
+      root.classList.add('flex');
+      await loadNotes();
+    }
+
+    function close() {
+      root.classList.add('hidden');
+      root.classList.remove('flex');
     }
 
     return { open };
