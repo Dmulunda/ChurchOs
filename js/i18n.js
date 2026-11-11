@@ -2730,7 +2730,7 @@ const TRANSLATIONS = {
 
     'nav.home': 'Home',
     'nav.quickAccess': 'Quick Access',
-    'nav.tools': 'Tools',
+    'nav.tools': 'Settings',
     'directory.title': 'User Directory',
     'directory.intro': 'Every user across every department, in one place.',
     'directory.userStatus.new_guest': 'New Guest',
@@ -5772,7 +5772,7 @@ const TRANSLATIONS = {
 
     'nav.home': 'Accueil',
     'nav.quickAccess': 'Accès rapide',
-    'nav.tools': 'Outils',
+    'nav.tools': 'Paramètres',
     'directory.title': 'Annuaire des utilisateurs',
     'directory.userStatus.new_guest': 'Nouveau visiteur',
     'directory.userStatus.visitor_other_church': "Visiteur d'une autre église",
