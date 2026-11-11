@@ -1,1 +1,1 @@
-{"version": "2026-11-11T01:00:00Z", "critical": false, "notes": {"en": ["Renamed the sidebar \"Tools\" nav item to \"Settings\""], "fr": ["Renommage de l'élément de menu « Outils » en « Paramètres »"]}}
+{"version": "2026-11-11T02:00:00Z", "critical": false, "notes": {"en": ["Bigger church logo on every public link page (Booking, Prayer, Event, Guest Check-In, Registration)"], "fr": ["Logo de l'église agrandi sur chaque page publique (Réservation, Prière, Événement, Accueil des invités, Inscription)"]}}
