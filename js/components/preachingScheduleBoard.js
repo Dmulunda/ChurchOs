@@ -247,6 +247,8 @@ export function renderPreachingSchedule(container, { supabase, departmentId, can
     // whoever is scheduled now. A brand new entry is always "changed"
     // (nothing to carry over from).
     const moderatorChanged = !editingRow || (editingRow.moderator_id || null) !== newModeratorId;
+    const newPreacherId = form.elements.preacher.value || null;
+    const preacherChanged = !editingRow || (editingRow.preacher_id || null) !== newPreacherId;
 
     if (moderatorChanged && newModeratorId) {
       const moderatorLabel = moderatorSelect.selectedOptions[0]?.textContent || newModeratorId;
@@ -256,11 +258,19 @@ export function renderPreachingSchedule(container, { supabase, departmentId, can
       if (!proceed) { formStatusEl.textContent = ''; return; }
     }
 
+    if (preacherChanged && newPreacherId) {
+      const preacherLabel = preacherSelect.selectedOptions[0]?.textContent || newPreacherId;
+      const proceed = await checkAndConfirmAssignment({
+        supabase, userId: newPreacherId, userLabel: preacherLabel, date, departmentId,
+      });
+      if (!proceed) { formStatusEl.textContent = ''; return; }
+    }
+
     const payload = {
       date,
       moderator_id: newModeratorId,
       ...(moderatorChanged ? { moderator_status: 'approved', moderator_reason: null, moderator_working_department_id: null } : {}),
-      preacher_id: form.elements.preacher.value || null,
+      preacher_id: newPreacherId,
       // Clears out the old free-text value once an entry is saved
       // through this dropdown-based form, so it never shows a stale
       // name alongside a newly picked preacher_id.
