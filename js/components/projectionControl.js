@@ -726,69 +726,42 @@ export function renderProjectionControl(container, { supabase }) {
     });
   };
 
-  // Cached once we've successfully learned there's more than one
-  // screen -- lets every click AFTER the first show the picker BEFORE
-  // opening the window, instead of only repositioning it after the
-  // fact (see below). Resets on page reload; harmless, just means the
-  // very first "Open Projection" click each page load falls back to
-  // the open-then-reposition path one more time.
-  let knownScreens = null;
-
+  // Always asks which screen first -- on the very first open AND every
+  // time after, including while a projector window is already live,
+  // so a wrong pick can be corrected without a separate control. The
+  // picker modal itself opens synchronously (a loading state, filled
+  // in once screen detection resolves) so that it's always the
+  // PICKER'S OWN button click -- not this outer click, and not the
+  // async detection in between -- that fires window.open(). That
+  // keeps that call's activation fresh regardless of how long
+  // detection takes, which is what lets the new window's own on-load
+  // requestFullscreen() (projectorPage.js) succeed every time, on the
+  // right screen from the start (via window.open()'s own
+  // left/top/width/height) rather than needing a later moveTo.
   container.querySelector('[data-action="open-screen"]').addEventListener('click', () => {
-    if (knownScreens && knownScreens.length > 1) {
-      // We already know which screens exist, so ask first: the picker
-      // modal's own "choose this screen" button click is itself a
-      // fresh user gesture, so window.open() done synchronously inside
-      // THAT handler still gets a valid activation for the new
-      // window's immediate requestFullscreen() (projectorPage.js) --
-      // and because window.open()'s left/top/width/height already
-      // place it on the chosen screen, fullscreen locks onto the right
-      // screen from the start instead of needing a later moveTo.
-      pickScreen(knownScreens).then((chosen) => {
-        if (!chosen) return;
-        projectorWindowRef = window.open('projector.html', '_blank',
-          `left=${chosen.left},top=${chosen.top},width=${chosen.width},height=${chosen.height}`);
-      });
-      refreshKnownScreens();
+    if (!('getScreenDetails' in window && window.isSecureContext)) {
+      // No Window Management API in this browser (non-Chromium) --
+      // nothing to choose from, so just open/reopen directly.
+      if (projectorWindowRef && !projectorWindowRef.closed) projectorWindowRef.close();
+      projectorWindowRef = window.open('projector.html', '_blank');
       return;
     }
 
-    // First click this page load (or no multi-screen info yet): open
-    // synchronously, directly inside this click, with nothing awaited
-    // first -- that's what actually lets the new window's own on-load
-    // requestFullscreen() succeed. An `await window.getScreenDetails()`
-    // *before* this call was tested for real and found to drop the
-    // one-shot "transient activation" window.open()/requestFullscreen()
-    // need, leaving the projector window stuck without a usable
-    // gesture -- regardless of single- or multi-screen setups, since
-    // getScreenDetails() is async either way.
-    projectorWindowRef = window.open('projector.html', '_blank');
-
-    // Multi-monitor placement is layered on top, after the fact, via
-    // moveTo/resizeTo (neither needs activation) -- so it never has to
-    // gate the open/fullscreen above. Also what teaches knownScreens
-    // for next time, so later clicks can ask before opening instead.
-    if ('getScreenDetails' in window && window.isSecureContext) {
-      window.getScreenDetails()
-        .then((screenDetails) => {
-          knownScreens = screenDetails.screens;
-          if (screenDetails.screens.length <= 1) return;
-          pickScreen(screenDetails.screens).then((chosen) => {
-            if (!chosen) return;
-            projectorWindowRef?.moveTo(chosen.left, chosen.top);
-            projectorWindowRef?.resizeTo(chosen.width, chosen.height);
-          });
-        })
-        .catch(() => { /* permission denied — leave the window where it opened */ });
-    }
+    pickScreen().then((chosen) => {
+      if (!chosen) return; // cancelled
+      // Switching screens while already live: close the old window
+      // first rather than trying to move a fullscreen one (doesn't
+      // reliably relocate across browsers). The new window's on-load
+      // 'hello' broadcast (js/projectorPage.js) makes the operator
+      // panel resend whatever's currently live, so content reappears
+      // instantly with no extra work here.
+      if (projectorWindowRef && !projectorWindowRef.closed) projectorWindowRef.close();
+      const features = chosen.left !== undefined
+        ? `left=${chosen.left},top=${chosen.top},width=${chosen.width},height=${chosen.height}`
+        : '';
+      projectorWindowRef = window.open('projector.html', '_blank', features);
+    });
   });
-
-  function refreshKnownScreens() {
-    if (!('getScreenDetails' in window && window.isSecureContext)) return;
-    window.getScreenDetails().then((screenDetails) => {
-      knownScreens = screenDetails.screens;
-    }).catch(() => { /* permission denied — keep using the last known list */ });
-  }
 
   container.querySelector('[data-action="blank"]').addEventListener('click', () => {
     videoPlaying = false;
@@ -2038,35 +2011,57 @@ export function renderProjectionControl(container, { supabase }) {
 // cancelled), but repositioning the already-open projector window
 // happens through onChoose, called synchronously from inside the
 // picked button's own click handler.
-function pickScreen(screens) {
+// Shows immediately with a loading placeholder -- NOT gated on
+// getScreenDetails() resolving first -- so this function's own
+// returned promise can be awaited anywhere without ever delaying
+// when the modal appears. Resolves a chosen screen object (with
+// left/top/width/height), an empty object `{}` meaning "just open,
+// no specific screen" (detection denied/failed after already
+// showing the modal), or null if cancelled.
+function pickScreen() {
   return new Promise((resolve) => {
     const root = document.createElement('div');
     root.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4';
     root.innerHTML = `
       <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
         <h2 class="text-lg font-bold mb-4">${t('projection.chooseScreen')}</h2>
-        <div class="space-y-2">
-          ${screens.map((s, i) => `
-            <button type="button" data-screen-idx="${i}" class="block w-full text-left px-4 py-3 rounded-lg border border-slate-200 hover:bg-slate-50">
-              ${escapeHtml(s.label || t('projection.screenN', { n: i + 1, width: s.width, height: s.height }))}${s.isPrimary ? ` — ${t('projection.thisScreen')}` : ''}
-            </button>
-          `).join('')}
+        <div data-el="screen-options" class="space-y-2">
+          <p class="text-sm text-slate-500">${t('common.loading')}</p>
         </div>
       </div>
     `;
     document.body.appendChild(root);
+    const optionsEl = root.querySelector('[data-el="screen-options"]');
 
     function finish(result) {
       document.body.removeChild(root);
       resolve(result);
     }
 
-    root.querySelectorAll('[data-screen-idx]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        finish(screens[Number(btn.dataset.screenIdx)]);
-      });
-    });
     root.addEventListener('click', (e) => { if (e.target === root) finish(null); });
+
+    window.getScreenDetails()
+      .then((screenDetails) => {
+        optionsEl.innerHTML = screenDetails.screens.map((s, i) => `
+          <button type="button" data-screen-idx="${i}" class="block w-full text-left px-4 py-3 rounded-lg border border-slate-200 hover:bg-slate-50">
+            ${escapeHtml(s.label || t('projection.screenN', { n: i + 1, width: s.width, height: s.height }))}${s.isPrimary ? ` — ${t('projection.thisScreen')}` : ''}
+          </button>
+        `).join('');
+        optionsEl.querySelectorAll('[data-screen-idx]').forEach((btn) => {
+          btn.addEventListener('click', () => finish(screenDetails.screens[Number(btn.dataset.screenIdx)]));
+        });
+      })
+      .catch(() => {
+        // Permission denied, or detection failed for some other
+        // reason -- nothing to choose from, but still let the click
+        // that opens/switches the window happen right here, fresh.
+        optionsEl.innerHTML = `
+          <button type="button" data-el="open-anyway" class="block w-full text-left px-4 py-3 rounded-lg border border-slate-200 hover:bg-slate-50">
+            ${t('projection.thisScreen')}
+          </button>
+        `;
+        optionsEl.querySelector('[data-el="open-anyway"]').addEventListener('click', () => finish({}));
+      });
   });
 }
 
