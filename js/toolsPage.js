@@ -6,7 +6,8 @@
 // before .open() is called on it -- no modal is created or torn down
 // in this file, it's purely a second set of doorways into the same
 // instances Home owns.
-import { getGlobalRole } from './departments.js';
+import { getGlobalRole, getEffectiveSupabase } from './departments.js';
+import { createCommunicationHubModal } from './components/communicationHubModal.js';
 import {
   openDirectory, openSilentDirectory, openMemberCases, openMemberDirectory, openExitTracking, openPrayerRequests, openPrayerLinkQr, openMemberRegLinkQr, openPastorMeetings,
   openReports, openLoginActivity, openCreateDepartment, openMenuCustomizer,
@@ -16,6 +17,12 @@ import {
 import { t } from './i18n.js';
 
 const PASTORAL_TEAM_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
+
+let commHubModal = null;
+function openCommunicationHub() {
+  if (!commHubModal) commHubModal = createCommunicationHubModal({ supabase: getEffectiveSupabase() });
+  commHubModal.open();
+}
 
 export function renderToolsTab() {
   const container = document.querySelector('#tools-content');
@@ -38,6 +45,7 @@ export function renderToolsTab() {
         isPastoralTeam && { icon: '🔗', color: '#7c3aed', name: t('prayerRequest.linkTitle'), desc: t('tools.prayerLinkDesc'), onClick: openPrayerLinkQr },
         isPastoralTeam && { icon: '📝', color: '#0369a1', name: t('memberRegistration.linkTitle'), desc: t('tools.memberRegLinkDesc'), onClick: openMemberRegLinkQr },
         isPastoralTeam && { icon: '📊', color: '#059669', name: t('attendance.title'), desc: t('tools.attendanceDesc'), onClick: openAttendanceManager },
+        isPastoralTeam && { icon: '📣', color: '#db2777', name: t('commHub.title'), desc: t('commHub.toolsDesc'), onClick: openCommunicationHub, needs: 'broadcasts' },
       ].filter(Boolean),
     },
     canSeeMeetings && {
@@ -87,6 +95,14 @@ export function renderToolsTab() {
     const cat = categories[Number(btn.dataset.cat)];
     const item = cat.items[Number(btn.dataset.item)];
     btn.addEventListener('click', () => item.onClick());
+    // Tiles for new features name the table their SQL migration creates
+    // (`needs`); hidden until that migration has been applied.
+    if (item.needs) {
+      btn.classList.add('hidden');
+      getEffectiveSupabase().from(item.needs).select('*', { head: true, count: 'exact' }).limit(1).then(({ error }) => {
+        if (!error) btn.classList.remove('hidden');
+      });
+    }
   });
 }
 

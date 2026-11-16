@@ -61,3 +61,25 @@ the link.
   platform fee per gift (not built; easy to add), and which mobile money
   provider to integrate later for automatic M-Pesa/Orange/Airtel payments
   (these require a paid provider account).
+
+---
+
+## 3. Communication hub  💰 SMS/WhatsApp need your decision
+
+**Tools → Communication hub** (also in the sidebar Tools menu under
+*Ministry & care*): one message to the whole church (pastoral team) or to
+chosen departments (their admins/secretaries), sent in the app, as a phone
+notification, by email and — once activated — by SMS and WhatsApp.
+A History tab shows every message and how many people each channel reached.
+
+- **SQL:** `146_communication_hub.sql`, `147_communication_hub_kb.sql`
+- **Edge function to deploy (new):** `broadcast` → `supabase functions deploy broadcast`
+- **Secrets:** app, push and email work with what you already have
+  (`RESEND_API_KEY`, `BOOKING_EMAIL_FROM`, VAPID keys — set them on `broadcast` too).
+- **SMS / WhatsApp (cost per message, left OFF):** create a Twilio account, then set on
+  `broadcast`: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_SMS_FROM` (SMS number)
+  and/or `TWILIO_WHATSAPP_FROM` (approved WhatsApp sender). Optional
+  `DEFAULT_PHONE_COUNTRY_CODE` (default `1`). Until set, those two channels show
+  "not set up". **Your decision:** turn them on, and whether to include them in a plan
+  (the `sms_notifications` plan feature already exists, unassigned).
+- **Cost:** none for app/push/email beyond your Resend plan.

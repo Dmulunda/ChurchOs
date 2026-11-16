@@ -80,6 +80,7 @@ import { confirmLeaveIfProjecting } from './utils/projectionGuard.js';
 import { hasUnsavedWork } from './utils/unsavedWorkGuard.js';
 import { consumeInteractiveSignIn } from './utils/authIntent.js';
 import { confirmDialog } from './components/confirmDialog.js';
+import { createCommunicationHubModal } from './components/communicationHubModal.js';
 
 registerServiceWorker();
 
@@ -1191,7 +1192,23 @@ function updateMemberActionsUI() {
 // per-option toggles worth the complexity. Picking an option runs its
 // action immediately (see runSidebarTool()) and the select snaps back
 // to the placeholder — a one-shot action menu, not a persisted choice.
+// Communication hub availability: its history table only exists once
+// sql/saas_platform/146 is applied. Probed once per session; until then
+// the Tools menu simply doesn't list it.
+let commHubAvailable = false;
+let commHubProbed = false;
+let commHubModal = null;
+function probeCommunicationHub() {
+  if (commHubProbed) return;
+  commHubProbed = true;
+  getEffectiveSupabase().from('broadcasts').select('id').limit(1).then(({ error }) => {
+    commHubAvailable = !error;
+    if (commHubAvailable) updateSidebarToolsSelect();
+  });
+}
+
 function updateSidebarToolsSelect() {
+  probeCommunicationHub();
   const hasAccess = getMyDepartments().length > 0;
   const active = getActiveDepartment();
 
@@ -1233,6 +1250,13 @@ function updateSidebarToolsSelect() {
     options.push({ value: 'urgent-prayer-cases', label: t('sidebar.urgentPrayerCases') });
   }
   if (canRecordAttendance) options.push({ value: 'attendance', label: t('sidebar.attendance') });
+  // Communication hub (sql/saas_platform/146): pastoral team, or any
+  // department admin/secretary (for their own departments). Listed only
+  // once the feature is installed -- see probeCommunicationHub().
+  if (commHubAvailable && !isViewingAs() && (['super_admin', 'pastor_admin', 'church_secretary'].includes(getGlobalRole())
+    || getMyDepartments().some((d) => d.role === 'admin' || d.role === 'secretary'))) {
+    options.push({ value: 'communication-hub', label: t('commHub.title') });
+  }
   // Everyone can suggest an improvement or contact support — no role
   // gate (sql/049 widened this on purpose; it used to be elevated
   // roles only). Site Admin is the opposite: a platform-wide role
@@ -1264,7 +1288,7 @@ function updateSidebarToolsSelect() {
   // visibility rule above; a group with nothing visible is skipped.
   const TOOL_GROUPS = [
     ['sidebar.groupMe', ['my-profile', 'change-password', 'my-letters', 'report-absence', 'join-department', 'pastor-meeting', 'prayer-request', 'member-registration']],
-    ['sidebar.groupMinistry', ['church-rules', 'department-rules', 'monthly-report', 'attendance', 'urgent-prayer-cases', 'pastoral-dashboard', 'guest-cases', 'member-cases']],
+    ['sidebar.groupMinistry', ['communication-hub', 'church-rules', 'department-rules', 'monthly-report', 'attendance', 'urgent-prayer-cases', 'pastoral-dashboard', 'guest-cases', 'member-cases']],
     ['sidebar.groupAdmin', ['manage-church-admins', 'invite-link', 'church-logo', 'disciplinary-letters', 'plans', 'referral', 'site-admin', 'owner']],
     ['sidebar.groupHelp', ['app-suggestion', 'support-request', 'churchonpoint']],
   ];
@@ -1314,6 +1338,9 @@ function runSidebarTool(value) {
     createChangePasswordModal({ supabase: effectiveSupabase }).open();
   } else if (value === 'my-profile') {
     createMyProfileModal({ supabase: effectiveSupabase, userId: currentUserId }).open();
+  } else if (value === 'communication-hub') {
+    if (!commHubModal) commHubModal = createCommunicationHubModal({ supabase: effectiveSupabase });
+    commHubModal.open();
   } else if (value === 'my-letters') {
     createMyLettersModal({ supabase: effectiveSupabase, currentUserId }).open();
   } else if (value === 'disciplinary-letters') {
