@@ -178,3 +178,20 @@ storage bucket `sermon-files` (one folder per church, signed links that expire).
 - **Cost — your decision:** storage. Supabase Pro includes 100 GB; beyond that
   about US$0.021 per GB per month. A 45-minute MP3 at 64 kbps is ~22 MB, so
   ~4,500 sermons fit in 100 GB. Posting video as a YouTube link costs nothing.
+
+---
+
+## 10. Shared documents & meeting minutes
+
+New **Documents** page. Meeting minutes written in the app (date, who was
+there, notes, decisions, action items), files (up to 50 MB) and links, each
+belonging to the whole church or one department and visible to everyone, that
+department only, or leaders only. Optional folders, search, filters. Department
+admins manage their department's items; leaders can add church-wide items; the
+pastoral team manages everything. Files go to a new **private** bucket
+`church-documents`; a file is readable only by people who can see its
+document.
+
+- **SQL:** `160_shared_documents.sql` (bucket + policies), `161_shared_documents_kb.sql`
+- **Edge functions / secrets:** none
+- **Cost:** storage only (same Supabase allowance as sermons); usually small.
