@@ -1268,15 +1268,18 @@ function updateSidebarToolsSelect() {
     ['sidebar.groupAdmin', ['manage-church-admins', 'invite-link', 'church-logo', 'disciplinary-letters', 'plans', 'referral', 'site-admin', 'owner']],
     ['sidebar.groupHelp', ['app-suggestion', 'support-request', 'churchonpoint']],
   ];
-  const optionHtml = (o) => `<option value="${o.value}">${escapeHtmlText(o.label)}</option>`;
+  // Explicit colors: inside an <optgroup> some browsers draw the list on a
+  // white background while the options inherit the select's white text,
+  // which made every item invisible.
+  const optionHtml = (o) => `<option value="${o.value}" style="background:#1e293b;color:#ffffff">${escapeHtmlText(o.label)}</option>`;
   const grouped = new Set(TOOL_GROUPS.flatMap(([, values]) => values));
   const groupsHtml = TOOL_GROUPS.map(([labelKey, values]) => {
     const opts = values.map((v) => options.find((o) => o.value === v)).filter(Boolean);
-    return opts.length ? `<optgroup label="${escapeHtmlAttr(t(labelKey))}">${opts.map(optionHtml).join('')}</optgroup>` : '';
+    return opts.length ? `<optgroup label="${escapeHtmlAttr(t(labelKey))}" style="background:#1e293b;color:#fbbf24">${opts.map(optionHtml).join('')}</optgroup>` : '';
   }).join('');
   // Any option not assigned to a group above still shows, at the end.
   const ungroupedHtml = options.filter((o) => !grouped.has(o.value)).map(optionHtml).join('');
-  sidebarToolsSelect.innerHTML = `<option value="">${t('sidebar.more')}</option>` + groupsHtml + ungroupedHtml;
+  sidebarToolsSelect.innerHTML = `<option value="" style="background:#1e293b;color:#ffffff">${t('sidebar.more')}</option>` + groupsHtml + ungroupedHtml;
 }
 
 function escapeHtmlText(str) {
