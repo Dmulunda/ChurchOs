@@ -83,3 +83,16 @@ A History tab shows every message and how many people each channel reached.
   "not set up". **Your decision:** turn them on, and whether to include them in a plan
   (the `sms_notifications` plan feature already exists, unassigned).
 - **Cost:** none for app/push/email beyond your Resend plan.
+
+---
+
+## 4. Small groups (cell groups)
+
+New **Small Groups** item in the sidebar. The pastoral team creates groups
+(leader, co-leader, day, time, place). Leaders manage members and log each
+meeting: who came, number of guests, short report for the pastors. Members
+see their own group and its history.
+
+- **SQL:** `148_small_groups.sql`, `149_small_groups_kb.sql` (reuses your existing `is_pastoral_team()`)
+- **Edge functions / secrets:** none
+- **Cost:** none

@@ -22,6 +22,7 @@ import { renderTrainingTab } from './training.js';
 import { renderServiceProgramTab } from './serviceProgram.js';
 import { renderTaxTab } from './taxPage.js';
 import { renderEventsTab } from './eventsPage.js';
+import { renderSmallGroupsTab } from './smallGroupsPage.js';
 import { renderFlyersTab } from './flyersPage.js';
 import { renderBudgetPageTab } from './budgetPage.js';
 import { renderOfferingsPageTab } from './offeringsPage.js';
@@ -423,6 +424,7 @@ const lazyTabs = {
   'service-program': renderServiceProgramTab,
   tax: renderTaxTab,
   events: renderEventsTab,
+  'small-groups': renderSmallGroupsTab,
   flyers: renderFlyersTab,
   budget: renderBudgetPageTab,
   offerings: renderOfferingsPageTab,
@@ -604,7 +606,7 @@ const TAB_KIND_MAP = {
 // on any of these when a reload fired silently bounced you back to
 // Home/Dashboard -- confirmed by a Site Admin testing this exact
 // scenario on Main (same bug, identical code shape, both fixed here).
-const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard']);
+const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups']);
 
 function resolveLandingTab(previousTabName, active, isChoir) {
   const mapping = TAB_KIND_MAP[previousTabName];
@@ -715,6 +717,28 @@ function updateBudgetNavVisibility() {
 // hasFinanceOversight(). Recording day-to-day offerings shouldn't
 // require being a Finance admin/secretary; deleting one still does
 // (see offeringsBoard.js's own canDeleteOfferings() check).
+// Small Groups nav button (sql/saas_platform/148): for everyone, but only
+// once that migration is applied -- probed once, then built like Budget.
+let smallGroupsNavBtn = null;
+let smallGroupsProbed = false;
+function updateSmallGroupsNav() {
+  if (smallGroupsProbed) return;
+  smallGroupsProbed = true;
+  getEffectiveSupabase().from('small_groups').select('id', { head: true, count: 'exact' }).limit(1).then(({ error }) => {
+    if (error || smallGroupsNavBtn) return;
+    smallGroupsNavBtn = document.createElement('button');
+    smallGroupsNavBtn.dataset.tabTarget = 'small-groups';
+    smallGroupsNavBtn.setAttribute('data-i18n', 'smallGroups.title');
+    smallGroupsNavBtn.className = 'w-full text-left px-3 py-2 rounded-lg font-medium transition-colors hover:bg-slate-800';
+    smallGroupsNavBtn.textContent = t('smallGroups.title');
+    smallGroupsNavBtn.addEventListener('click', () => {
+      activateTab('small-groups');
+      closeSidebar();
+    });
+    unconditionalNavGroupEl.appendChild(smallGroupsNavBtn);
+  });
+}
+
 let offeringsNavBtn = null;
 function updateOfferingsNavVisibility() {
   if (canRecordOfferings()) {
@@ -787,6 +811,7 @@ function applyActiveDepartment() {
   forEachNavGroup('global', (el) => el.classList.toggle('hidden', !hasGlobalReach()));
   updateBudgetNavVisibility();
   updateOfferingsNavVisibility();
+  updateSmallGroupsNav();
   updateSidebarToolsSelect();
 
   if (!active) {
