@@ -261,3 +261,20 @@ the outcome of their own visit, never who or why.
   (`alter type … add value`) must run before the transaction.
 - **Edge functions / secrets:** none
 - **Cost:** none
+
+---
+
+## 14. Equipment & inventory for every department
+
+The Equipment tab (until now Media & Tech only) becomes available to **every
+department**, and items gain quantity, serial number, value, purchase date,
+warranty end, next-maintenance date, loans to any name (not only to yourself),
+and a maintenance log. A new church-wide **Inventory** page (pastoral team)
+shows all departments' items with totals (count, total value, overdue loans,
+repairs, maintenance due), filters and a CSV download for insurance.
+Before 166 is applied, Media & Tech keeps exactly the old tab.
+
+- **SQL:** `166_equipment_inventory.sql` (new columns, per-department policies
+  replacing the Media-&-Tech-only ones, maintenance log), `167_equipment_inventory_kb.sql`
+- **Edge functions / secrets:** none
+- **Cost:** none

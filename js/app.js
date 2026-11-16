@@ -13,7 +13,7 @@ import { renderDeptDashboardTab, HEADCOUNT_DEPARTMENT_KEYS } from './deptDashboa
 import { renderHeadcountTallyTab } from './headcountTallyPage.js';
 import { renderDeptProjectionTab, teardownProjectionIfActive } from './deptProjection.js';
 import { renderDepartmentSuppliesTab } from './components/departmentSupplies.js';
-import { renderEquipmentInventoryTab } from './components/equipmentInventory.js';
+import { renderEquipmentInventoryTab, renderInventoryPage, probeInventoryPage, equipmentExtendedAvailable } from './components/equipmentInventory.js';
 import { renderDeptSchedulingTab } from './deptScheduling.js';
 import { renderSuperAdminHomeTab, openGuestOnboardingHub, openDirectory } from './superAdminHome.js';
 import { createUserManagerModal } from './components/userManager.js';
@@ -426,6 +426,7 @@ const lazyTabs = {
   'dept-supplies': renderDepartmentSuppliesTab,
   'child-checkin': renderChildCheckinTab,
   'dept-equipment': renderEquipmentInventoryTab,
+  inventory: renderInventoryPage,
   'headcount-tally': renderHeadcountTallyTab,
   'super-home': renderSuperAdminHomeTab,
   tools: renderToolsTab,
@@ -621,7 +622,7 @@ const TAB_KIND_MAP = {
 // on any of these when a reload fired silently bounced you back to
 // Home/Dashboard -- confirmed by a Site Admin testing this exact
 // scenario on Main (same bug, identical code shape, both fixed here).
-const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups', 'calendar', 'discipleship', 'insights', 'sermons', 'documents', 'visits']);
+const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups', 'calendar', 'discipleship', 'insights', 'sermons', 'documents', 'visits', 'inventory']);
 
 function resolveLandingTab(previousTabName, active, isChoir) {
   const mapping = TAB_KIND_MAP[previousTabName];
@@ -657,7 +658,7 @@ function rememberedDeptTab(active, isChoir) {
     case 'members': return isChoir ? tab : null;
     case 'uniform': return (isChoir || active.key === 'ushers') ? tab : null;
     case 'dept-projection': return active.key === 'media_tech' && (active.role === 'admin' || active.role === 'super_admin') ? tab : null;
-    case 'dept-equipment': return active.key === 'media_tech' ? tab : null;
+    case 'dept-equipment': return active.key === 'media_tech' || equipmentForAllDepts ? tab : null;
     case 'dept-supplies': return active.key === 'cleaning' ? tab : null;
     case 'child-checkin': return active.key === 'ecodem' && childCheckinAvailable ? tab : null;
     case 'headcount-tally': return HEADCOUNT_DEPARTMENT_KEYS.includes(active.key) ? tab : null;
@@ -738,6 +739,10 @@ function updateBudgetNavVisibility() {
 // before applying the SQL leaves the sidebar unchanged.
 const probedNavTabs = new Set();
 var childCheckinAvailable = false; // var: read by functions defined earlier in this file
+// Equipment tab for every department once sql/saas_platform/166 is applied
+// (Media & Tech only before that).
+var equipmentForAllDepts = false;
+var equipmentProbed = false;
 var childCheckinProbed = false;
 // probe (optional): a function returning a Supabase query/RPC promise; the
 // button appears only if it succeeds (used for pastoral-only pages).
@@ -857,6 +862,7 @@ function applyActiveDepartment() {
   addProbedNavButton('sermons', 'sermons.title', 'sermons');
   addProbedNavButton('documents', 'documents.title', 'church_documents');
   addProbedNavButton('visits', 'visits.title', null, probePastoralVisits);
+  addProbedNavButton('inventory', 'inventory.title', null, probeInventoryPage);
   addProbedNavButton('insights', 'insights.title', null, () => getEffectiveSupabase().rpc('get_leadership_insights', { p_weeks: 4 }));
   updateSidebarToolsSelect();
 
@@ -908,8 +914,16 @@ function applyActiveDepartment() {
   // its admin/super admin can even open it; other Media members still
   // see the rest of the department, just not this tab.
   forEachNavGroup('dept-projection-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'media_tech' && (active.role === 'admin' || active.role === 'super_admin'))));
-  // Equipment inventory: Media & Tech only.
-  forEachNavGroup('dept-equipment-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'media_tech')));
+  // Equipment inventory: Media & Tech, or every department once sql 166 is applied.
+  forEachNavGroup('dept-equipment-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && (active.key === 'media_tech' || equipmentForAllDepts))));
+  if (!equipmentProbed) {
+    equipmentProbed = true;
+    equipmentExtendedAvailable().then((ok) => {
+      equipmentForAllDepts = ok;
+      const a = getActiveDepartment();
+      if (ok && a && (a.kind === 'lightweight' || a.kind === 'custom')) forEachNavGroup('dept-equipment-nav', (el) => el.classList.remove('hidden'));
+    });
+  }
   // Supplies: Cleaning only.
   forEachNavGroup('dept-supplies-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'cleaning')));
   // Children's check-in: Sunday School only, once sql/saas_platform/152 is applied.
@@ -1189,7 +1203,7 @@ function buildQuickAccessItems() {
     if (isChoir) items.push({ icon: '🎤', label: t('nav.voiceExercises'), tab: 'voice-exercises' });
     if (isChoir || active.key === 'ushers') items.push({ icon: '🎽', label: t('nav.uniform'), tab: 'uniform' });
     if (active.key === 'media_tech' && hasFeature('projection') && (active.role === 'admin' || active.role === 'super_admin')) items.push({ icon: '🎥', label: t('nav.projection'), tab: 'dept-projection' });
-    if (active.key === 'media_tech') items.push({ icon: '🎦', label: t('nav.equipment'), tab: 'dept-equipment' });
+    if (active.key === 'media_tech' || equipmentForAllDepts) items.push({ icon: '🎦', label: t('nav.equipment'), tab: 'dept-equipment' });
     if (active.key === 'cleaning') items.push({ icon: '🧹', label: t('nav.supplies'), tab: 'dept-supplies' });
     if (active.key === 'ecodem' && childCheckinAvailable) items.push({ icon: '🧒', label: t('childCheckin.title'), tab: 'child-checkin' });
     if (HEADCOUNT_DEPARTMENT_KEYS.includes(active.key)) items.push({ icon: '🔢', label: t('nav.headcountTally'), tab: 'headcount-tally' });
