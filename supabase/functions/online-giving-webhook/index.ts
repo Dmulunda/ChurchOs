@@ -9,6 +9,8 @@
 //       -> marks the gift failed (nothing was charged).
 //   account.updated
 //       -> stores whether the church's account can take payments yet.
+//   Sessions created by event-payment (metadata.event_registration_id,
+//   sql 168) -> mark_event_registration_paid(). Idempotent too.
 //
 // Deploy: `supabase functions deploy online-giving-webhook --no-verify-jwt`.
 // In Stripe: Developers -> Webhooks -> Add endpoint -> "Events on
@@ -45,6 +47,15 @@ Deno.serve(async (req) => {
       case 'checkout.session.completed':
       case 'checkout.session.async_payment_succeeded': {
         if (obj.payment_status !== 'paid') break; // e.g. a bank debit still processing
+        // Event registration paid online (event-payment function, sql 168).
+        if (obj.metadata?.event_registration_id) {
+          const { error } = await admin.rpc('mark_event_registration_paid', {
+            p_session_id: obj.id,
+            p_amount_cents: typeof obj.amount_total === 'number' ? obj.amount_total : null,
+          });
+          if (error) throw error;
+          break;
+        }
         // Only sessions this app created (they carry our gift_id) are recorded.
         if (!obj.metadata?.gift_id) break;
         const { error } = await admin.rpc('record_online_gift_paid', {

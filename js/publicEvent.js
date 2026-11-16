@@ -39,6 +39,48 @@ async function main() {
   }
 
   renderEvent(container, event, { supabase, eventId, tenantSlug });
+
+  // Back from Stripe Checkout, or arrived from the "Pay online" link in the
+  // confirmation email (?pay=<registration id>) -- sql 168 / event-payment.
+  const payment = params.get('payment');
+  const payFor = params.get('pay');
+  if (payment || payFor) {
+    const banner = document.createElement('div');
+    container.prepend(banner);
+    if (payment === 'thanks') {
+      banner.innerHTML = `<p class="mb-4 text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-4">${t('events.paymentThanks')}</p>`;
+    } else if (payment === 'cancelled') {
+      banner.innerHTML = `<p class="mb-4 text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-4">${t('events.paymentCancelled')}</p>`;
+    } else if (payFor && event.priceCents) {
+      renderPayButton(banner, { registrationId: payFor, tenantSlug, eventId });
+    }
+  }
+}
+
+// "Pay now by card" -- only when the church has online payments set up.
+async function renderPayButton(el, { registrationId, tenantSlug, eventId }) {
+  const { data } = await supabase.functions.invoke('event-payment', { body: { action: 'availability', registration_id: registrationId } });
+  if (!data?.available) return;
+  el.innerHTML = `<div class="mb-4 bg-white rounded-xl shadow p-4 sm:p-6 text-center">
+    <button type="button" data-action="pay" class="px-5 py-2.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">💳 ${t('events.payNow')}</button>
+    <p data-el="pay-status" class="text-sm text-rose-600 mt-2"></p>
+  </div>`;
+  el.querySelector('[data-action="pay"]').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    const returnUrl = new URL(window.location.href);
+    returnUrl.search = '';
+    returnUrl.searchParams.set('event', eventId);
+    if (tenantSlug) returnUrl.searchParams.set('church', tenantSlug);
+    const { data: res, error } = await supabase.functions.invoke('event-payment', {
+      body: { action: 'checkout', registration_id: registrationId, returnUrl: returnUrl.toString() },
+    });
+    if (error || !res?.url) {
+      e.target.disabled = false;
+      el.querySelector('[data-el="pay-status"]').textContent = res?.error === 'nothing_to_pay' ? t('events.alreadyPaid') : t('events.paymentUnavailable');
+      return;
+    }
+    window.location.href = res.url;
+  });
 }
 
 function renderEvent(container, event, { supabase: sb, eventId, tenantSlug }) {
@@ -167,7 +209,11 @@ function renderForm(formArea, event, { supabase: sb, eventId, tenantSlug, willWa
         <p class="text-emerald-800 font-medium">${data.status === 'waitlisted' ? t('events.waitlistedConfirmation') : t('events.registeredConfirmation')}</p>
         <p class="text-sm text-emerald-700 mt-1">${t('events.checkEmail')}</p>
       </div>
+      <div data-el="pay-area" class="mt-4"></div>
     `;
+    if (data.paymentStatus === 'pending' && data.status === 'confirmed') {
+      renderPayButton(formArea.querySelector('[data-el="pay-area"]'), { registrationId: data.registrationId, tenantSlug, eventId });
+    }
   });
 }
 

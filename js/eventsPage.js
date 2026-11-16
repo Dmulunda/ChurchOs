@@ -11,7 +11,8 @@
 // js/publicEvent.js page (no login) -- this tab is admin/member-facing
 // only. QR *generation* reuses the same qrcode CDN import
 // js/components/memberIdCard.js already uses; QR *scanning*/check-in
-// is Phase 2 (deliberately not built here yet).
+// is in js/components/eventCheckin.js (sql/saas_platform/168), shown once
+// that migration is applied.
 import { getEffectiveSupabase, getGlobalRole } from './departments.js';
 import { getTenant } from './tenant.js';
 import { confirmDialog } from './components/confirmDialog.js';
@@ -19,6 +20,7 @@ import { activateTab, invalidateTabCache } from './app.js';
 import { openFlyerForEvent } from './flyersPage.js';
 import { t, appLocale, formatMoney } from './i18n.js';
 import { publicPageUrl } from './utils/publicUrl.js';
+import { renderEventCheckin } from './components/eventCheckin.js';
 
 export async function renderEventsTab() {
   const supabase = getEffectiveSupabase();
@@ -298,11 +300,18 @@ function renderEventForm(container, { supabase, departments, onSaved, existing }
 async function renderEventDetail(container, { supabase, event, canManage, departments, onChanged }) {
   container.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
 
-  const [{ data: fullEvent }, { data: questions }, { data: registrations }] = await Promise.all([
+  const [{ data: fullEvent }, { data: questions }, { data: registrations }, { data: canCheckIn, error: checkInError }] = await Promise.all([
     supabase.from('events').select('*').eq('id', event.id).single(),
     supabase.from('event_questions').select('id, question, required, position').eq('event_id', event.id).order('position'),
-    supabase.from('event_registrations').select('id, full_name, email, phone, status, payment_status, party_size, additional_names, created_at').eq('event_id', event.id).order('created_at'),
+    // '*' so the sql 168 payment columns come along when present without
+    // breaking this list before that migration is applied.
+    supabase.from('event_registrations').select('*').eq('event_id', event.id).order('created_at'),
+    supabase.rpc('can_check_in_event', { p_event_id: event.id }),
   ]);
+  // sql 168 applied <=> the check-in RPC exists; it also unlocks online
+  // payment status changes ("waived") in the registrant table.
+  const v168 = !checkInError;
+  const hasCheckIns = (registrations || []).some((r) => r.checked_in_at);
 
   const publicUrl = publicPageUrl('event.html', { event: event.id, church: getTenant()?.slug || '' });
   // Summed by party_size -- a registration can be for more than one
@@ -321,6 +330,7 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
       <div class="flex items-center gap-2 mb-3 flex-wrap">
         <input type="text" readonly value="${escapeAttr(publicUrl)}" class="flex-1 min-w-[200px] border border-slate-300 rounded-lg px-2 py-1.5 text-xs text-slate-600 bg-slate-50" />
         <button type="button" data-action="copy-link" class="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200">${t('events.copyLink')}</button>
+        ${canCheckIn ? `<button type="button" data-action="check-in" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700">📷 ${t('eventCheckin.title')}</button>` : ''}
         ${canManage ? `
           <button type="button" data-action="edit" class="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200">${t('events.edit')}</button>
           <button type="button" data-action="create-flyer" class="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200">${t('events.createFlyer')}</button>
@@ -328,7 +338,8 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
         ` : ''}
       </div>
       <p class="text-sm text-slate-600 mb-1">${t('events.summaryLine', { confirmed: confirmedCount, capacity: fullEvent.capacity ?? '∞', waitlisted: waitlistedCount })}</p>
-      <p class="text-sm text-slate-600 mb-3">${t('events.priceLine', { price: formatPriceCents(fullEvent.price_cents) })}${isPriced ? ` — ${t('events.paymentNotCollectedYet')}` : ''}</p>
+      <p class="text-sm text-slate-600 mb-3">${t('events.priceLine', { price: formatPriceCents(fullEvent.price_cents) })}${isPriced ? ` — ${v168 ? t('events.paidCount', { paid: (registrations || []).filter((r) => r.payment_status === 'paid').length, total: (registrations || []).filter((r) => r.status !== 'cancelled').length }) : t('events.paymentNotCollectedYet')}` : ''}</p>
+      <div data-el="checkin-area"></div>
       <div data-el="edit-area" class="mb-3"></div>
       ${canManage ? `
         <div class="border border-slate-200 rounded-lg p-3 mb-4">
@@ -352,6 +363,7 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
               ${hasPartySizes ? `<th class="text-right px-3 py-2">${t('events.colPeople')}</th>` : ''}
               <th class="text-left px-3 py-2">${t('events.colStatus')}</th>
               ${isPriced ? `<th class="text-left px-3 py-2">${t('events.colPayment')}</th>` : ''}
+              ${hasCheckIns ? `<th class="text-left px-3 py-2">${t('eventCheckin.col')}</th>` : ''}
               <th class="text-left px-3 py-2">${t('events.colRegisteredAt')}</th>
             </tr>
           </thead>
@@ -366,7 +378,10 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
                 <td class="px-3 py-2 text-slate-600">${escapeHtml(r.phone || '')}</td>
                 ${hasPartySizes ? `<td class="px-3 py-2 text-right">${r.party_size}</td>` : ''}
                 <td class="px-3 py-2">${t(`events.regStatus.${r.status}`)}</td>
-                ${isPriced ? `<td class="px-3 py-2">${t(`events.paymentStatus.${r.payment_status}`)}</td>` : ''}
+                ${isPriced ? `<td class="px-3 py-2">${canManage && v168 && r.status !== 'cancelled' && r.payment_method !== 'online'
+                  ? `<select data-payment="${r.id}" class="border border-slate-300 rounded px-1 py-0.5 text-xs">${['pending', 'paid', 'waived'].map((ps) => `<option value="${ps}" ${r.payment_status === ps ? 'selected' : ''}>${t(`events.paymentStatus.${ps}`)}</option>`).join('')}</select>`
+                  : `${t(`events.paymentStatus.${r.payment_status}`)}${r.payment_method === 'online' ? ' 💳' : ''}`}</td>` : ''}
+                ${hasCheckIns ? `<td class="px-3 py-2 text-emerald-700">${r.checked_in_at ? `✓ ${new Date(r.checked_in_at).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' })}` : ''}</td>` : ''}
                 <td class="px-3 py-2 text-slate-500">${new Date(r.created_at).toLocaleDateString(appLocale())}</td>
               </tr>
             `).join('')}
@@ -380,6 +395,19 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
   container.querySelector('[data-action="copy-link"]').addEventListener('click', () => {
     navigator.clipboard?.writeText(publicUrl);
   });
+  container.querySelector('[data-action="check-in"]')?.addEventListener('click', () => {
+    const area = container.querySelector('[data-el="checkin-area"]');
+    if (area.innerHTML) return;
+    renderEventCheckin(area, { supabase, event: fullEvent });
+  });
+  container.querySelectorAll('[data-payment]').forEach((sel) => sel.addEventListener('change', async () => {
+    const value = sel.value;
+    const update = value === 'paid'
+      ? { payment_status: 'paid', payment_method: 'cash', paid_at: new Date().toISOString() }
+      : { payment_status: value, payment_method: null, paid_at: null };
+    const { error } = await supabase.from('event_registrations').update(update).eq('id', sel.dataset.payment);
+    if (error) { alert(error.message); onChanged(); }
+  }));
 
   if (canManage) {
     container.querySelector('[data-action="edit"]').addEventListener('click', () => {

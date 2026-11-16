@@ -278,3 +278,31 @@ Before 166 is applied, Media & Tech keeps exactly the old tab.
   replacing the Media-&-Tech-only ones, maintenance log), `167_equipment_inventory_kb.sql`
 - **Edge functions / secrets:** none
 - **Cost:** none
+
+---
+
+## 15. Paid events + QR check-in
+
+**Check-in at the door (free):** Events → event → "📷 Check-in". The phone
+camera scans the QR code already in every confirmation email (works on
+Android and iPhone); green / orange / red result, people count, and a name
+list for people without their ticket, with Undo. Allowed for members of the
+organizing department and the pastoral team. Registrant list shows who came.
+
+**Online payment for priced events:** after registering, or from a new "Pay
+online" link in the confirmation email, people pay by card on Stripe's page.
+Money goes to the **church's own Stripe account — the same one set up for
+online giving (section 2)**; ChurchOnPoint takes nothing. The webhook marks the
+registration paid automatically. Organizers can also set Paid (cash) or
+Waived. If the church has no Stripe account connected, nothing changes for
+visitors except the wording.
+
+- **SQL:** `168_event_payments_checkin.sql`, `169_event_payments_checkin_kb.sql`
+- **Edge functions:** `supabase functions deploy event-payment --no-verify-jwt`,
+  redeploy `online-giving-webhook` (now also marks event payments) and
+  `event-emails` (pay link in the confirmation email)
+- **Secrets:** none new (uses STRIPE_SECRET_KEY, STRIPE_CONNECT_WEBHOOK_SECRET,
+  GIVING_RETURN_ORIGINS from section 2)
+- **Cost — your decision:** same as online giving: Stripe's card fee
+  (about 2.9% + 30¢ in Canada) is paid by the church on each payment; no
+  monthly fee. Check-in itself costs nothing.
