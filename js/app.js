@@ -24,6 +24,7 @@ import { renderTaxTab } from './taxPage.js';
 import { renderEventsTab } from './eventsPage.js';
 import { renderSmallGroupsTab } from './smallGroupsPage.js';
 import { renderCalendarTab } from './calendarPage.js';
+import { renderChildCheckinTab } from './childCheckinPage.js';
 import { renderFlyersTab } from './flyersPage.js';
 import { renderBudgetPageTab } from './budgetPage.js';
 import { renderOfferingsPageTab } from './offeringsPage.js';
@@ -417,6 +418,7 @@ const lazyTabs = {
   'dept-scheduling': renderDeptSchedulingTab,
   'dept-projection': renderDeptProjectionTab,
   'dept-supplies': renderDepartmentSuppliesTab,
+  'child-checkin': renderChildCheckinTab,
   'dept-equipment': renderEquipmentInventoryTab,
   'headcount-tally': renderHeadcountTallyTab,
   'super-home': renderSuperAdminHomeTab,
@@ -530,7 +532,7 @@ try { departmentLastTab = JSON.parse(localStorage.getItem(DEPARTMENT_LAST_TAB_KE
 const DEPARTMENT_RELATIVE_TABS = new Set([
   'dashboard', 'scheduling', 'songbook', 'voice-exercises', 'uniform', 'members',
   'dept-dashboard', 'dept-scheduling', 'dept-projection', 'headcount-tally',
-  'dept-supplies', 'dept-equipment',
+  'dept-supplies', 'dept-equipment', 'child-checkin',
 ]);
 
 // Exported so other tab modules can navigate the user elsewhere --
@@ -646,6 +648,7 @@ function rememberedDeptTab(active, isChoir) {
     case 'dept-projection': return active.key === 'media_tech' && (active.role === 'admin' || active.role === 'super_admin') ? tab : null;
     case 'dept-equipment': return active.key === 'media_tech' ? tab : null;
     case 'dept-supplies': return active.key === 'cleaning' ? tab : null;
+    case 'child-checkin': return active.key === 'ecodem' && childCheckinAvailable ? tab : null;
     case 'headcount-tally': return HEADCOUNT_DEPARTMENT_KEYS.includes(active.key) ? tab : null;
     default: return null;
   }
@@ -723,6 +726,8 @@ function updateBudgetNavVisibility() {
 // migration creates exists (probed once per session), so pushing the code
 // before applying the SQL leaves the sidebar unchanged.
 const probedNavTabs = new Set();
+var childCheckinAvailable = false; // var: read by functions defined earlier in this file
+var childCheckinProbed = false;
 function addProbedNavButton(tab, labelKey, table) {
   if (probedNavTabs.has(tab)) return;
   probedNavTabs.add(tab);
@@ -888,6 +893,15 @@ function applyActiveDepartment() {
   forEachNavGroup('dept-equipment-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'media_tech')));
   // Supplies: Cleaning only.
   forEachNavGroup('dept-supplies-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'cleaning')));
+  // Children's check-in: Sunday School only, once sql/saas_platform/152 is applied.
+  forEachNavGroup('child-checkin-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'ecodem' && childCheckinAvailable)));
+  if (!childCheckinProbed && active.key === 'ecodem') {
+    childCheckinProbed = true;
+    getEffectiveSupabase().from('child_checkins').select('*', { head: true, count: 'exact' }).limit(1).then(({ error }) => {
+      childCheckinAvailable = !error;
+      if (childCheckinAvailable) forEachNavGroup('child-checkin-nav', (el) => el.classList.toggle('hidden', getActiveDepartment()?.key !== 'ecodem'));
+    });
+  }
   // Headcount Tally: Ushers/Welcoming & Socialisation/Ecodem, every
   // approved member (not just admin/secretary) -- counting people at
   // the door isn't an admin-only task.
@@ -910,6 +924,7 @@ function applyActiveDepartment() {
     loadedTabs.delete('dept-projection');
     loadedTabs.delete('dept-equipment');
     loadedTabs.delete('dept-supplies');
+    loadedTabs.delete('child-checkin');
     loadedTabs.delete('headcount-tally');
     activateTab(GLOBAL_STANDALONE_TABS.has(previousTabName) ? previousTabName : (rememberedDeptTab(active, false) || resolveLandingTab(previousTabName, active, false) || 'dept-dashboard'));
   } else {
@@ -1157,6 +1172,7 @@ function buildQuickAccessItems() {
     if (active.key === 'media_tech' && hasFeature('projection') && (active.role === 'admin' || active.role === 'super_admin')) items.push({ icon: '🎥', label: t('nav.projection'), tab: 'dept-projection' });
     if (active.key === 'media_tech') items.push({ icon: '🎦', label: t('nav.equipment'), tab: 'dept-equipment' });
     if (active.key === 'cleaning') items.push({ icon: '🧹', label: t('nav.supplies'), tab: 'dept-supplies' });
+    if (active.key === 'ecodem' && childCheckinAvailable) items.push({ icon: '🧒', label: t('childCheckin.title'), tab: 'child-checkin' });
     if (HEADCOUNT_DEPARTMENT_KEYS.includes(active.key)) items.push({ icon: '🔢', label: t('nav.headcountTally'), tab: 'headcount-tally' });
   }
   return items;

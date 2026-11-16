@@ -112,3 +112,17 @@ private link to subscribe in Google Calendar, Outlook or Apple Calendar.
 - **Secrets:** none
 - **Cost:** none
 - Note: weekly small-group times are read as Toronto time.
+
+---
+
+## 6. Children's check-in (Sunday School)
+
+Sunday School gets a **Check-in** tab (like Supplies for Cleaning). At
+drop-off a volunteer taps the child: the app shows a 4-character pick-up code
+for the parent and any allergy/medical alert in red. At pick-up the child is
+released only with the right code; who picked them up is recorded. Builds on
+your existing Sunday School children list (parents, allergies).
+
+- **SQL:** `152_child_checkin.sql`, `153_child_checkin_kb.sql`
+- **Edge functions / secrets:** none
+- **Cost:** none. (Printed name tags would need a label printer — not built.)
