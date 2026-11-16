@@ -159,3 +159,22 @@ tables — one read-only function.
 - **SQL:** `156_leadership_insights.sql`, `157_leadership_insights_kb.sql`
 - **Edge functions / secrets:** none
 - **Cost:** none
+
+---
+
+## 9. Sermon & media library
+
+New **Sermons** page for everyone: search by any word, filter by series or
+language, watch the video link (YouTube/Facebook), play the audio in the page,
+open the notes (PDF). The pastoral team and the Media / Preaching departments
+add, edit and archive sermons and upload files. Files go to a new **private**
+storage bucket `sermon-files` (one folder per church, signed links that expire).
+
+- **SQL:** `158_sermon_library.sql` (creates the bucket and its policies), `159_sermon_library_kb.sql`
+- **Edge functions / secrets:** none
+- **Check:** Supabase → Project Settings → Storage → *Upload file size limit*
+  must be at least the size of your audio files (the bucket allows up to 200 MB;
+  the project-wide limit wins if it is lower — it is 50 MB on the Free plan).
+- **Cost — your decision:** storage. Supabase Pro includes 100 GB; beyond that
+  about US$0.021 per GB per month. A 45-minute MP3 at 64 kbps is ~22 MB, so
+  ~4,500 sermons fit in 100 GB. Posting video as a YouTube link costs nothing.

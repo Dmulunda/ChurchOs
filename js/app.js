@@ -25,6 +25,7 @@ import { renderEventsTab } from './eventsPage.js';
 import { renderSmallGroupsTab } from './smallGroupsPage.js';
 import { renderDiscipleshipTab } from './discipleshipPage.js';
 import { renderLeadershipInsightsTab } from './leadershipInsightsPage.js';
+import { renderSermonsTab } from './sermonsPage.js';
 import { renderCalendarTab } from './calendarPage.js';
 import { renderChildCheckinTab } from './childCheckinPage.js';
 import { renderFlyersTab } from './flyersPage.js';
@@ -432,6 +433,7 @@ const lazyTabs = {
   'small-groups': renderSmallGroupsTab,
   discipleship: renderDiscipleshipTab,
   insights: renderLeadershipInsightsTab,
+  sermons: renderSermonsTab,
   calendar: renderCalendarTab,
   flyers: renderFlyersTab,
   budget: renderBudgetPageTab,
@@ -614,7 +616,7 @@ const TAB_KIND_MAP = {
 // on any of these when a reload fired silently bounced you back to
 // Home/Dashboard -- confirmed by a Site Admin testing this exact
 // scenario on Main (same bug, identical code shape, both fixed here).
-const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups', 'calendar', 'discipleship', 'insights']);
+const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups', 'calendar', 'discipleship', 'insights', 'sermons']);
 
 function resolveLandingTab(previousTabName, active, isChoir) {
   const mapping = TAB_KIND_MAP[previousTabName];
@@ -847,6 +849,7 @@ function applyActiveDepartment() {
   updateSmallGroupsNav();
   addProbedNavButton('calendar', 'calendar.title', 'calendar_items');
   addProbedNavButton('discipleship', 'discipleship.title', 'discipleship_steps');
+  addProbedNavButton('sermons', 'sermons.title', 'sermons');
   addProbedNavButton('insights', 'insights.title', null, () => getEffectiveSupabase().rpc('get_leadership_insights', { p_weeks: 4 }));
   updateSidebarToolsSelect();
 
