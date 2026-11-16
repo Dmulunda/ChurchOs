@@ -96,3 +96,19 @@ see their own group and its history.
 - **SQL:** `148_small_groups.sql`, `149_small_groups_kb.sql` (reuses your existing `is_pastoral_team()`)
 - **Edge functions / secrets:** none
 - **Cost:** none
+
+---
+
+## 5. Church calendar and room booking
+
+New **Calendar** item in the sidebar: one month view with events, department
+schedules, choir services, weekly small-group meetings and new items
+(meetings, rehearsals, room bookings). Leaders add items; a room can't be
+booked twice at the same time. The pastoral team manages rooms and gets a
+private link to subscribe in Google Calendar, Outlook or Apple Calendar.
+
+- **SQL:** `150_church_calendar.sql`, `151_church_calendar_kb.sql` (apply after 148)
+- **Edge function to deploy (new):** `calendar-feed` → `supabase functions deploy calendar-feed --no-verify-jwt`
+- **Secrets:** none
+- **Cost:** none
+- Note: weekly small-group times are read as Toronto time.

@@ -23,6 +23,7 @@ import { renderServiceProgramTab } from './serviceProgram.js';
 import { renderTaxTab } from './taxPage.js';
 import { renderEventsTab } from './eventsPage.js';
 import { renderSmallGroupsTab } from './smallGroupsPage.js';
+import { renderCalendarTab } from './calendarPage.js';
 import { renderFlyersTab } from './flyersPage.js';
 import { renderBudgetPageTab } from './budgetPage.js';
 import { renderOfferingsPageTab } from './offeringsPage.js';
@@ -425,6 +426,7 @@ const lazyTabs = {
   tax: renderTaxTab,
   events: renderEventsTab,
   'small-groups': renderSmallGroupsTab,
+  calendar: renderCalendarTab,
   flyers: renderFlyersTab,
   budget: renderBudgetPageTab,
   offerings: renderOfferingsPageTab,
@@ -606,7 +608,7 @@ const TAB_KIND_MAP = {
 // on any of these when a reload fired silently bounced you back to
 // Home/Dashboard -- confirmed by a Site Admin testing this exact
 // scenario on Main (same bug, identical code shape, both fixed here).
-const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups']);
+const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups', 'calendar']);
 
 function resolveLandingTab(previousTabName, active, isChoir) {
   const mapping = TAB_KIND_MAP[previousTabName];
@@ -717,6 +719,25 @@ function updateBudgetNavVisibility() {
 // hasFinanceOversight(). Recording day-to-day offerings shouldn't
 // require being a Finance admin/secretary; deleting one still does
 // (see offeringsBoard.js's own canDeleteOfferings() check).
+// Nav buttons for new features: each is built only once the table its SQL
+// migration creates exists (probed once per session), so pushing the code
+// before applying the SQL leaves the sidebar unchanged.
+const probedNavTabs = new Set();
+function addProbedNavButton(tab, labelKey, table) {
+  if (probedNavTabs.has(tab)) return;
+  probedNavTabs.add(tab);
+  getEffectiveSupabase().from(table).select('*', { head: true, count: 'exact' }).limit(1).then(({ error }) => {
+    if (error) return;
+    const btn = document.createElement('button');
+    btn.dataset.tabTarget = tab;
+    btn.setAttribute('data-i18n', labelKey);
+    btn.className = 'w-full text-left px-3 py-2 rounded-lg font-medium transition-colors hover:bg-slate-800';
+    btn.textContent = t(labelKey);
+    btn.addEventListener('click', () => { activateTab(tab); closeSidebar(); });
+    unconditionalNavGroupEl.appendChild(btn);
+  });
+}
+
 // Small Groups nav button (sql/saas_platform/148): for everyone, but only
 // once that migration is applied -- probed once, then built like Budget.
 let smallGroupsNavBtn = null;
@@ -812,6 +833,7 @@ function applyActiveDepartment() {
   updateBudgetNavVisibility();
   updateOfferingsNavVisibility();
   updateSmallGroupsNav();
+  addProbedNavButton('calendar', 'calendar.title', 'calendar_items');
   updateSidebarToolsSelect();
 
   if (!active) {
