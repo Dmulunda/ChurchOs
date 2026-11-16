@@ -241,3 +241,23 @@ never see it. Limit: 40 uses per person per day, logged in `ai_usage_log`.
   model a typical translation or set of minutes is a few tenths of a cent;
   even 40 uses × 20 leaders every day stays around a few dollars a month. If
   the function is not deployed, the buttons simply don't appear.
+
+---
+
+## 13. Pastoral visits
+
+New **Pastoral Visits** page (pastoral team, plus anyone who has a visit
+assigned to them — they see only their own). Plan home / hospital / phone /
+church visits, assign a visitor, mark done with confidential notes and a
+follow-up date. Lists: planned (overdue in red), follow-ups due, and members
+not visited for 6 months with a one-click "Plan". The visitor gets an in-app
+notification (and email/push through the existing pipeline) when assigned and
+the day before (daily job at 08:05 Toronto time). A visitor can only change
+the outcome of their own visit, never who or why.
+
+- **SQL:** `164_pastoral_visits.sql` (adds notification type
+  `pastoral_visit` and the cron job `send-pastoral-visit-reminders`),
+  `165_pastoral_visits_kb.sql`. Run 164 as a whole file — its first line
+  (`alter type … add value`) must run before the transaction.
+- **Edge functions / secrets:** none
+- **Cost:** none
