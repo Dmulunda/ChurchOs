@@ -11,6 +11,31 @@ to the live database or deployed yet. For each feature, in order:
 The screens for a feature stay hidden until its SQL has been applied, so
 pushing code early does not break anything.
 
+## At a glance — what needs your decision
+
+| # | Feature | Free to switch on? | Your decision |
+|---|---------|--------------------|---------------|
+| 1 | Automatic reminders | Yes | — |
+| 2 | Online giving | Yes (no monthly fee) | Each church connects its own Stripe account; Stripe's card fee (~2.9% + 30¢) is paid per gift by the church |
+| 3 | Communication hub | Yes (in-app, push, email) | SMS / WhatsApp through Twilio cost per message — leave the Twilio secrets unset until you decide |
+| 4 | Small groups | Yes | — |
+| 5 | Calendar & room booking | Yes | — |
+| 6 | Children's check-in | Yes | (Printed name tags would need a label printer — not built) |
+| 7 | Discipleship path | Yes | — |
+| 8 | Leadership insights | Yes | — |
+| 9 | Sermon library | Yes | Storage for audio files (Supabase Pro includes 100 GB) |
+| 10 | Documents & minutes | Yes | Storage (usually small) |
+| 11 | Offline reading (installable app) | Yes | App Store / Play Store listing: US$99/year + US$25 once — not built |
+| 12 | AI writing help | — | Anthropic API usage (low-cost model, a few dollars a month) |
+| 13 | Pastoral visits | Yes | — |
+| 14 | Equipment & inventory | Yes | — |
+| 15 | Paid events + QR check-in | Check-in yes | Online event payment uses the church's Stripe account (same fee as giving) |
+
+Apply the SQL files in number order, 142 → 169. Files 142 and 164 start
+with an `alter type … add value` line: run each of those files as a whole
+(the line must run before its transaction). Every file was tested on a copy
+of the live data inside a transaction that was rolled back.
+
 ---
 
 ## 1. Automatic reminders
