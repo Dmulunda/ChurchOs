@@ -23,7 +23,21 @@ const PREFERENCE_TYPES = [
   { type: 'support_reply', labelKey: 'notifications.type.supportReply' },
   { type: 'pastor_meeting_booked', labelKey: 'notifications.type.pastorMeetingBooked' },
   { type: 'guest_follow_up_reminder', labelKey: 'notifications.type.guestFollowUpReminder' },
+  // Automatic reminders (sql/saas_platform/142). Email defaults ON for
+  // these (the server treats "no saved preference" as email on), so the
+  // checkbox default matches. Only listed once that migration is applied.
+  { type: 'serve_reminder', labelKey: 'notifications.type.serveReminder', emailDefault: true, needsReminders: true },
+  { type: 'meeting_reminder', labelKey: 'notifications.type.meetingReminder', emailDefault: true, needsReminders: true },
+  { type: 'event_reminder', labelKey: 'notifications.type.eventReminder', emailDefault: true, needsReminders: true },
 ];
+
+// reminder_log only exists once sql/saas_platform/142 is applied. Its RLS
+// has no policies, so a successful probe returns an empty list; a missing
+// table returns an error -- that's the signal to hide the reminder rows.
+async function remindersAvailable(supabase) {
+  const { error } = await supabase.from('reminder_log').select('kind').limit(1);
+  return !error;
+}
 
 export function createNotificationSettingsModal({ supabase, currentUserId }) {
   const root = document.createElement('div');
@@ -132,10 +146,13 @@ export function createNotificationSettingsModal({ supabase, currentUserId }) {
     }
 
     const byType = new Map((data || []).map((row) => [row.notification_type, row]));
+    const hasReminders = await remindersAvailable(supabase);
+    const visibleTypes = PREFERENCE_TYPES.filter((p) => !p.needsReminders || hasReminders);
+    const defaultsFor = (type) => ({ in_app: true, email: !!PREFERENCE_TYPES.find((p) => p.type === type)?.emailDefault });
 
     preferencesListEl.innerHTML = '';
-    PREFERENCE_TYPES.forEach(({ type, labelKey }) => {
-      const row = byType.get(type) || { in_app: true, email: false };
+    visibleTypes.forEach(({ type, labelKey }) => {
+      const row = byType.get(type) || defaultsFor(type);
       const rowEl = document.createElement('div');
       rowEl.className = 'contents';
       rowEl.innerHTML = `
@@ -149,7 +166,7 @@ export function createNotificationSettingsModal({ supabase, currentUserId }) {
     preferencesListEl.querySelectorAll('input[type="checkbox"]').forEach((input) => {
       input.addEventListener('change', async () => {
         const type = input.dataset.type;
-        const existing = byType.get(type) || { in_app: true, email: false };
+        const existing = byType.get(type) || defaultsFor(type);
         const updated = { ...existing, [input.dataset.field]: input.checked };
         byType.set(type, updated);
         input.disabled = true;

@@ -1012,6 +1012,9 @@ const TRANSLATIONS = {
     'guestHub.markFollowUpComplete': 'Mark Complete',
     'guestHub.reopenFollowUp': 'Reopen',
     'notifications.type.guestFollowUpReminder': 'Guest follow-up reminders',
+    'notifications.type.serveReminder': 'Reminder before I serve',
+    'notifications.type.meetingReminder': 'Reminder before a pastor meeting',
+    'notifications.type.eventReminder': 'Reminder before an event',
 
     'sidebar.memberCases': 'Member Cases',
     'memberCase.title': 'Member Cases',
@@ -4071,6 +4074,9 @@ const TRANSLATIONS = {
     'guestHub.markFollowUpComplete': 'Marquer comme terminé',
     'guestHub.reopenFollowUp': 'Rouvrir',
     'notifications.type.guestFollowUpReminder': 'Rappels de suivi des visiteurs',
+    'notifications.type.serveReminder': 'Rappel avant de servir',
+    'notifications.type.meetingReminder': 'Rappel avant une rencontre pastorale',
+    'notifications.type.eventReminder': 'Rappel avant un événement',
 
     'sidebar.memberCases': 'Dossiers des membres',
     'memberCase.title': 'Dossiers des membres',

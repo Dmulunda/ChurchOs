@@ -94,6 +94,29 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   try {
+    // Cron path (sql/saas_platform/142_automatic_reminders.sql): the
+    // notifications trigger asks for a Web Push for one stored reminder
+    // row. Authenticated by the shared cron secret (the same one
+    // send-notification-email checks), never a user JWT; the recipient
+    // and the text come only from the stored row, nothing client-supplied.
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    if (cronSecret && req.headers.get('x-cron-secret') === cronSecret) {
+      const { kind, notification_id } = await req.json();
+      if (kind !== 'notification' || !notification_id) return json({ error: 'kind "notification" and notification_id are required' }, 400);
+      const cronAdmin = createClient(
+        Deno.env.get('SUPABASE_URL'),
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+      );
+      const { data: notification } = await cronAdmin
+        .from('notifications')
+        .select('recipient_id, title, body')
+        .eq('id', notification_id)
+        .maybeSingle();
+      if (!notification) return json({ skipped: 'notification not found' });
+      const { sent, failed } = await sendToUsers(cronAdmin, [notification.recipient_id], notification.title, notification.body);
+      return json({ sent, failed });
+    }
+
     const jwt = (req.headers.get('Authorization') ?? '').replace('Bearer ', '');
     if (!jwt) return json({ error: 'Missing authorization' }, 401);
 
