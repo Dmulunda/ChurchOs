@@ -668,6 +668,24 @@ function forEachNavGroup(name, fn) {
 // mode switches.
 const unconditionalNavGroupEl = document.querySelector('#unconditional-nav-group');
 let budgetNavBtn = null;
+// Budget and Offerings sit together under a "Finance" heading instead of
+// mixed in with Academy/Service Program/Tax. The heading only shows when
+// at least one of the two buttons exists for this user.
+const financeNavGroupEl = (() => {
+  const el = document.createElement('div');
+  el.id = 'finance-nav-group';
+  el.className = 'hidden space-y-1 mb-2 pb-2 border-b border-slate-800';
+  const heading = document.createElement('div');
+  heading.className = 'px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500';
+  heading.setAttribute('data-i18n', 'sidebar.financeGroup');
+  heading.textContent = t('sidebar.financeGroup');
+  el.appendChild(heading);
+  unconditionalNavGroupEl.after(el);
+  return el;
+})();
+function syncFinanceNavGroup() {
+  financeNavGroupEl.classList.toggle('hidden', !budgetNavBtn && !offeringsNavBtn);
+}
 function updateBudgetNavVisibility() {
   if (hasAnyDeptLeadership()) {
     if (!budgetNavBtn) {
@@ -680,12 +698,14 @@ function updateBudgetNavVisibility() {
         activateTab('budget');
         closeSidebar();
       });
-      unconditionalNavGroupEl.appendChild(budgetNavBtn);
+      financeNavGroupEl.prepend(budgetNavBtn);
+      financeNavGroupEl.prepend(financeNavGroupEl.querySelector('[data-i18n="sidebar.financeGroup"]'));
     }
   } else if (budgetNavBtn) {
     budgetNavBtn.remove();
     budgetNavBtn = null;
   }
+  syncFinanceNavGroup();
 }
 
 // Same construct-only-if-visible treatment as Budget above, but gated
@@ -707,12 +727,13 @@ function updateOfferingsNavVisibility() {
         activateTab('offerings');
         closeSidebar();
       });
-      unconditionalNavGroupEl.appendChild(offeringsNavBtn);
+      financeNavGroupEl.appendChild(offeringsNavBtn);
     }
   } else if (offeringsNavBtn) {
     offeringsNavBtn.remove();
     offeringsNavBtn = null;
   }
+  syncFinanceNavGroup();
 }
 
 // ---- Department switcher ----
@@ -1238,9 +1259,24 @@ function updateSidebarToolsSelect() {
     }
   }
 
-  const buildOptionsHtml = (opts) => `<option value="">${t('sidebar.more')}</option>`
-    + opts.map((o) => `<option value="${o.value}">${escapeHtmlText(o.label)}</option>`).join('');
-  sidebarToolsSelect.innerHTML = buildOptionsHtml(options);
+  // Group the one-shot tools so the list scans quickly: personal items,
+  // ministry and care, church admin, then help. Each option keeps its own
+  // visibility rule above; a group with nothing visible is skipped.
+  const TOOL_GROUPS = [
+    ['sidebar.groupMe', ['my-profile', 'change-password', 'my-letters', 'report-absence', 'join-department', 'pastor-meeting', 'prayer-request', 'member-registration']],
+    ['sidebar.groupMinistry', ['church-rules', 'department-rules', 'monthly-report', 'attendance', 'urgent-prayer-cases', 'pastoral-dashboard', 'guest-cases', 'member-cases']],
+    ['sidebar.groupAdmin', ['manage-church-admins', 'invite-link', 'church-logo', 'disciplinary-letters', 'plans', 'referral', 'site-admin', 'owner']],
+    ['sidebar.groupHelp', ['app-suggestion', 'support-request', 'churchonpoint']],
+  ];
+  const optionHtml = (o) => `<option value="${o.value}">${escapeHtmlText(o.label)}</option>`;
+  const grouped = new Set(TOOL_GROUPS.flatMap(([, values]) => values));
+  const groupsHtml = TOOL_GROUPS.map(([labelKey, values]) => {
+    const opts = values.map((v) => options.find((o) => o.value === v)).filter(Boolean);
+    return opts.length ? `<optgroup label="${escapeHtmlAttr(t(labelKey))}">${opts.map(optionHtml).join('')}</optgroup>` : '';
+  }).join('');
+  // Any option not assigned to a group above still shows, at the end.
+  const ungroupedHtml = options.filter((o) => !grouped.has(o.value)).map(optionHtml).join('');
+  sidebarToolsSelect.innerHTML = `<option value="">${t('sidebar.more')}</option>` + groupsHtml + ungroupedHtml;
 }
 
 function escapeHtmlText(str) {
