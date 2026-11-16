@@ -126,3 +126,20 @@ your existing Sunday School children list (parents, allergies).
 - **SQL:** `152_child_checkin.sql`, `153_child_checkin_kb.sql`
 - **Edge functions / secrets:** none
 - **Cost:** none. (Printed name tags would need a label printer — not built.)
+
+---
+
+## 7. Discipleship path
+
+New **Discipleship** page in the sidebar. Every member sees "My journey":
+the church's growth steps and the ones they completed, with dates. The
+pastoral team also sees how many people reached each step, a "Who has
+stalled" list (last step more than 90 days ago, next step not reached), ticks
+steps for anyone in the member database, and edits the steps (EN/FR titles).
+Seven starter steps are created for each church: first visit, gave their life
+to Christ, membership class, baptism, small group, serving, leadership
+training.
+
+- **SQL:** `154_discipleship_path.sql`, `155_discipleship_path_kb.sql`
+- **Edge functions / secrets:** none
+- **Cost:** none
