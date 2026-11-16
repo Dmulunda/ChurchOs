@@ -143,3 +143,19 @@ training.
 - **SQL:** `154_discipleship_path.sql`, `155_discipleship_path_kb.sql`
 - **Edge functions / secrets:** none
 - **Cost:** none
+
+---
+
+## 8. Leadership insights
+
+New **Leadership Insights** page (pastoral team only; the sidebar button
+appears only for them). Week-by-week mini charts for Sunday headcount
+(Ushers), children (Sunday School), people checked in, new guests, volunteers
+who served and giving (giving only for people who already see every
+offering), with a trend arrow; plus period totals (new members, people who
+left, guests waiting, open prayer requests, small-group attendance). No new
+tables — one read-only function.
+
+- **SQL:** `156_leadership_insights.sql`, `157_leadership_insights_kb.sql`
+- **Edge functions / secrets:** none
+- **Cost:** none

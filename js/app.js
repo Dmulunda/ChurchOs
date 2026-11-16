@@ -24,6 +24,7 @@ import { renderTaxTab } from './taxPage.js';
 import { renderEventsTab } from './eventsPage.js';
 import { renderSmallGroupsTab } from './smallGroupsPage.js';
 import { renderDiscipleshipTab } from './discipleshipPage.js';
+import { renderLeadershipInsightsTab } from './leadershipInsightsPage.js';
 import { renderCalendarTab } from './calendarPage.js';
 import { renderChildCheckinTab } from './childCheckinPage.js';
 import { renderFlyersTab } from './flyersPage.js';
@@ -430,6 +431,7 @@ const lazyTabs = {
   events: renderEventsTab,
   'small-groups': renderSmallGroupsTab,
   discipleship: renderDiscipleshipTab,
+  insights: renderLeadershipInsightsTab,
   calendar: renderCalendarTab,
   flyers: renderFlyersTab,
   budget: renderBudgetPageTab,
@@ -612,7 +614,7 @@ const TAB_KIND_MAP = {
 // on any of these when a reload fired silently bounced you back to
 // Home/Dashboard -- confirmed by a Site Admin testing this exact
 // scenario on Main (same bug, identical code shape, both fixed here).
-const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups', 'calendar', 'discipleship']);
+const GLOBAL_STANDALONE_TABS = new Set(['training', 'service-program', 'tax', 'pastor-meetings', 'site-admin', 'owner', 'events', 'flyers', 'pastoral-dashboard', 'small-groups', 'calendar', 'discipleship', 'insights']);
 
 function resolveLandingTab(previousTabName, active, isChoir) {
   const mapping = TAB_KIND_MAP[previousTabName];
@@ -730,10 +732,13 @@ function updateBudgetNavVisibility() {
 const probedNavTabs = new Set();
 var childCheckinAvailable = false; // var: read by functions defined earlier in this file
 var childCheckinProbed = false;
-function addProbedNavButton(tab, labelKey, table) {
+// probe (optional): a function returning a Supabase query/RPC promise; the
+// button appears only if it succeeds (used for pastoral-only pages).
+function addProbedNavButton(tab, labelKey, table, probe) {
   if (probedNavTabs.has(tab)) return;
   probedNavTabs.add(tab);
-  getEffectiveSupabase().from(table).select('*', { head: true, count: 'exact' }).limit(1).then(({ error }) => {
+  const check = probe ? probe() : getEffectiveSupabase().from(table).select('*', { head: true, count: 'exact' }).limit(1);
+  check.then(({ error }) => {
     if (error) return;
     const btn = document.createElement('button');
     btn.dataset.tabTarget = tab;
@@ -842,6 +847,7 @@ function applyActiveDepartment() {
   updateSmallGroupsNav();
   addProbedNavButton('calendar', 'calendar.title', 'calendar_items');
   addProbedNavButton('discipleship', 'discipleship.title', 'discipleship_steps');
+  addProbedNavButton('insights', 'insights.title', null, () => getEffectiveSupabase().rpc('get_leadership_insights', { p_weeks: 4 }));
   updateSidebarToolsSelect();
 
   if (!active) {
