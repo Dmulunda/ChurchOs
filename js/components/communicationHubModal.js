@@ -5,6 +5,7 @@
 // the channels the server reports as set up (SMS/WhatsApp stay greyed
 // out until Twilio is configured) and the audiences the caller may use.
 import { t, departmentLabel, appLocale } from '../i18n.js';
+import { attachAiWriter } from './aiWriter.js';
 
 const CHANNELS = ['in_app', 'push', 'email', 'sms', 'whatsapp'];
 
@@ -101,6 +102,7 @@ export function createCommunicationHubModal({ supabase }) {
       </form>`;
 
     const form = bodyEl.querySelector('form');
+    attachAiWriter(form.elements.body, ['translate', 'polish']);
     const deptListEl = form.querySelector('[data-el="dept-list"]');
     form.querySelectorAll('input[name="audience"]').forEach((r) => r.addEventListener('change', () => {
       deptListEl.classList.toggle('hidden', form.elements.audience.value !== 'departments');

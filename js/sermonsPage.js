@@ -6,6 +6,7 @@
 // RLS and storage policies enforce access -- the buttons are convenience only.
 import { getEffectiveSupabase } from './departments.js';
 import { t, formatDate } from './i18n.js';
+import { attachAiWriter } from './components/aiWriter.js';
 
 const BUCKET = 'sermon-files';
 const LANGS = ['fr', 'en', 'both', 'other'];
@@ -143,6 +144,7 @@ export async function renderSermonsTab() {
     const form = formEl.querySelector('form');
     const msg = form.querySelector('[data-el="msg"]');
     form.querySelector('[data-action="cancel"]').addEventListener('click', () => { formEl.innerHTML = ''; });
+    attachAiWriter(form.elements.summary, ['summary', 'translate']);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const f = form.elements;

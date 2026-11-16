@@ -220,3 +220,24 @@ shows if the app was never opened on that device.
   costs US$99/year (Apple developer account) + US$25 once (Google), plus
   review time. The installable web app above already gives an icon, full
   screen, push notifications and offline reading without the stores.
+
+---
+
+## 12. AI writing help (extends the AI assistant)
+
+Leaders get a "✨ AI help" row under text boxes: **Translate FR ⇄ EN** and
+**Improve wording** in the Communication hub, **Turn notes into minutes**
+(fills Notes, Decisions and Action items) and **Translate** in Documents,
+**Summarise** and **Translate** in Sermons. The suggestion is shown first and
+only replaces the text when the person clicks "Use this" (with Undo). Members
+never see it. Limit: 40 uses per person per day, logged in `ai_usage_log`.
+
+- **SQL:** `162_ai_writer.sql`, `163_ai_writer_kb.sql`
+- **Edge function:** `supabase functions deploy ai-writer`
+- **Secrets:** reuses `ANTHROPIC_API_KEY` (and `ANTHROPIC_WORKSPACE_ID` if set)
+  from the existing assistant. Optional `AI_WRITER_MODEL` (default
+  `claude-haiku-5-5`, the low-cost model).
+- **Cost — your decision:** billed by Anthropic per use. With the default
+  model a typical translation or set of minutes is a few tenths of a cent;
+  even 40 uses × 20 leaders every day stays around a few dollars a month. If
+  the function is not deployed, the buttons simply don't appear.

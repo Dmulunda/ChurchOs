@@ -6,6 +6,7 @@
 // enforce access -- the buttons shown here are convenience only.
 import { getEffectiveSupabase, getMyDepartments } from './departments.js';
 import { t, formatDate, departmentLabel } from './i18n.js';
+import { attachAiWriter } from './components/aiWriter.js';
 
 const BUCKET = 'church-documents';
 const KINDS = ['minutes', 'file', 'link'];
@@ -201,6 +202,7 @@ export async function renderDocumentsTab() {
       form.querySelectorAll('[data-kind]').forEach((el) => el.classList.toggle('hidden', el.dataset.kind !== k));
     };
     form.elements.kind.addEventListener('change', showKind);
+    attachAiWriter(form.elements.body, ['minutes', 'translate'], { minutesTargets: { decisions: form.elements.decisions, action_items: form.elements.action_items } });
     showKind();
     form.querySelector('[data-action="cancel"]').addEventListener('click', () => { formEl.innerHTML = ''; });
     const fail = (m) => { msg.className = 'text-sm text-rose-600'; msg.textContent = m; form.querySelector('[type="submit"]').disabled = false; };
