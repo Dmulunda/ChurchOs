@@ -12,7 +12,7 @@
 //                              filters, a pending-count callback for the
 //                              tab's notification badge.
 import { confirmDialog } from './confirmDialog.js';
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, appLocale, formatMoney } from '../i18n.js';
 import { canApproveFinance } from '../departments.js';
 
 function currentMonthValue() {
@@ -280,14 +280,14 @@ function statusBadge(status) {
 }
 
 function formatAmount(amount) {
-  return '$' + Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatMoney(amount);
 }
 
 function formatMonth(dateStr) {
   if (!dateStr) return '';
   const [year, month] = dateStr.split('-');
   const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+  return date.toLocaleDateString(appLocale(), { year: 'numeric', month: 'long' });
 }
 
 function escapeHtml(str) {

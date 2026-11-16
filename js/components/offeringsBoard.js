@@ -19,7 +19,7 @@
 // bulk — Excel/CSV, or a best-effort PDF parse, of whatever a church
 // used before this system, reviewed row by row before anything is
 // written.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 import { canDeleteOfferings } from '../departments.js';
 import { createOfferingsImportModal } from './offeringsImport.js';
@@ -29,7 +29,7 @@ const PAYMENT_METHODS = ['cash', 'transfer', 'check', 'other'];
 const CURRENCIES = ['CAD', 'USD', 'EUR', 'other'];
 
 function centsToDollarsStr(cents) {
-  return (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (cents / 100).toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function currencyLabel(row) {

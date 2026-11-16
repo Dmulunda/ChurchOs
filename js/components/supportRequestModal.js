@@ -5,7 +5,7 @@
 //
 // "My Requests" (sql/061) mirrors appSuggestionModal.js's own list --
 // a submitter's own past requests plus any site_admin_reply.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 
 const TOPICS = ['tech_problem', 'question', 'other'];
 
@@ -66,7 +66,7 @@ export function createSupportRequestModal({ supabase, currentUserId }) {
       <div class="border border-slate-200 rounded-lg p-3">
         <div class="flex items-center justify-between gap-2 mb-1">
           <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">${escapeHtml(t(`supportRequest.topic.${row.topic}`))}</span>
-          <span class="text-xs text-slate-400">${new Date(row.created_at).toLocaleDateString()} · ${escapeHtml(t(`siteAdmin.status.${row.status}`))}</span>
+          <span class="text-xs text-slate-400">${new Date(row.created_at).toLocaleDateString(appLocale())} · ${escapeHtml(t(`siteAdmin.status.${row.status}`))}</span>
         </div>
         <p class="text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(row.message)}</p>
         ${row.site_admin_reply ? `<p class="text-sm text-indigo-700 bg-indigo-50 rounded px-2 py-1.5 mt-2 whitespace-pre-wrap"><strong>${escapeHtml(t('supportRequest.replyLabel'))}</strong> ${escapeHtml(row.site_admin_reply)}</p>` : ''}

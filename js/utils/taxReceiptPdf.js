@@ -8,7 +8,7 @@
 // Same html2canvas + jsPDF pattern as every other PDF export in this
 // app (memberIdCard.js, etc.): render the receipt as a styled
 // off-screen template, screenshot it, embed the PNG into a jsPDF doc.
-import { t } from '../i18n.js';
+import { t, appLocale, formatMoney } from '../i18n.js';
 
 const RECEIPT_WIDTH = 850;
 const RECEIPT_HEIGHT = 1100;
@@ -32,7 +32,7 @@ export async function buildReceiptPdfBlob(receipt) {
     </div>
     <table style="width:100%;font-size:14px;border-collapse:collapse;">
       <tr><td style="padding:6px 0;color:#64748b;">${escapeHtml(t('taxReceiptDoc.receiptNumberLabel'))}</td><td style="padding:6px 0;text-align:right;font-weight:600;">${escapeHtml(receipt.receipt_number)}</td></tr>
-      <tr><td style="padding:6px 0;color:#64748b;">${escapeHtml(t('taxReceiptDoc.issuedOnLabel'))}</td><td style="padding:6px 0;text-align:right;">${escapeHtml(new Date(receipt.issued_at).toLocaleDateString())}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b;">${escapeHtml(t('taxReceiptDoc.issuedOnLabel'))}</td><td style="padding:6px 0;text-align:right;">${escapeHtml(new Date(receipt.issued_at).toLocaleDateString(appLocale()))}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b;">${escapeHtml(t('taxReceiptDoc.fiscalYearLabel'))}</td><td style="padding:6px 0;text-align:right;">${receipt.fiscal_year}</td></tr>
       <tr><td style="padding:14px 0 6px;color:#64748b;border-top:1px solid #e2e8f0;">${escapeHtml(t('taxReceiptDoc.donorNameLabel'))}</td><td style="padding:14px 0 6px;text-align:right;font-weight:600;border-top:1px solid #e2e8f0;">${escapeHtml(receipt.legal_name_snapshot)}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b;">${escapeHtml(t('taxReceiptDoc.totalAmountLabel'))}</td><td style="padding:6px 0;text-align:right;font-weight:700;font-size:18px;">${formatAmount(receipt.total_amount, receipt.currency)}</td></tr>
@@ -90,7 +90,7 @@ export function blobToBase64(blob) {
 }
 
 function formatAmount(amount, currency) {
-  const base = '$' + Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const base = formatMoney(amount);
   return currency ? `${base} ${currency}` : base;
 }
 

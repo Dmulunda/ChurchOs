@@ -8,7 +8,7 @@
 // invisible to whoever submitted it; this is the other half of that
 // fix (the notification bell also fires, but this is where the full
 // reply text actually lives).
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 
 export function createAppSuggestionModal({ supabase, currentUserId }) {
   const root = document.createElement('div');
@@ -59,7 +59,7 @@ export function createAppSuggestionModal({ supabase, currentUserId }) {
     myListEl.innerHTML = `<div class="space-y-2">${data.map((row) => `
       <div class="border border-slate-200 rounded-lg p-3">
         <div class="flex items-center justify-between gap-2 mb-1">
-          <span class="text-xs text-slate-400">${new Date(row.created_at).toLocaleDateString()}</span>
+          <span class="text-xs text-slate-400">${new Date(row.created_at).toLocaleDateString(appLocale())}</span>
           <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">${escapeHtml(t(`siteAdmin.status.${row.status}`))}</span>
         </div>
         <p class="text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(row.message)}</p>

@@ -11,7 +11,7 @@
 // access is already covered by the widened can_record_attendance()
 // select policy (sql/saas_platform/91) -- any approved member of this
 // department, nothing new to grant here.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 
 export function renderGuestAttendanceDashboard(container, { supabase }) {
   container.className = 'bg-white rounded-xl border border-slate-100 p-4';
@@ -180,7 +180,7 @@ function bucketByWeek(rows) {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([key, count]) => {
       const d = new Date(`${key}T00:00:00`);
-      return { key, count, label: `${d.toLocaleString(undefined, { month: 'short' })} ${d.getDate()}` };
+      return { key, count, label: `${d.toLocaleString(appLocale(), { month: 'short' })} ${d.getDate()}` };
     });
 }
 
@@ -194,7 +194,7 @@ function bucketByMonth(rows) {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([key, count]) => {
       const d = new Date(`${key}-01T00:00:00`);
-      return { key, count, label: d.toLocaleString(undefined, { month: 'short', year: '2-digit' }) };
+      return { key, count, label: d.toLocaleString(appLocale(), { month: 'short', year: '2-digit' }) };
     });
 }
 

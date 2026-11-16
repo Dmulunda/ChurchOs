@@ -7,7 +7,7 @@
 // version can't just vanish out from under it.
 // scope: { type: 'church', canAdminister } | { type: 'department', departmentId, departmentKey, canAdminister }
 import { confirmDialog } from './confirmDialog.js';
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 
 const SIGNED_URL_TTL_SECONDS = 300;
 
@@ -61,7 +61,7 @@ export function createRulesModal({ supabase, scope, currentUserId, title }) {
       info.className = 'bg-slate-50 rounded-lg p-4 mb-4';
       info.innerHTML = `
         <p class="font-medium text-slate-800 mb-1">${escapeHtml(doc.file_name)}</p>
-        <p class="text-xs text-slate-500">${t('rules.uploadedInfo', { name: doc.uploader?.full_name || '—', date: new Date(doc.uploaded_at).toLocaleDateString() })}</p>
+        <p class="text-xs text-slate-500">${t('rules.uploadedInfo', { name: doc.uploader?.full_name || '—', date: new Date(doc.uploaded_at).toLocaleDateString(appLocale()) })}</p>
       `;
       bodyEl.appendChild(info);
 

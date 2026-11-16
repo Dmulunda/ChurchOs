@@ -11,7 +11,7 @@
 // login (profile_id null), so there's no profiles.id to pass that
 // RPC, and it's super-admin-only while this Directory is pastoral-
 // team-gated.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 import { GENDERS, MARITAL_STATUSES, AGE_GROUPS, SKILLS } from './memberRegistrationFields.js';
 import { exportRowsToExcel, exportRowsToCsv } from '../utils/tableExport.js';
 import { exportMemberDirectoryPdf } from './memberDirectoryPdf.js';
@@ -438,7 +438,7 @@ export function renderMemberDirectory(container, { supabase }) {
         <div class="space-y-1 max-h-48 overflow-y-auto">
           ${(history || []).length > 0 ? history.map((h) => `
             <div class="text-xs text-slate-500">
-              ${escapeHtml(new Date(h.changed_at).toLocaleString())} — <span class="font-medium">${escapeHtml(h.field)}</span>:
+              ${escapeHtml(new Date(h.changed_at).toLocaleString(appLocale()))} — <span class="font-medium">${escapeHtml(h.field)}</span>:
               ${escapeHtml(h.old_value || '—')} → ${escapeHtml(h.new_value || '—')}
             </div>
           `).join('') : `<p class="text-xs text-slate-400">${t('memberDirectory.noHistory')}</p>`}

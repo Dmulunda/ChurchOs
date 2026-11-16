@@ -6,7 +6,7 @@
 // correctly — an easy-to-get-wrong pitfall, so this avoids it
 // entirely) — same shape as dashboardOverview.js's own client-side
 // aggregation.
-import { t } from '../i18n.js';
+import { t, formatMoney } from '../i18n.js';
 import { createBudgetDetailModal } from './budgetDetailModal.js';
 
 export function renderBudgetBoard(container, { supabase, departmentId, currentUserId, canManage, allowManualCreate = true }) {
@@ -201,7 +201,7 @@ export function renderBudgetBoard(container, { supabase, departmentId, currentUs
 }
 
 export function formatAmount(amount) {
-  return '$' + Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatMoney(amount);
 }
 
 function escapeHtml(str) {

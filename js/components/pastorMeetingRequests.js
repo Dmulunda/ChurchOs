@@ -7,7 +7,7 @@
 // request() (the RPC) is the only way a request actually gets
 // confirmed/declined, so confirmed_by/confirmed_at are always the real
 // actor and the real server time.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 import { openMeetingWindow, navigateMeetingWindow } from './videoMeeting.js';
 
 export function createPastorMeetingRequestModal({ supabase, currentUserId }) {
@@ -112,7 +112,7 @@ export function createPastorMeetingRequestModal({ supabase, currentUserId }) {
     el.className = 'border border-slate-200 rounded-lg p-2.5 text-sm';
     el.innerHTML = `
       <div class="flex items-center justify-between gap-2">
-        <span class="text-slate-500">${escapeHtml(new Date(row.created_at).toLocaleDateString())}</span>
+        <span class="text-slate-500">${escapeHtml(new Date(row.created_at).toLocaleDateString(appLocale()))}</span>
         ${statusBadge(row.status)}
       </div>
       ${row.note ? `<p class="text-slate-700 mt-1">${escapeHtml(row.note)}</p>` : ''}
@@ -190,7 +190,7 @@ export function createPastorMeetingQueueModal({ supabase }) {
       <div class="flex items-start justify-between gap-3">
         <div>
           <div class="font-medium text-slate-800">${escapeHtml(row.requester?.full_name || '')}</div>
-          <div class="text-xs text-slate-400">${escapeHtml(new Date(row.created_at).toLocaleDateString())}</div>
+          <div class="text-xs text-slate-400">${escapeHtml(new Date(row.created_at).toLocaleDateString(appLocale()))}</div>
           ${row.note ? `<p class="text-sm text-slate-600 mt-1">${escapeHtml(row.note)}</p>` : ''}
         </div>
         <div data-el="actions" class="flex gap-2 shrink-0">

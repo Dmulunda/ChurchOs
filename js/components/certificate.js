@@ -11,7 +11,7 @@
 // there's no "who signs completion certificates" concept in the schema,
 // and none was asked for, so these are simple constants a future code
 // change would update if the actual people ever change.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 import { publicPageUrl } from '../utils/publicUrl.js';
 import { getTenant } from '../tenant.js';
 
@@ -21,7 +21,7 @@ const ACADEMY_DIRECTOR_NAME = 'Dr Nana Esperance Ngawala';
 const ACADEMY_DIRECTOR_TITLE = 'PASTEUR PRINCIPAL';
 
 export function openCertificate({ studentName, courseTitle, approvedAt, approvalId }) {
-  const dateLabel = new Date(approvedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const dateLabel = new Date(approvedAt).toLocaleDateString(appLocale(), { year: 'numeric', month: 'long', day: 'numeric' });
   // Falls back to the platform default only if this tenant hasn't
   // uploaded their own yet -- see js/components/tenantLogoModal.js,
   // same pattern as memberIdCard.js's header.

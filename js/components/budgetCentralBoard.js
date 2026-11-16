@@ -19,7 +19,7 @@
 //     see/act on the other; they never see both merged together.
 // Nobody else ever reaches this file at all -- js/app.js only
 // constructs the nav button/tab for hasAnyDeptLeadership().
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, formatMoney } from '../i18n.js';
 import { hasFinanceOversight, canApproveFinance, getMyDepartments, getActiveDepartment } from '../departments.js';
 import { renderMyFundRequests, renderFundRequestsInbox } from './budgetRequests.js';
 import { renderBudgetBoard } from './budgetBoard.js';
@@ -299,7 +299,7 @@ async function renderBudgetReport(container, { supabase, oversight, departments,
 }
 
 function formatAmount(amount) {
-  return '$' + Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatMoney(amount);
 }
 
 function escapeHtml(str) {

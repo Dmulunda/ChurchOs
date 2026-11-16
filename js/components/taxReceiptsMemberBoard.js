@@ -10,7 +10,7 @@
 // lives in js/utils/taxReceiptPdf.js -- shared with
 // taxReceiptsAdminBoard.js, which builds the identical PDF for a Guest
 // Donor (no app account) and emails it instead of downloading it.
-import { t } from '../i18n.js';
+import { t, formatMoney } from '../i18n.js';
 import { createMyProfileModal } from './myProfileModal.js';
 import { receiptPdfAvailable, buildReceiptPdfBlob, shareOrDownloadPdf } from '../utils/taxReceiptPdf.js';
 
@@ -118,7 +118,7 @@ export async function renderTaxReceiptsMemberBoard(container, { supabase, userId
 }
 
 function formatAmount(amount, currency) {
-  const base = '$' + Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const base = formatMoney(amount);
   return currency ? `${base} ${currency}` : base;
 }
 

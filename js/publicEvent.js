@@ -10,7 +10,7 @@
 // get_public_event_for_registration()'s own auth.uid()-or-slug logic,
 // sql/saas_platform/79_events.sql).
 import { supabase } from './supabaseClient.js';
-import { loadLabelOverrides, applyStaticTranslations, t } from './i18n.js';
+import { loadLabelOverrides, applyStaticTranslations, t, appLocale } from './i18n.js';
 
 async function main() {
   try {
@@ -42,7 +42,7 @@ async function main() {
 }
 
 function renderEvent(container, event, { supabase: sb, eventId, tenantSlug }) {
-  const when = new Date(event.startAt).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' });
+  const when = new Date(event.startAt).toLocaleString(appLocale(), { dateStyle: 'full', timeStyle: 'short' });
   const whereLine = event.onlineLink
     ? `<p class="text-sm text-slate-600"><strong>${t('events.online')}:</strong> <a href="${escapeAttr(event.onlineLink)}" class="text-indigo-600 hover:underline">${escapeHtml(event.onlineLink)}</a></p>`
     : event.location ? `<p class="text-sm text-slate-600"><strong>${t('events.location')}:</strong> ${escapeHtml(event.location)}</p>` : '';

@@ -10,7 +10,7 @@
 // mark_prayer_request_prayed() (the RPC) is the only way a request
 // gets marked handled, so handled_by/handled_at are always the real
 // actor and the real server time.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 
 const PASTORAL_TEAM_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
 
@@ -127,7 +127,7 @@ export function createPrayerRequestModal({ supabase, currentUserId }) {
     historyEl.innerHTML = data.map((row) => `
       <div class="border border-slate-200 rounded-lg p-2.5 text-sm">
         <div class="flex items-center justify-between gap-2">
-          <span class="text-slate-500">${escapeHtml(new Date(row.created_at).toLocaleDateString())}</span>
+          <span class="text-slate-500">${escapeHtml(new Date(row.created_at).toLocaleDateString(appLocale()))}</span>
           ${statusBadge(row.status)}
         </div>
         <p class="text-slate-700 mt-1">${escapeHtml(row.request_text)}</p>
@@ -233,7 +233,7 @@ export function renderPrayerRequestQueue(container, { supabase }) {
             ${submitterName(row)}
           </div>
           ${contactBits.length > 0 ? `<div class="text-xs text-slate-500">${contactBits.join(' · ')}</div>` : ''}
-          <div class="text-xs text-slate-400">${escapeHtml(new Date(row.created_at).toLocaleDateString())}</div>
+          <div class="text-xs text-slate-400">${escapeHtml(new Date(row.created_at).toLocaleDateString(appLocale()))}</div>
           <p class="text-sm text-slate-600 mt-1">${escapeHtml(row.request_text)}</p>
         </div>
         <button type="button" data-action="mark-prayed"

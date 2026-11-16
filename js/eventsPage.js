@@ -17,7 +17,7 @@ import { getTenant } from './tenant.js';
 import { confirmDialog } from './components/confirmDialog.js';
 import { activateTab, invalidateTabCache } from './app.js';
 import { openFlyerForEvent } from './flyersPage.js';
-import { t } from './i18n.js';
+import { t, appLocale } from './i18n.js';
 import { publicPageUrl } from './utils/publicUrl.js';
 
 export async function renderEventsTab() {
@@ -111,7 +111,7 @@ export async function renderEventsTab() {
         <tr class="border-b border-slate-100 cursor-pointer hover:bg-slate-50 ${isCancelled ? 'opacity-50' : ''}" data-event-id="${ev.id}">
           <td class="px-3 py-2 font-medium text-slate-800">${escapeHtml(ev.title)}${isCancelled ? ` <span class="text-xs text-rose-600">(${t('events.cancelled')})</span>` : ''}</td>
           <td class="px-3 py-2 text-slate-600">${escapeHtml(ev.department?.name || '')}</td>
-          <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${new Date(ev.start_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</td>
+          <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${new Date(ev.start_at).toLocaleString(appLocale(), { dateStyle: 'medium', timeStyle: 'short' })}</td>
           <td class="px-3 py-2 text-slate-600">${t(`events.visibility.${ev.visibility}`)}</td>
           <td class="px-3 py-2 text-slate-600">${formatPriceCents(ev.price_cents)}</td>
           <td class="px-3 py-2 text-right">${counts[i]}${ev.capacity != null ? ` / ${ev.capacity}` : ''}</td>
@@ -367,7 +367,7 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
                 ${hasPartySizes ? `<td class="px-3 py-2 text-right">${r.party_size}</td>` : ''}
                 <td class="px-3 py-2">${t(`events.regStatus.${r.status}`)}</td>
                 ${isPriced ? `<td class="px-3 py-2">${t(`events.paymentStatus.${r.payment_status}`)}</td>` : ''}
-                <td class="px-3 py-2 text-slate-500">${new Date(r.created_at).toLocaleDateString()}</td>
+                <td class="px-3 py-2 text-slate-500">${new Date(r.created_at).toLocaleDateString(appLocale())}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -392,7 +392,7 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
     container.querySelector('[data-action="create-flyer"]').addEventListener('click', async () => {
       const createFlyerBtn = container.querySelector('[data-action="create-flyer"]');
       createFlyerBtn.disabled = true;
-      const when = new Date(fullEvent.start_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      const when = new Date(fullEvent.start_at).toLocaleString(appLocale(), { dateStyle: 'medium', timeStyle: 'short' });
       const infoLine = [when, fullEvent.location].filter(Boolean).join(' · ');
       let qrDataUrl = null;
       try {
@@ -420,7 +420,7 @@ async function renderEventDetail(container, { supabase, event, canManage, depart
         ...(hasPartySizes ? { [t('events.colPeople')]: r.party_size, [t('events.colGuestNames')]: (r.additional_names || []).join(', ') } : {}),
         [t('events.colStatus')]: t(`events.regStatus.${r.status}`),
         ...(isPriced ? { [t('events.colPayment')]: t(`events.paymentStatus.${r.payment_status}`) } : {}),
-        [t('events.colRegisteredAt')]: new Date(r.created_at).toLocaleString(),
+        [t('events.colRegisteredAt')]: new Date(r.created_at).toLocaleString(appLocale()),
       }));
       const ws = window.XLSX.utils.json_to_sheet(rows);
       const wb = window.XLSX.utils.book_new();

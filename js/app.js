@@ -58,7 +58,7 @@ import { createMyProfileModal } from './components/myProfileModal.js';
 import { createMyLettersModal, createDisciplinaryLettersAdminModal } from './components/disciplinaryLetters.js';
 import { createNotificationSettingsModal } from './components/notificationSettingsModal.js';
 import { checkSpecialProgramPopup } from './components/specialProgramPopup.js';
-import { getLang, setLang, onLangChange, applyStaticTranslations, departmentLabel, departmentIcon, t, loadLabelOverrides, roleLabel } from './i18n.js';
+import { getLang, setLang, onLangChange, applyStaticTranslations, departmentLabel, departmentIcon, t, loadLabelOverrides, roleLabel, appLocale } from './i18n.js';
 import {
   loadMyDepartments, getMyDepartments, getActiveDepartment, setActiveDepartmentKey,
   getGlobalRole, isViewingAs, getViewAsTarget, startViewAs, stopViewAs, getEffectiveSupabase,
@@ -291,7 +291,7 @@ function renderTrialBanner() {
   const pendingCharge = getPendingTrialCharge();
   if (pendingCharge) {
     const price = formatPlanPrice(pendingCharge.priceCents, pendingCharge.billingInterval);
-    const date = new Date(getTenant().trial_ends_at).toLocaleDateString();
+    const date = new Date(getTenant().trial_ends_at).toLocaleDateString(appLocale());
     trialBannerTextEl.textContent = daysLeft === 0
       ? t('trial.lastDayBilled', { price })
       : t('trial.daysLeftBilled', { count: daysLeft, price, date });

@@ -36,7 +36,7 @@
 // (menuCustomizer.js) -- same color-picker/checkbox pattern as that
 // tool's existing app_theme section, just for the card instead of the
 // whole app.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 import { publicPageUrl } from '../utils/publicUrl.js';
 import { getTenant } from '../tenant.js';
 
@@ -99,7 +99,7 @@ export async function renderMemberIdCard(container, { supabase, userId }) {
   // shows March 23). Appending a local (no "Z") time-of-day makes the
   // Date constructor parse it in the browser's own timezone instead.
   const parseLocalDate = (d) => (d instanceof Date ? d : new Date(`${d}T00:00:00`));
-  const dateFmt = (d) => d ? parseLocalDate(d).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+  const dateFmt = (d) => d ? parseLocalDate(d).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
   const issuedDate = profile.card_issued_at || new Date().toISOString().slice(0, 10);
   const expirationDate = parseLocalDate(issuedDate);
   expirationDate.setFullYear(expirationDate.getFullYear() + CARD_VALID_YEARS);

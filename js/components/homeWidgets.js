@@ -6,7 +6,7 @@
 // a grid without knowing their internals. All queries are plain
 // authenticated-client reads -- RLS already scopes everything to the
 // caller's own tenant, same as every other read in this app.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 
 const CARD = 'bg-white rounded-xl border border-slate-100 p-4 flex flex-col';
 
@@ -222,7 +222,7 @@ function bucketByWeek(dateStrs) {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([key, count]) => {
       const d = new Date(`${key}T00:00:00`);
-      return { key, count, label: `${d.toLocaleString(undefined, { month: 'short' })} ${d.getDate()}` };
+      return { key, count, label: `${d.toLocaleString(appLocale(), { month: 'short' })} ${d.getDate()}` };
     });
 }
 

@@ -46,7 +46,7 @@
 // Everything in the training tenant is wiped clean every 48 hours by
 // a cron job (purge_training_sandbox()) -- nothing there is ever
 // meant to persist.
-import { t } from './i18n.js';
+import { t, appLocale } from './i18n.js';
 import { confirmDialog } from './components/confirmDialog.js';
 import { createResetPasswordModal } from './components/resetPasswordModal.js';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -240,7 +240,7 @@ export async function renderSiteAdminTab() {
           <div class="text-xs text-slate-500">
             ${topicBadge}<span class="font-medium text-slate-700">${escapeHtml(row.name)}</span>
             ${contactBits ? ` · ${contactBits}` : ''}
-            · ${new Date(row.created_at).toLocaleDateString()}
+            · ${new Date(row.created_at).toLocaleDateString(appLocale())}
           </div>
         </div>
         ${row.message ? `<p class="text-sm text-slate-800 mb-3 whitespace-pre-wrap">${escapeHtml(row.message)}</p>` : ''}
@@ -263,7 +263,7 @@ export async function renderSiteAdminTab() {
   function buildReplyBlock(row) {
     return `
       <div class="border-t border-slate-100 pt-2 mt-1">
-        ${row.site_admin_reply ? `<p class="text-xs text-slate-500 mb-1">${t('siteAdmin.alreadyReplied', { date: new Date(row.replied_at).toLocaleDateString() })}</p>` : ''}
+        ${row.site_admin_reply ? `<p class="text-xs text-slate-500 mb-1">${t('siteAdmin.alreadyReplied', { date: new Date(row.replied_at).toLocaleDateString(appLocale()) })}</p>` : ''}
         <textarea data-el="reply" rows="2" placeholder="${escapeHtml(t('siteAdmin.replyPlaceholder'))}"
                   class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm mb-1">${escapeHtml(row.site_admin_reply || '')}</textarea>
         <div class="flex items-center gap-2">
@@ -374,7 +374,7 @@ export async function renderSiteAdminTab() {
           <div class="text-xs text-slate-500">
             ${systemBadge}${topicBadge}<span class="font-medium text-slate-700">${escapeHtml(row.full_name || '—')}</span>
             ${row.tenant_name ? ` · ${escapeHtml(row.tenant_name)}` : ''}
-            · ${new Date(row.created_at).toLocaleDateString()}
+            · ${new Date(row.created_at).toLocaleDateString(appLocale())}
           </div>
         </div>
         <p class="text-sm text-slate-800 mb-3 whitespace-pre-wrap">${escapeHtml(row.message)}</p>
@@ -565,7 +565,7 @@ export async function renderSiteAdminTab() {
           <td class="px-3 py-2">${escapeHtml(row.status)}</td>
           <td class="px-3 py-2 text-right">${row.member_count} / ${row.department_count}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap">${centsOrBytesToSize(row.totalBytes)}</td>
-          <td class="px-3 py-2 text-slate-500">${row.last_active_at ? new Date(row.last_active_at).toLocaleDateString() : '—'}</td>
+          <td class="px-3 py-2 text-slate-500">${row.last_active_at ? new Date(row.last_active_at).toLocaleDateString(appLocale()) : '—'}</td>
           <td class="px-3 py-2 whitespace-nowrap">${promoCell}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap space-x-3">
             <button type="button" data-action="notes" class="text-xs text-slate-600 hover:text-slate-800 font-medium">${t('siteAdmin.colNotes')}</button>
@@ -882,7 +882,7 @@ export async function renderSiteAdminTab() {
       }
       listEl.innerHTML = data.map((note) => `
         <div class="border border-slate-200 rounded-lg p-3">
-          <p class="text-xs text-slate-400 mb-1">${t('siteAdmin.noteByOn', { name: note.author_name || '—', date: new Date(note.created_at).toLocaleString() })}</p>
+          <p class="text-xs text-slate-400 mb-1">${t('siteAdmin.noteByOn', { name: note.author_name || '—', date: new Date(note.created_at).toLocaleString(appLocale()) })}</p>
           <p class="text-sm text-slate-800 whitespace-pre-wrap">${escapeHtml(note.body)}</p>
         </div>
       `).join('');
@@ -1076,7 +1076,7 @@ export async function renderSiteAdminTab() {
                   ${rows.map((r) => `
                     <tr class="border-b border-slate-100">
                       <td class="px-3 py-2">${escapeHtml(r.tenants?.name || '—')}</td>
-                      <td class="px-3 py-2 text-slate-500">${new Date(r.redeemed_at).toLocaleDateString()}</td>
+                      <td class="px-3 py-2 text-slate-500">${new Date(r.redeemed_at).toLocaleDateString(appLocale())}</td>
                       <td class="px-3 py-2 text-right">${formatCents(r.original_price_cents - r.discounted_price_cents)}</td>
                     </tr>
                   `).join('')}
@@ -1375,8 +1375,8 @@ export async function renderSiteAdminTab() {
                 <td class="px-3 py-2">
                   <span class="text-xs font-semibold px-1.5 py-0.5 rounded ${referralStatusBadgeClass(r.status)}">${t(`siteAdmin.referralStatus.${r.status}`)}</span>
                 </td>
-                <td class="px-3 py-2 text-slate-500">${new Date(r.created_at).toLocaleDateString()}</td>
-                <td class="px-3 py-2 text-slate-500">${r.applied_at ? new Date(r.applied_at).toLocaleDateString() : '—'}</td>
+                <td class="px-3 py-2 text-slate-500">${new Date(r.created_at).toLocaleDateString(appLocale())}</td>
+                <td class="px-3 py-2 text-slate-500">${r.applied_at ? new Date(r.applied_at).toLocaleDateString(appLocale()) : '—'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1413,7 +1413,7 @@ export async function renderSiteAdminTab() {
   // bar/line charts get one sequential hue (this app's own indigo) and
   // no legend, since the chart's own title already names the series.
   function formatDate(iso) {
-    return iso ? new Date(iso).toLocaleDateString() : '—';
+    return iso ? new Date(iso).toLocaleDateString(appLocale()) : '—';
   }
 
   async function loadUsageDashboard() {
@@ -1667,7 +1667,7 @@ export async function renderSiteAdminTab() {
     for (let i = 29; i >= 0; i -= 1) {
       const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
       const key = d.toISOString().slice(0, 10);
-      labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+      labels.push(d.toLocaleDateString(appLocale(), { month: 'short', day: 'numeric' }));
       counts.push(byDay.get(key) || 0);
     }
     new Chart(canvas, {
@@ -1847,7 +1847,7 @@ export async function renderSiteAdminTab() {
             ${escapeHtml(a.full_name || '—')}
             <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded ${a._system === 'Main' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}">${a._system}</span>
           </p>
-          <p class="text-xs text-slate-500">${escapeHtml(a.tenant_name || '—')} · ${t('siteAdmin.grantedOn', { date: new Date(a.granted_at).toLocaleDateString() })}</p>
+          <p class="text-xs text-slate-500">${escapeHtml(a.tenant_name || '—')} · ${t('siteAdmin.grantedOn', { date: new Date(a.granted_at).toLocaleDateString(appLocale()) })}</p>
         </div>
         <button type="button" data-action="remove" class="text-sm text-rose-600 hover:text-rose-700">${t('siteAdmin.remove')}</button>
       </div>

@@ -4328,7 +4328,7 @@ const TRANSLATIONS = {
     'offerings.saved': 'Offrande enregistrée.',
     'offerings.currentPeriodTitle': 'Offrandes de ce mois',
     'offerings.todayOnlyNote': "Vous ne voyez que les offrandes saisies aujourd'hui. Les admins Finance voient la période complète.",
-    'offerings.periodTotal': 'Total : {amount} {currency} $',
+    'offerings.periodTotal': 'Total : {amount} $ {currency}',
     'offerings.none': "Aucune offrande enregistrée ce mois-ci.",
     'offerings.recordedBy': 'Enregistré par',
     'offerings.delete': 'Supprimer',
@@ -4895,7 +4895,7 @@ const TRANSLATIONS = {
     'department.ecodem': 'École du dimanche',
     'department.evangelism': 'Évangélisation',
     'department.welcoming_socialisation': 'Accueil et socialisation',
-    'department.grand_jeunes_couples': 'Jeune et couple',
+    'department.grand_jeunes_couples': 'Jeunes et couples',
     'department.finance': 'Finance',
     'department.church_program': "Programme de l'Église",
     'department.comingSoon': 'Les outils de ce département arrivent bientôt.',
@@ -6146,6 +6146,21 @@ export function getLang() {
   if (SUPPORTED.includes(stored)) return stored;
   const browserLang = (navigator.language || 'en').slice(0, 2);
   return SUPPORTED.includes(browserLang) ? browserLang : 'en';
+}
+
+// App-language locale for dates and numbers. Use this instead of
+// toLocale*(undefined), which follows the browser language, not the app's.
+const LOCALE_BY_APP_LANG = { en: 'en-US', fr: 'fr-FR' };
+export function appLocale() {
+  return LOCALE_BY_APP_LANG[getLang()] || 'en-US';
+}
+
+// "$1,000.00" in English, "1 000,00 $" in French. Optional currency code is
+// appended ("$1,000.00 CAD" / "1 000,00 $ CAD").
+export function formatMoney(amount, currency) {
+  const num = Number(amount || 0).toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const base = getLang() === 'fr' ? `${num} $` : `$${num}`;
+  return currency ? `${base} ${currency}` : base;
 }
 
 export function setLang(lang) {

@@ -15,7 +15,7 @@
 import { getEffectiveSupabase, getGlobalRole } from './departments.js';
 import { renderPastorBookingCalendar } from './components/pastorBookingCalendar.js';
 import { renderPastorAvailabilityCalendar } from './components/pastorAvailabilityCalendar.js';
-import { t, tn } from './i18n.js';
+import { t, tn, appLocale } from './i18n.js';
 import { confirmDialog } from './components/confirmDialog.js';
 import { openMeetingWindow, navigateMeetingWindow } from './components/videoMeeting.js';
 import { getTenantId, getTenant } from './tenant.js';
@@ -179,7 +179,7 @@ async function renderBookingsList(container, { supabase, filter, canCancel, curr
       ${row.meeting_date ? `
         <div class="text-sm font-medium text-indigo-700 mt-1">${escapeHtml(formatMeetingDate(row.meeting_date))} · ${escapeHtml(formatTime(row.meeting_start_time))}–${escapeHtml(formatTime(row.meeting_end_time))}</div>
       ` : ''}
-      <div class="text-xs text-slate-500 mt-1">${t('pastorBooking.bookedOn', { date: escapeHtml(new Date(row.created_at).toLocaleString()) })} · ${row.meeting_type === 'online' ? t('pastorBooking.online') : t('pastorBooking.office')}</div>
+      <div class="text-xs text-slate-500 mt-1">${t('pastorBooking.bookedOn', { date: escapeHtml(new Date(row.created_at).toLocaleString(appLocale())) })} · ${row.meeting_type === 'online' ? t('pastorBooking.online') : t('pastorBooking.office')}</div>
       ${row.contact_name || row.contact_phone || row.guest_email ? `
         <div class="text-xs text-slate-500 mt-1">
           ${[row.contact_name, row.contact_phone, row.guest_email].filter(Boolean).map(escapeHtml).join(' · ')}
@@ -595,7 +595,7 @@ async function renderSettingsTab(container, { supabase, currentUserId }) {
 
 function formatMeetingDate(dateStr) {
   const d = new Date(`${dateStr}T00:00:00`);
-  return d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(appLocale(), { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function formatTime(timeStr) {

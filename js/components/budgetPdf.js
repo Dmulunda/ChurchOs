@@ -7,7 +7,7 @@
 // Layout: logo + church name, church address, "Approved by" on the
 // left; department name, budget name, created by, created/closed dates
 // on the right.
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, appLocale } from '../i18n.js';
 import { formatAmount } from './budgetBoard.js';
 import { getTenant } from '../tenant.js';
 
@@ -125,7 +125,7 @@ export function printBudgetSummary(budget, transactions, { spent, remaining }) {
 
 function formatDateTime(iso) {
   if (!iso) return '';
-  return new Date(iso).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(appLocale(), { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function escapeHtml(str) {

@@ -6,7 +6,7 @@
 // admins. A per-service "who served" scheduling recap isn't included
 // here — Choir/Preaching/Media & Tech/Ecodem each shape their
 // scheduling data differently, so it's deferred rather than guessed at.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 
 function monthBounds(monthValue) {
   // monthValue: "YYYY-MM" from <input type="month">
@@ -192,7 +192,7 @@ export function createMonthlyReportModal({ supabase, departmentId, departmentKey
 
 function formatReportedAt(isoString) {
   if (!isoString) return '';
-  return new Date(isoString).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return new Date(isoString).toLocaleString(appLocale(), { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 function escapeHtml(str) {

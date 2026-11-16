@@ -3,7 +3,7 @@
 // siteAdminPage.js's own "Manage Site Admins" panel but much simpler
 // (single tenant, no cross-system split): add by email, list current
 // Church Admins, remove.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 
 export function createChurchAdminManagerModal({ supabase }) {
@@ -77,7 +77,7 @@ export function createChurchAdminManagerModal({ supabase }) {
       <div class="flex items-center justify-between px-3 py-2" data-admin-id="${a.user_id}">
         <div>
           <p class="text-sm font-medium text-slate-800">${escapeHtml(a.full_name || '—')}</p>
-          <p class="text-xs text-slate-500">${t('churchAdmin.grantedOn', { date: new Date(a.granted_at).toLocaleDateString() })}</p>
+          <p class="text-xs text-slate-500">${t('churchAdmin.grantedOn', { date: new Date(a.granted_at).toLocaleDateString(appLocale()) })}</p>
         </div>
         <button type="button" data-action="remove" class="text-sm text-rose-600 hover:text-rose-700">${t('churchAdmin.remove')}</button>
       </div>

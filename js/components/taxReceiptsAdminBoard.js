@@ -16,7 +16,7 @@
 // the exact same code the member-facing download button uses
 // (js/utils/taxReceiptPdf.js), then handed to the offering-reports
 // Edge Function's send_tax_receipt_email action as base64.
-import { t } from '../i18n.js';
+import { t, formatMoney } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 import { createTaxReceiptSettingsModal } from './taxReceiptSettingsModal.js';
 import { createTaxDonationImportModal } from './taxDonationImport.js';
@@ -255,7 +255,7 @@ export function renderTaxReceiptsAdminBoard(container, { supabase, currentUserId
 }
 
 function formatAmount(amount, currency) {
-  const base = '$' + Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const base = formatMoney(amount);
   return currency ? `${base} ${currency}` : base;
 }
 

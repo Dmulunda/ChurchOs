@@ -3,7 +3,7 @@
 // an off-screen styled table then screenshotting it into a single
 // custom-sized page (same "one page sized to fit everything" approach
 // taxReceiptPdf.js already uses, rather than paginating).
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 import { getTenant } from '../tenant.js';
 import { shareOrDownloadPdf } from '../utils/taxReceiptPdf.js';
 
@@ -26,7 +26,7 @@ export async function exportMemberDirectoryPdf({ rows, columns, filtersSummary }
   wrap.innerHTML = `
     <div style="margin-bottom:16px;">
       <div style="font-size:18px;font-weight:700;">${escapeHtml(churchName)}</div>
-      <div style="font-size:12px;color:#64748b;margin-top:2px;">${escapeHtml(t('memberDirectory.title'))} — ${escapeHtml(new Date().toLocaleDateString())}</div>
+      <div style="font-size:12px;color:#64748b;margin-top:2px;">${escapeHtml(t('memberDirectory.title'))} — ${escapeHtml(new Date().toLocaleDateString(appLocale()))}</div>
       <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${escapeHtml(filtersSummary || '')}</div>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;">

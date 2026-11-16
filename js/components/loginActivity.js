@@ -5,7 +5,7 @@
 // device someone signs in from) so every person gets their own most
 // recent 3, rather than a flat "last 200 events" list one very active
 // signer-in could crowd everyone else out of.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 
 export function createLoginActivityModal({ supabase }) {
   const root = document.createElement('div');
@@ -96,7 +96,7 @@ export function createLoginActivityModal({ supabase }) {
 }
 
 function formatWhen(isoString) {
-  return new Date(isoString).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return new Date(isoString).toLocaleString(appLocale(), { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 function escapeHtml(str) {

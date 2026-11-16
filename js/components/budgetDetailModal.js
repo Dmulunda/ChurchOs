@@ -3,7 +3,7 @@
 // forms within this same modal (same collapse-in-place pattern as
 // myProfileModal.js), not modal-on-modal. Initial Amount is read-only
 // here per spec -- only name/description are editable after creation.
-import { t } from '../i18n.js';
+import { t, appLocale } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 import { formatAmount } from './budgetBoard.js';
 import { printBudgetSummary } from './budgetPdf.js';
@@ -415,7 +415,7 @@ export function createBudgetDetailModal({ supabase, budgetId, departmentId, curr
 
 function formatDateTime(iso) {
   if (!iso) return '';
-  return new Date(iso).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(appLocale(), { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function escapeHtml(str) {
