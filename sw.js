@@ -1,27 +1,111 @@
-// Minimal service worker — exists only so the browser treats this app
-// as installable (Chrome/Android requires a registered SW with a fetch
-// handler before it will offer "Add to Home Screen"). Deliberately does
-// no caching: this app ships frequent updates, and a cache-first SW
-// would risk serving stale JS/CSS after a deploy. Every request just
-// passes straight through to the network.
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+// Service worker: installable app + offline reading (feature 11).
+//
+// Strategy is NETWORK-FIRST everywhere, so a new deploy is never hidden
+// behind a stale cache: when the network answers, that answer is used and
+// saved; only when the network fails (offline, dead Wi-Fi in the church
+// basement) is the last saved copy served. Writes are never cached or
+// replayed -- offline, saving fails with an error and the offline banner
+// (js/pwa.js) tells people why.
+//
+// What is saved:
+//   * this site's own files (pages, JS, CSS, images) -- SHELL cache
+//   * the CDN libraries the app loads (Tailwind, supabase-js, ...) -- SHELL
+//   * the signed-in person's Supabase reads -- DATA cache: GET /rest/v1/...,
+//     GET /auth/v1/user, and POST /rest/v1/rpc/<name> only for read-only
+//     helper functions (is_*, can_*, get_* -- never *create*, *claim*,
+//     *issue*). The DATA cache is wiped on sign-out and when a different
+//     person signs in on the same device (js/pwa.js -> 'clear-data').
+//
+// Not intercepted at all (browser handles natively, as before): every other
+// cross-origin request, including direct-to-R2 video uploads whose XHR
+// progress events break if a service worker sits in the middle.
+
+const SHELL = 'cop-shell-v1';
+const DATA = 'cop-data-v1';
+const PRECACHE = ['app.html', 'offline.html', 'manifest.json', 'img/icons/icon-192.png'];
+const CDN_HOSTS = new Set(['cdn.tailwindcss.com', 'cdn.jsdelivr.net']);
+const READ_RPC = /^(is|can|get)_[a-z0-9_]+$/;
+const UNSAFE_RPC = /(create|claim|issue|generate|record|send|checkin|checkout)/;
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)).catch(() => {}).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('cop-') && k !== SHELL && k !== DATA).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'clear-data') event.waitUntil(caches.delete(DATA));
+});
+
+function isSupabase(url) {
+  return url.hostname.endsWith('.supabase.co');
+}
+
+async function networkFirst(request, cacheName, cacheKey) {
+  const key = cacheKey || request;
+  try {
+    const response = await fetch(request);
+    if (response && (response.ok || response.type === 'opaque')) {
+      const copy = response.clone();
+      caches.open(cacheName).then((c) => c.put(key, copy)).catch(() => {});
+    }
+    return response;
+  } catch (err) {
+    const cached = await caches.match(key, { cacheName });
+    if (cached) return cached;
+    if (request.mode === 'navigate') {
+      return (await caches.match('app.html', { cacheName: SHELL, ignoreSearch: true }))
+        || (await caches.match('offline.html', { cacheName: SHELL }))
+        || Response.error();
+    }
+    throw err;
+  }
+}
+
+async function rpcKey(request) {
+  const body = await request.clone().text();
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body));
+  const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return new Request(`${request.url}?__body=${hash}`);
+}
+
 self.addEventListener('fetch', (event) => {
-  // Only take over same-origin requests. Calling respondWith() on a
-  // cross-origin request (e.g. the direct-to-R2 video PUT) routes it
-  // through this SW's own fetch() instead of the page's XHR, which
-  // silently breaks XHR upload-progress events on the page — leaving
-  // it stuck at a static percentage with no visible cause. Letting the
-  // browser handle cross-origin requests natively (no respondWith at
-  // all) keeps this SW installable-only, as intended, without that
-  // side effect.
-  if (new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(fetch(event.request));
+  const request = event.request;
+  const url = new URL(request.url);
+  if (request.headers.has('range')) return;
+
+  if (url.origin === self.location.origin) {
+    if (request.method !== 'GET') return;
+    if (url.pathname.endsWith('/version.txt')) return; // versionCheck must always see the network
+    event.respondWith(networkFirst(request, SHELL));
+    return;
+  }
+
+  if (request.method === 'GET' && CDN_HOSTS.has(url.hostname)) {
+    event.respondWith(networkFirst(request, SHELL));
+    return;
+  }
+
+  if (isSupabase(url)) {
+    if (request.method === 'GET' && (url.pathname.startsWith('/rest/v1/') || url.pathname === '/auth/v1/user')) {
+      event.respondWith(networkFirst(request, DATA));
+      return;
+    }
+    const rpc = /^\/rest\/v1\/rpc\/([a-z0-9_]+)$/.exec(url.pathname);
+    if (request.method === 'POST' && rpc && READ_RPC.test(rpc[1]) && !UNSAFE_RPC.test(rpc[1])) {
+      event.respondWith(rpcKey(request).then((key) => networkFirst(request, DATA, key)));
+    }
+  }
 });
 
 // Web Push — see js/pushNotifications.js (subscribe) and
-// supabase/functions/send-push (send). Independent of the no-caching
-// policy above; this just displays whatever the push payload says.
+// supabase/functions/send-push (send). Displays whatever the payload says.
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { /* non-JSON payload — show with defaults */ }

@@ -81,7 +81,7 @@ import {
 } from './denominationExtensions.js';
 import { loadMyEntitlements, hasFeature } from './entitlements.js';
 import { createAssistantModal } from './components/assistantModal.js';
-import { registerServiceWorker, setAppBadgeCount } from './pwa.js';
+import { registerServiceWorker, setAppBadgeCount, clearOfflineData, noteSignedInUser, initOfflineBanner } from './pwa.js';
 import { getTheme, setTheme, loadAppTheme } from './theme.js';
 import { confirmLeaveIfProjecting } from './utils/projectionGuard.js';
 import { hasUnsavedWork } from './utils/unsavedWorkGuard.js';
@@ -90,6 +90,7 @@ import { confirmDialog } from './components/confirmDialog.js';
 import { createCommunicationHubModal } from './components/communicationHubModal.js';
 
 registerServiceWorker();
+initOfflineBanner(() => t('offline.banner'));
 
 const tabs = document.querySelectorAll('[data-tab-target]');
 const panels = document.querySelectorAll('[data-tab-panel]');
@@ -1868,6 +1869,7 @@ async function applyDeepLinkFromUrl() {
 }
 
 async function showApp(session, { isFreshSignIn = false } = {}) {
+  if (session?.user?.id) noteSignedInUser(session.user.id);
   if (isRecovering) return;
 
   passwordRecoveryEl.classList.add('hidden');
@@ -2213,6 +2215,7 @@ async function showSplashThenApp(session) {
 }
 
 function showAuth() {
+  clearOfflineData();
   currentUserId = null;
   isRecovering = false;
   stopViewAs();

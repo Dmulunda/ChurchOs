@@ -1,6 +1,7 @@
 // Detects when a newer deploy has landed on the server while this tab
-// is still open. sw.js is deliberately network-only (no caching), so
-// there's no stale service-worker cache to blame — the tab just keeps
+// is still open. sw.js is network-first (its cache is only used when the
+// network fails, and version.txt itself is never cached), so there's no
+// stale service-worker cache to blame — the tab just keeps
 // running whatever JS it already loaded until something tells it to
 // reload. version.txt is now a small JSON payload (see
 // parseVersionInfo() below) that gets rewritten on every push to

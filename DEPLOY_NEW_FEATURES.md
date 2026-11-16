@@ -195,3 +195,28 @@ document.
 - **SQL:** `160_shared_documents.sql` (bucket + policies), `161_shared_documents_kb.sql`
 - **Edge functions / secrets:** none
 - **Cost:** storage only (same Supabase allowance as sermons); usually small.
+
+---
+
+## 11. Mobile app — offline reading
+
+The installable app (Add to Home Screen) now keeps working with a bad or no
+connection. Everything is **network-first**: when the internet answers, fresh
+data is used (so deploys are never hidden behind an old copy); only when it
+fails does the app show the last saved copy of the pages and of the data the
+person already opened (schedule, calendar, sermons list, documents list…). An
+orange bar says "You are offline…" and saving is impossible until reconnected
+— nothing is queued or replayed. Saved data is wiped on sign-out and when a
+different person signs in on the same phone. A small bilingual `offline.html`
+shows if the app was never opened on that device.
+
+- **Files:** `sw.js`, `offline.html`, `js/pwa.js`, `js/app.js`, `manifest.json`
+- **SQL / edge functions / secrets:** none
+- **After deploy:** nothing — phones pick up the new service worker on their
+  next visit.
+- **Cost:** none.
+- **Your decision (not built):** putting ChurchOnPoint in the Apple App Store
+  and Google Play as a "real" app (a Capacitor wrapper around this same site)
+  costs US$99/year (Apple developer account) + US$25 once (Google), plus
+  review time. The installable web app above already gives an icon, full
+  screen, push notifications and offline reading without the stores.

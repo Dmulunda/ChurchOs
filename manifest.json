@@ -1,7 +1,7 @@
 {
   "name": "ChurchOnPoint",
   "short_name": "ChurchOnPoint",
-  "description": "ChurchOnPoint — church management, on point.",
+  "description": "ChurchOnPoint — church management, on point. / La gestion d’église, au point.",
   "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
@@ -9,8 +9,28 @@
   "theme_color": "#0B1F3A",
   "lang": "en",
   "icons": [
-    { "src": "img/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "img/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "img/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "img/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "./app.html",
+  "categories": [
+    "productivity",
+    "lifestyle"
   ]
 }
