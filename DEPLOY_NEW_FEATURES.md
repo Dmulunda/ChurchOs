@@ -25,3 +25,39 @@ Runs every day at 8:00 AM Toronto time.
 - **Secrets:** none new (uses the existing `CRON_SECRET`, `RESEND_API_KEY`, VAPID keys)
 - **Cost:** none beyond your existing email (Resend) plan
 - **Members can turn it off:** bell icon → notification settings
+
+---
+
+## 2. Online giving  💰 needs your decision
+
+Members (Tax / Impôts → **Give now**) and anyone with the church's giving
+link or QR code can give by card. The money goes **directly to each
+church's own Stripe account** (Stripe Connect); ChurchOnPoint holds nothing
+and takes no fee. Paid gifts appear automatically in Offerings (payment
+method "Online") and, when the giver was signed in, on their tax receipt.
+Interac e-Transfer and mobile money are shown as instructions (recorded by
+Finance as today), at no cost.
+
+Each church switches it on in **Offerings → Online giving**: Connect Stripe,
+fill in the optional Interac email / mobile money text, turn it on, share
+the link.
+
+- **SQL:** `144_online_giving.sql`, `145_online_giving_kb.sql`
+- **New pages/files:** `give.html`, `js/publicGiving.js`, `js/components/onlineGivingSettings.js`
+- **Edge functions to deploy (new):**
+  - `online-giving` → `supabase functions deploy online-giving --no-verify-jwt`
+  - `online-giving-webhook` → `supabase functions deploy online-giving-webhook --no-verify-jwt`
+- **In Stripe (your platform account):**
+  1. Turn on **Connect** (Settings → Connect), choose Standard accounts.
+  2. Developers → Webhooks → Add endpoint → *Events on connected accounts* →
+     `https://towlqbxvhftzjfrtepsy.supabase.co/functions/v1/online-giving-webhook`
+     with events `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+     `checkout.session.expired`, `checkout.session.async_payment_failed`, `account.updated`.
+- **Secrets:** `STRIPE_CONNECT_WEBHOOK_SECRET` (from step 2), on `online-giving-webhook`.
+  `STRIPE_SECRET_KEY` already exists. Optional `GIVING_RETURN_ORIGINS`
+  (default `https://www.churchonpoint.com`).
+- **Cost:** no monthly cost. Stripe's normal card fee is paid by each church on
+  its own gifts. **Your decision:** whether ChurchOnPoint should take a small
+  platform fee per gift (not built; easy to add), and which mobile money
+  provider to integrate later for automatic M-Pesa/Orange/Airtel payments
+  (these require a paid provider account).
