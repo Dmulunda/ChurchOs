@@ -13,7 +13,7 @@
 // totals (loadCurrentValues()) rather than always starting from 0, so
 // it reads as "correct what's already been counted" instead of
 // risking silently discarding tally submissions on save.
-import { t } from '../i18n.js';
+import { t, formatDate } from '../i18n.js';
 import { todayLocal, formatDateLocal } from '../utils/date.js';
 
 // Combined attendance across all 3 headcount-eligible departments
@@ -217,7 +217,7 @@ export function renderHeadcountBoard(container, { supabase, departmentId }) {
         <tbody class="divide-y divide-slate-100">
           ${data.map((row) => `
             <tr>
-              <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(row.date)}</td>
+              <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(formatDate(row.date))}</td>
               <td class="px-3 py-2">${row.men_count}</td>
               <td class="px-3 py-2">${row.women_count}</td>
               <td class="px-3 py-2">${row.kids_count}</td>

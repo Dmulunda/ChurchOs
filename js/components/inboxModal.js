@@ -12,7 +12,7 @@
 // they're a broadcast, not a conversation).
 import { getGlobalRole } from '../departments.js';
 import { confirmDialog } from './confirmDialog.js';
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, formatDate } from '../i18n.js';
 
 const GLOBAL_MESSAGE_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
 
@@ -319,7 +319,7 @@ export function createInboxModal({ supabase, currentUserId, onRead }) {
           <div class="text-xs font-semibold text-slate-500">${escapeHtml(who)}</div>
           <p class="text-sm text-slate-700 mt-1 whitespace-pre-wrap">${escapeHtml(m.body)}</p>
           <div class="flex items-center justify-between mt-2">
-            <div class="text-xs text-slate-400">${escapeHtml(m.created_at.slice(0, 10))}</div>
+            <div class="text-xs text-slate-400">${escapeHtml(formatDate(m.created_at))}</div>
             ${isReceived ? `
               <button type="button" data-action="reply" data-sender-id="${m.sender_id}" data-sender-name="${escapeHtml(m.sender?.full_name || '')}"
                       class="text-xs font-medium text-indigo-600 hover:text-indigo-800">
@@ -372,7 +372,7 @@ export function createInboxModal({ supabase, currentUserId, onRead }) {
         <div class="text-xs font-semibold text-slate-500">${escapeHtml(a.department?.name || '')} · ${escapeHtml(a.author?.full_name || '')}</div>
         <div class="font-medium text-slate-800 mt-1">${escapeHtml(a.title)}</div>
         ${a.body ? `<p class="text-sm text-slate-600 mt-1 whitespace-pre-wrap">${escapeHtml(a.body)}</p>` : ''}
-        <div class="text-xs text-slate-400 mt-2">${escapeHtml(a.created_at.slice(0, 10))}</div>
+        <div class="text-xs text-slate-400 mt-2">${escapeHtml(formatDate(a.created_at))}</div>
       </div>
     `).join('');
   }

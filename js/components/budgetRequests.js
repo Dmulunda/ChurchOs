@@ -12,7 +12,7 @@
 //                              filters, a pending-count callback for the
 //                              tab's notification badge.
 import { confirmDialog } from './confirmDialog.js';
-import { t, departmentLabel, appLocale, formatMoney } from '../i18n.js';
+import { t, departmentLabel, appLocale, formatMoney, formatDate } from '../i18n.js';
 import { canApproveFinance } from '../departments.js';
 
 function currentMonthValue() {
@@ -148,7 +148,7 @@ export async function renderMyFundRequests(container, { supabase, departmentId, 
         <div class="flex items-center justify-between gap-3">
           <div>
             <div class="font-medium text-slate-800">${escapeHtml(r.title)}${r.amount ? ` — ${formatAmount(r.amount)}` : ''}</div>
-            <div class="text-xs text-slate-400">${formatMonth(r.request_month)} · ${escapeHtml(r.created_at.slice(0, 10))}</div>
+            <div class="text-xs text-slate-400">${formatMonth(r.request_month)} · ${escapeHtml(formatDate(r.created_at))}</div>
           </div>
           ${statusBadge(r.status)}
         </div>
@@ -210,7 +210,7 @@ export function renderFundRequestsInbox(container, { supabase, adminUserId, depa
           ${statusBadge(r.status)}
         </div>
         <div class="text-xs text-slate-500 mt-1">
-          ${t('finance.requestedBy')}: ${escapeHtml(r.requester?.full_name || '')} · ${r.departments ? departmentLabel(r.departments.key) : ''} · ${formatMonth(r.request_month)} · ${escapeHtml(r.created_at.slice(0, 10))}
+          ${t('finance.requestedBy')}: ${escapeHtml(r.requester?.full_name || '')} · ${r.departments ? departmentLabel(r.departments.key) : ''} · ${formatMonth(r.request_month)} · ${escapeHtml(formatDate(r.created_at))}
         </div>
         ${r.description ? `<p class="text-sm text-slate-600 mt-2 whitespace-pre-wrap">${escapeHtml(r.description)}</p>` : ''}
         ${r.review_note ? `<p class="text-sm text-slate-600 mt-2 pt-2 border-t border-slate-100 whitespace-pre-wrap">${t('finance.reviewNoteLabel')}: ${escapeHtml(r.review_note)}</p>` : ''}

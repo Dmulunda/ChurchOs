@@ -17,7 +17,7 @@
 // every hop is logged in member_case_transfers, mirroring Guest Cases'
 // transfer history exactly.
 import { confirmDialog } from './confirmDialog.js';
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, formatDate } from '../i18n.js';
 
 const STATUSES = ['open', 'in_progress', 'resolved'];
 
@@ -282,7 +282,7 @@ export function renderMemberCases(container, { supabase, currentUserId, scope })
           history.map((h) => {
             const from = h.from_department_id ? departmentLabel(departments.find((d) => d.id === h.from_department_id)?.key) : t('memberCase.historyOpened');
             const to = departmentLabel(departments.find((d) => d.id === h.to_department_id)?.key);
-            return `<div class="text-xs text-slate-500">${escapeHtml(h.created_at.slice(0, 10))} — ${escapeHtml(from)} → ${escapeHtml(to)}${h.note ? ` (${escapeHtml(h.note)})` : ''}</div>`;
+            return `<div class="text-xs text-slate-500">${escapeHtml(formatDate(h.created_at))} — ${escapeHtml(from)} → ${escapeHtml(to)}${h.note ? ` (${escapeHtml(h.note)})` : ''}</div>`;
           }).join('');
         detailsCell.appendChild(historyEl);
       }

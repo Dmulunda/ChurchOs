@@ -10,7 +10,7 @@
 // answer_* RPC is security definer, is_school_admin()-gated again
 // server-side.
 import { confirmDialog } from './confirmDialog.js';
-import { t } from '../i18n.js';
+import { t, formatDate } from '../i18n.js';
 
 export function renderCourseApprovalQueue(container, { supabase }) {
   load();
@@ -155,7 +155,7 @@ export function renderCourseApprovalQueue(container, { supabase }) {
             <span class="font-medium text-slate-800">${escapeHtml(row.student?.full_name || '—')}</span>
             <span class="text-sm text-slate-500"> — ${escapeHtml(row.course?.title || '—')}</span>
           </span>
-          <span class="text-xs text-slate-400">${escapeHtml((row.created_at || '').slice(0, 10))}</span>
+          <span class="text-xs text-slate-400">${escapeHtml(formatDate(row.created_at))}</span>
         </button>
         <div data-el="detail" class="hidden mt-3 pt-3 border-t border-slate-100">
           <p class="text-sm text-slate-500">${t('common.loading')}</p>

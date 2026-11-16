@@ -5,7 +5,7 @@
 // only ever fetched as a signed URL, on demand, when someone actually
 // clicks to view it — the Dashboard week view shows the text
 // description inline but deliberately not the photo itself.
-import { t } from '../i18n.js';
+import { t, formatDate } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 import { todayLocal } from '../utils/date.js';
 import { getGlobalRole } from '../departments.js';
@@ -142,7 +142,7 @@ export function renderUniformSchedule(container, { supabase, departmentId, canAd
       <div class="flex items-center justify-between gap-3">
         <div>
           <div class="font-medium text-slate-800">${row.description ? escapeHtml(row.description) : `<span class="text-slate-400">${t('uniform.noDescription')}</span>`}</div>
-          <div class="text-sm text-slate-500">${escapeHtml(row.date)}</div>
+          <div class="text-sm text-slate-500">${escapeHtml(formatDate(row.date))}</div>
         </div>
         <div class="flex items-center gap-3 shrink-0">
           ${row.image_path ? `<button type="button" data-action="view-photo" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 whitespace-nowrap">${t('uniform.viewPhoto')}</button>` : ''}

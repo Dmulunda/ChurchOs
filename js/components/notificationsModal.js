@@ -5,7 +5,7 @@
 // types show in-app/email, js/components/notificationSettingsModal.js).
 import { openMeetingWindow, navigateMeetingWindow } from './videoMeeting.js';
 import { createNotificationSettingsModal } from './notificationSettingsModal.js';
-import { t } from '../i18n.js';
+import { t, formatDate } from '../i18n.js';
 
 export function createNotificationsModal({ supabase, currentUserId, onRead }) {
   const root = document.createElement('div');
@@ -70,7 +70,7 @@ export function createNotificationsModal({ supabase, currentUserId, onRead }) {
     if (n.type === 'call_invite') {
       el.innerHTML = `
         <div class="font-medium text-slate-800">${escapeHtml(n.title)}</div>
-        <div class="text-xs text-slate-400 mt-1">${escapeHtml(n.created_at.slice(0, 10))}</div>
+        <div class="text-xs text-slate-400 mt-1">${escapeHtml(formatDate(n.created_at))}</div>
         <button type="button" data-action="join-call" class="mt-2 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700">
           ${t('meeting.join')}
         </button>
@@ -84,7 +84,7 @@ export function createNotificationsModal({ supabase, currentUserId, onRead }) {
       el.innerHTML = `
         <div class="font-medium text-slate-800">${escapeHtml(n.title)}</div>
         ${n.body ? `<p class="text-sm text-slate-600 mt-1 whitespace-pre-wrap">${escapeHtml(n.body)}</p>` : ''}
-        <div class="text-xs text-slate-400 mt-2">${escapeHtml(n.created_at.slice(0, 10))}</div>
+        <div class="text-xs text-slate-400 mt-2">${escapeHtml(formatDate(n.created_at))}</div>
       `;
     }
     return el;

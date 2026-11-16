@@ -6,7 +6,7 @@
 // { open } shape and two-export structure (submit form / Finance
 // inbox) as budgetRequests.js, which this deliberately mirrors.
 import { confirmDialog } from './confirmDialog.js';
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, formatDate } from '../i18n.js';
 import { formatAmount } from './budgetBoard.js';
 import { canApproveFinance } from '../departments.js';
 
@@ -177,7 +177,7 @@ function renderFormBody(container, { supabase, departmentId, currentUserId }) {
         <div class="flex items-center justify-between gap-3">
           <div>
             <div class="font-medium text-slate-800">${formatAmount(r.amount)}${r.note ? ` — ${escapeHtml(r.note)}` : ''}</div>
-            <div class="text-xs text-slate-400">${escapeHtml(r.created_at.slice(0, 10))}${r.receipt_path ? '' : ` · ${t('reimbursement.noReceiptYet')}`}</div>
+            <div class="text-xs text-slate-400">${escapeHtml(formatDate(r.created_at))}${r.receipt_path ? '' : ` · ${t('reimbursement.noReceiptYet')}`}</div>
           </div>
           ${statusBadge(r.status)}
         </div>
@@ -216,7 +216,7 @@ function renderInboxBody(container, { supabase, adminUserId }) {
           ${statusBadge(r.status)}
         </div>
         <div class="text-xs text-slate-500 mt-1">
-          ${t('reimbursement.requestedBy')}: ${escapeHtml(r.requester?.full_name || '')} · ${r.departments ? departmentLabel(r.departments.key) : ''} · ${escapeHtml(r.created_at.slice(0, 10))}
+          ${t('reimbursement.requestedBy')}: ${escapeHtml(r.requester?.full_name || '')} · ${r.departments ? departmentLabel(r.departments.key) : ''} · ${escapeHtml(formatDate(r.created_at))}
         </div>
         ${r.note ? `<p class="text-sm text-slate-600 mt-2 whitespace-pre-wrap">${escapeHtml(r.note)}</p>` : ''}
         ${r.review_note ? `<p class="text-sm text-slate-600 mt-2 pt-2 border-t border-slate-100 whitespace-pre-wrap">${t('finance.reviewNoteLabel')}: ${escapeHtml(r.review_note)}</p>` : ''}

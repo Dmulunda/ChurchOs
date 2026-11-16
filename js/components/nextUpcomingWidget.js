@@ -6,7 +6,7 @@
 // at all, so it's simply never called for that department. Ushers also
 // gets its uniform-of-the-day text (not the photo — that's on the
 // Uniform tab) shown beside each date, same as Choir's own week card.
-import { t, mediaTechRoleLabel, ecodemAgeGroupLabel } from '../i18n.js';
+import { t, mediaTechRoleLabel, ecodemAgeGroupLabel, formatDate } from '../i18n.js';
 import { formatDateLocal, todayLocal } from '../utils/date.js';
 
 export function renderNextUpcomingWidget(container, { supabase, departmentId, departmentKey }) {
@@ -123,7 +123,7 @@ function buildPreachingHtml(rows, absentKeys) {
       : '—';
     return `
       <div class="border border-slate-100 rounded-lg p-3">
-        <div class="font-medium text-slate-800">${escapeHtml(row.sermon_theme || t('preaching.noSermonTheme'))} <span class="text-slate-400 font-normal">— ${escapeHtml(row.date)}</span></div>
+        <div class="font-medium text-slate-800">${escapeHtml(row.sermon_theme || t('preaching.noSermonTheme'))} <span class="text-slate-400 font-normal">— ${escapeHtml(formatDate(row.date))}</span></div>
         <div class="text-slate-600 mt-1 text-sm">
           ${t('preaching.moderator')}: ${moderatorHtml}
           &nbsp;·&nbsp; ${t('preaching.preacher')}: ${preacherHtml}
@@ -236,7 +236,7 @@ function buildShiftHtml(rows, uniformMap, absentKeys) {
     const people = (row.department_shift_assignments || []).filter((a) => a.assignee?.full_name);
     return `
       <div class="border border-slate-100 rounded-lg p-3">
-        <div class="font-medium text-slate-800">${escapeHtml(row.title)} <span class="text-slate-400 font-normal">— ${escapeHtml(row.date)}</span></div>
+        <div class="font-medium text-slate-800">${escapeHtml(row.title)} <span class="text-slate-400 font-normal">— ${escapeHtml(formatDate(row.date))}</span></div>
         ${row.notes ? `<p class="text-slate-600 mt-1 text-sm">${escapeHtml(row.notes)}</p>` : ''}
         <div class="text-slate-500 mt-1 text-sm">${people.length > 0 ? people.map((a) => nameWithAbsentNote(a.assignee.full_name, a.user_id, row.date, absentKeys)).join(', ') : `<span class="text-slate-400">${t('deptScheduling.unassigned')}</span>`}</div>
         ${uniformLineHtml(uniformMap, row.date)}

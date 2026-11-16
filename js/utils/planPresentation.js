@@ -4,7 +4,7 @@
 // describe a plan's limits/features differently. Pure display-string
 // logic only -- no Supabase calls; renderComparisonTable() returns an
 // HTML string for the caller to insert, not a DOM node itself.
-import { t } from '../i18n.js';
+import { t, formatMoney } from '../i18n.js';
 
 // Core functionality included in every tier -- not gated per plan, so
 // not stored in plan_features (that table is only for things a plan
@@ -128,11 +128,11 @@ export function renderComparisonTable({ plans, currentPlanId, priceCellsHtml, ac
 export function formatPlanPrice(priceCents, billingInterval = 'monthly') {
   if (priceCents === 0) return t('plans.free');
   const suffix = billingInterval === 'yearly' ? t('plans.perYear') : t('plans.perMonth');
-  return `$${(priceCents / 100).toFixed(2).replace('.', ',')}${suffix}`;
+  return `${formatMoney(priceCents / 100)}${suffix}`;
 }
 
 // The "≈ $X/mo billed annually" subtitle shown under a yearly card's
 // price -- same comma-decimal convention as formatPlanPrice above.
 export function formatMonthlyEquivalent(yearlyPriceCents) {
-  return `$${(yearlyPriceCents / 1200).toFixed(2).replace('.', ',')}`;
+  return `${formatMoney(yearlyPriceCents / 1200)}`;
 }

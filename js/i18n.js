@@ -6157,6 +6157,16 @@ export function appLocale() {
 
 // "$1,000.00" in English, "1 000,00 $" in French. Optional currency code is
 // appended ("$1,000.00 CAD" / "1 000,00 $ CAD").
+// Short display date in the app language: "Sep 15, 2026" / "15 sept. 2026".
+// Accepts "YYYY-MM-DD" (read as a local date, no timezone shift) or an ISO timestamp.
+export function formatDate(value) {
+  if (!value) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString(appLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 export function formatMoney(amount, currency) {
   const num = Number(amount || 0).toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const base = getLang() === 'fr' ? `${num} $` : `$${num}`;

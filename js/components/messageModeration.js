@@ -6,7 +6,7 @@
 // Super-Admin-only rather than the broader pastoral team, and every
 // delete requires its own confirmation naming that explicitly.
 import { confirmDialog } from './confirmDialog.js';
-import { t } from '../i18n.js';
+import { t, formatDate } from '../i18n.js';
 
 export function createMessageModerationModal({ supabase }) {
   const root = document.createElement('div');
@@ -75,7 +75,7 @@ export function createMessageModerationModal({ supabase }) {
           <button type="button" class="text-xs font-medium text-rose-600 hover:text-rose-800 whitespace-nowrap">${t('moderation.delete')}</button>
         </div>
         <p class="text-sm text-slate-700 mt-1 whitespace-pre-wrap">${escapeHtml(m.body)}</p>
-        <div class="text-xs text-slate-400 mt-2">${escapeHtml((m.created_at || '').slice(0, 10))}</div>
+        <div class="text-xs text-slate-400 mt-2">${escapeHtml(formatDate(m.created_at))}</div>
       `;
       row.querySelector('button').addEventListener('click', async () => {
         const confirmed = await confirmDialog({ message: t('moderation.confirmDeleteMessage') });

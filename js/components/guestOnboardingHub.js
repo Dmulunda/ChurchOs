@@ -28,7 +28,7 @@
 // restored.
 import { confirmDialog } from './confirmDialog.js';
 import { createUserCreatorModal } from './userCreatorModal.js';
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, formatDate } from '../i18n.js';
 
 const STATUSES = ['new_guest', 'contacted', 'assigned_to_department'];
 
@@ -312,7 +312,7 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
           notesEl.className = 'border-t border-slate-200 pt-2';
           notesEl.innerHTML = `
             <div class="font-medium text-slate-700 mb-1">${t('guestHub.notes.title')}</div>
-            ${notes.length > 0 ? notes.map((n) => `<div class="text-xs text-slate-500 mb-1">${escapeHtml(n.created_at.slice(0, 10))} — ${escapeHtml(n.note)}</div>`).join('') : `<p class="text-xs text-slate-400 mb-1">${t('guestHub.notes.empty')}</p>`}
+            ${notes.length > 0 ? notes.map((n) => `<div class="text-xs text-slate-500 mb-1">${escapeHtml(formatDate(n.created_at))} — ${escapeHtml(n.note)}</div>`).join('') : `<p class="text-xs text-slate-400 mb-1">${t('guestHub.notes.empty')}</p>`}
             <textarea data-el="new-note" rows="2" placeholder="${t('guestHub.notes.placeholder')}" class="w-full border border-slate-300 rounded-lg px-2 py-1 text-sm mb-1.5"></textarea>
             <button type="button" data-action="add-note" class="text-xs font-medium text-indigo-600 hover:text-indigo-800">${t('guestHub.notes.add')}</button>
           `;
@@ -325,7 +325,7 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
           followUpEl.innerHTML = `
             <div class="font-medium text-slate-700 mb-1">${t('guestHub.followUpTitle')}</div>
             <p class="text-xs ${row.follow_up_completed_at ? 'text-emerald-600' : 'text-amber-600'} mb-1.5">
-              ${row.follow_up_completed_at ? t('guestHub.followUpDoneOn', { date: row.follow_up_completed_at.slice(0, 10) }) : t('guestHub.followUpNeeded')}
+              ${row.follow_up_completed_at ? t('guestHub.followUpDoneOn', { date: formatDate(row.follow_up_completed_at) }) : t('guestHub.followUpNeeded')}
             </p>
             <textarea data-el="follow-up-note" rows="2" placeholder="${t('guestHub.followUpNotePlaceholder')}"
                       class="w-full border border-slate-300 rounded-lg px-2 py-1 text-sm mb-1.5">${escapeHtml(row.follow_up_note || '')}</textarea>
@@ -348,7 +348,7 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
               history.map((h) => {
                 const from = h.from_department_id ? departmentLabel(departments.find((d) => d.id === h.from_department_id)?.key) : t('guestHub.historyIntake');
                 const to = departmentLabel(departments.find((d) => d.id === h.to_department_id)?.key);
-                return `<div class="text-xs text-slate-500">${escapeHtml(h.created_at.slice(0, 10))} — ${escapeHtml(from)} → ${escapeHtml(to)}${h.note ? ` (${escapeHtml(h.note)})` : ''}</div>`;
+                return `<div class="text-xs text-slate-500">${escapeHtml(formatDate(h.created_at))} — ${escapeHtml(from)} → ${escapeHtml(to)}${h.note ? ` (${escapeHtml(h.note)})` : ''}</div>`;
               }).join('');
             detailsCell.appendChild(historyEl);
           }
@@ -414,7 +414,7 @@ export function renderGuestOnboardingHub(container, { supabase, currentUserId, s
         ${graduated.map((row) => `
           <div class="flex items-center justify-between gap-2 text-sm">
             <span class="text-slate-700">${escapeHtml(row.full_name)}</span>
-            <span class="text-xs text-slate-400">${escapeHtml(row.graduated_at.slice(0, 10))}</span>
+            <span class="text-xs text-slate-400">${escapeHtml(formatDate(row.graduated_at))}</span>
           </div>
         `).join('')}
       </div>

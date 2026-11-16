@@ -7,7 +7,7 @@
 // ecodem_session_workers, department_shift_assignments); the UI and the
 // decline-reason logic — free text, or "I'll be working in another
 // department instead" — stays identical everywhere.
-import { t } from '../i18n.js';
+import { t, formatDate } from '../i18n.js';
 import { getMyDepartments } from '../departments.js';
 import { departmentLabel } from '../i18n.js';
 import { todayLocal } from '../utils/date.js';
@@ -89,7 +89,7 @@ export function renderMyAssignmentsPanel(container, { departmentId, fetchMyAssig
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div class="font-medium text-slate-800">${escapeHtml(row.label)}</div>
-          <div class="text-sm text-slate-500">${escapeHtml(row.date)}</div>
+          <div class="text-sm text-slate-500">${escapeHtml(formatDate(row.date))}</div>
         </div>
         <div class="flex gap-2">
           <button type="button" data-action="approve"

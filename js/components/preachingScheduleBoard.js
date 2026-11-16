@@ -10,7 +10,7 @@
 // scheduled moderator read access to it, even without Choir department
 // membership. The moderator can approve or decline being scheduled
 // (sql/049), same as every other department now.
-import { t } from '../i18n.js';
+import { t, formatDate } from '../i18n.js';
 import { renderMyAssignmentsPanel } from './myAssignmentsPanel.js';
 import { renderAssigneeBadge } from './assignmentStatusBadge.js';
 import { confirmDialog } from './confirmDialog.js';
@@ -331,7 +331,7 @@ export function renderPreachingSchedule(container, { supabase, departmentId, can
       <div class="flex items-baseline justify-between gap-3">
         <div class="font-medium text-slate-800">${row.sermon_theme ? escapeHtml(row.sermon_theme) : `<span class="text-slate-400">${t('preaching.noSermonTheme')}</span>`}</div>
         <div class="flex items-center gap-3 shrink-0">
-          <div class="text-sm text-slate-500 whitespace-nowrap">${escapeHtml(row.date)}</div>
+          <div class="text-sm text-slate-500 whitespace-nowrap">${escapeHtml(formatDate(row.date))}</div>
           ${canAdminister ? `
             <button type="button" data-action="edit" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 whitespace-nowrap">${t('common.edit')}</button>
             <button type="button" data-action="delete" class="text-xs font-medium text-rose-600 hover:text-rose-800 whitespace-nowrap">${t('moderation.delete')}</button>

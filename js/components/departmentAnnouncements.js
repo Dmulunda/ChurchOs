@@ -8,7 +8,7 @@
 // adding a join table.
 import { confirmDialog } from './confirmDialog.js';
 import { notifyDepartment } from '../utils/notifyDepartment.js';
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, formatDate } from '../i18n.js';
 
 const CHIP_OFF = 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200';
 const CHIP_ON = 'bg-indigo-50 border-indigo-200 text-indigo-700';
@@ -177,7 +177,7 @@ export function renderAnnouncements(container, { supabase, departmentId, canPost
           ${canDelete ? `<button type="button" data-action="delete" class="text-[10.5px] font-semibold text-rose-600 hover:text-rose-800 whitespace-nowrap">${t('moderation.delete')}</button>` : ''}
         </div>
         ${a.body ? `<p class="text-[11px] text-slate-500 mt-0.5 whitespace-pre-wrap">${escapeHtml(a.body)}</p>` : ''}
-        <div class="text-[9.5px] text-slate-400 mt-1">${escapeHtml(a.author?.full_name || '')} · ${escapeHtml(a.created_at.slice(0, 10))}</div>
+        <div class="text-[9.5px] text-slate-400 mt-1">${escapeHtml(a.author?.full_name || '')} · ${escapeHtml(formatDate(a.created_at))}</div>
       `;
       if (canDelete) {
         row.querySelector('[data-action="delete"]').addEventListener('click', async () => {

@@ -9,7 +9,7 @@
 // created via "Add User -> No login yet" or bulk import has no linked
 // guest_follow_ups row at all, so the intake-fields/notes/history
 // sections simply don't render when there's nothing to show.
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, formatDate } from '../i18n.js';
 
 export function createGuestSilentDetailDrawer({ supabase }) {
   const root = document.createElement('div');
@@ -93,7 +93,7 @@ export function createGuestSilentDetailDrawer({ supabase }) {
       notesEl.className = 'border-t border-slate-200 pt-3';
       notesEl.innerHTML = `<div class="font-medium text-slate-700 mb-1">${t('guestHub.notes.title')}</div>` +
         ((notes || []).length > 0
-          ? notes.map((n) => `<div class="text-xs text-slate-500 mb-1">${escapeHtml(n.created_at.slice(0, 10))} — ${escapeHtml(n.note)}</div>`).join('')
+          ? notes.map((n) => `<div class="text-xs text-slate-500 mb-1">${escapeHtml(formatDate(n.created_at))} — ${escapeHtml(n.note)}</div>`).join('')
           : `<p class="text-xs text-slate-400">${t('guestHub.notes.empty')}</p>`);
       bodyEl.appendChild(notesEl);
 
@@ -104,7 +104,7 @@ export function createGuestSilentDetailDrawer({ supabase }) {
           transfers.map((h) => {
             const from = h.from_department_id ? departmentLabel(departments.find((d) => d.id === h.from_department_id)?.key) : t('guestHub.historyIntake');
             const to = departmentLabel(departments.find((d) => d.id === h.to_department_id)?.key);
-            return `<div class="text-xs text-slate-500">${escapeHtml(h.created_at.slice(0, 10))} — ${escapeHtml(from)} → ${escapeHtml(to)}${h.note ? ` (${escapeHtml(h.note)})` : ''}</div>`;
+            return `<div class="text-xs text-slate-500">${escapeHtml(formatDate(h.created_at))} — ${escapeHtml(from)} → ${escapeHtml(to)}${h.note ? ` (${escapeHtml(h.note)})` : ''}</div>`;
           }).join('');
         bodyEl.appendChild(historyEl);
       }
@@ -120,7 +120,7 @@ export function createGuestSilentDetailDrawer({ supabase }) {
       profileNotesEl.innerHTML = `
         <div class="font-medium text-slate-700 mb-1">${t('silentDirectory.notes.title')}</div>
         ${(profileNotes || []).length > 0
-          ? profileNotes.map((n) => `<div class="text-xs text-slate-500 mb-1">${escapeHtml(n.created_at.slice(0, 10))} — ${escapeHtml(n.note)}</div>`).join('')
+          ? profileNotes.map((n) => `<div class="text-xs text-slate-500 mb-1">${escapeHtml(formatDate(n.created_at))} — ${escapeHtml(n.note)}</div>`).join('')
           : `<p class="text-xs text-slate-400 mb-1">${t('guestHub.notes.empty')}</p>`}
         <textarea data-el="new-profile-note" rows="2" placeholder="${t('guestHub.notes.placeholder')}" class="w-full border border-slate-300 rounded-lg px-2 py-1 text-sm mb-1.5"></textarea>
         <button type="button" data-action="add-profile-note" class="text-xs font-medium text-indigo-600 hover:text-indigo-800">${t('guestHub.notes.add')}</button>

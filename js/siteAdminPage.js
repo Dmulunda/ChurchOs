@@ -46,7 +46,7 @@
 // Everything in the training tenant is wiped clean every 48 hours by
 // a cron job (purge_training_sandbox()) -- nothing there is ever
 // meant to persist.
-import { t, appLocale } from './i18n.js';
+import { t, appLocale, formatMoney } from './i18n.js';
 import { confirmDialog } from './components/confirmDialog.js';
 import { createResetPasswordModal } from './components/resetPasswordModal.js';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -923,7 +923,7 @@ export async function renderSiteAdminTab() {
   }
 
   function formatCents(cents) {
-    return `$${(Number(cents || 0) / 100).toFixed(2)}`;
+    return `${formatMoney(Number(cents || 0) / 100)}`;
   }
 
   function promoDurationLabel(duration, durationInMonths) {

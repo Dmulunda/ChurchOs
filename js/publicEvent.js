@@ -10,7 +10,7 @@
 // get_public_event_for_registration()'s own auth.uid()-or-slug logic,
 // sql/saas_platform/79_events.sql).
 import { supabase } from './supabaseClient.js';
-import { loadLabelOverrides, applyStaticTranslations, t, appLocale } from './i18n.js';
+import { loadLabelOverrides, applyStaticTranslations, t, appLocale, formatMoney } from './i18n.js';
 
 async function main() {
   try {
@@ -172,7 +172,7 @@ function renderForm(formArea, event, { supabase: sb, eventId, tenantSlug, willWa
 }
 
 function formatPriceCents(cents) {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `${formatMoney(cents / 100)}`;
 }
 
 function escapeHtml(str) {
