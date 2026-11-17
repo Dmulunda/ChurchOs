@@ -109,6 +109,7 @@ const TRANSLATIONS = {
     'sidebar.department': 'Department',
     'sidebar.departmentsGroup': 'Ministries',
     'sidebar.viewAs': 'View As…',
+    'sidebar.guestView': '👋 Guest view',
 
     'session.stayConnectedTitle': 'Still there?',
     'session.stayConnectedMessage': "You've been signed in on this device for over a week. Stay connected here, or sign out of every device you're signed in on?",
@@ -3612,6 +3613,7 @@ const TRANSLATIONS = {
     'sidebar.department': 'Département',
     'sidebar.departmentsGroup': 'Ministères',
     'sidebar.viewAs': 'Voir en tant que…',
+    'sidebar.guestView': '👋 Vue invité',
 
     'session.stayConnectedTitle': 'Toujours là ?',
     'session.stayConnectedMessage': "Vous êtes connecté(e) sur cet appareil depuis plus d'une semaine. Voulez-vous rester connecté(e) ici, ou vous déconnecter de tous les appareils ?",
