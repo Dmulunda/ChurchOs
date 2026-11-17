@@ -6,6 +6,7 @@
 // USER_STATUSES) driving the pipeline: a Silent person reaches Member
 // status (whether graduated from a Guest Hub lead or set directly
 // here), then can be promoted to a full Active account.
+import { mergePrivateFields } from '../utils/privateProfile.js';
 import { createGuestSilentDetailDrawer } from './guestSilentDetailDrawer.js';
 import { createUserEditModal } from './userEditModal.js';
 import { extractFunctionErrorMessage } from '../utils/edgeFunctionError.js';
@@ -16,7 +17,7 @@ const USER_STATUSES = ['new_guest', 'visitor_other_church', 'out_of_city', 'memb
 // Same column set userManager.js's own global-scope query selects --
 // userEditModal.js's open(user) expects exactly this shape, since it's
 // the identical "Edit" modal the User Directory already uses.
-const PROFILE_COLUMNS = 'id, full_name, phone, address, photo_path, member_title, parish, sex, birth_date, birth_country, birth_city, card_revoked_at, signature_data, global_role, joined_at, user_status, is_silent, can_view_all_departments, can_manage_pastoral_cases, can_post_global_announcements, can_message_any_member, can_approve_any_membership, profile_emails ( email )';
+const PROFILE_COLUMNS = 'id, full_name, phone, photo_path, member_title, parish, sex, birth_date, card_revoked_at, global_role, joined_at, user_status, is_silent, can_view_all_departments, can_manage_pastoral_cases, can_post_global_announcements, can_message_any_member, can_approve_any_membership, profile_emails ( email )';
 
 export function renderSilentDirectory(container, { supabase, currentUserId }) {
   const bodyEl = container;
@@ -38,6 +39,7 @@ export function renderSilentDirectory(container, { supabase, currentUserId }) {
       return;
     }
 
+    await mergePrivateFields(supabase, profiles || []);
     const profileIds = (profiles || []).map((p) => p.id);
     const { data: leads } = profileIds.length > 0
       ? await supabase.from('guest_follow_ups').select('id, user_id, assigned_department_id, prayer_request, wants_pastor_meeting, home_church, notes, city, referral_source, referred_by_name, age_range').in('user_id', profileIds).is('removed_at', null)

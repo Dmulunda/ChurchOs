@@ -6,6 +6,7 @@
 // admin (userEditModal.js), not something a member self-declares. Same
 // createXModal({...}) => { open } shape as changePasswordModal.js,
 // reached from the same sidebar Tools menu.
+import { mergePrivateFields } from '../utils/privateProfile.js';
 import { t } from '../i18n.js';
 import { renderMemberIdCard } from './memberIdCard.js';
 import { createSignaturePad } from './signaturePad.js';
@@ -138,7 +139,8 @@ export function createMyProfileModal({ supabase, userId }) {
     root.classList.remove('hidden');
     root.classList.add('flex');
 
-    const { data: profile } = await supabase.from('profiles').select('legal_name, address, sex, parish, birth_date, birth_country, birth_city, signature_data').eq('id', userId).single();
+    const { data: baseProfile } = await supabase.from('profiles').select('id, sex, parish, birth_date').eq('id', userId).single();
+    const profile = baseProfile ? (await mergePrivateFields(supabase, [baseProfile]))[0] : null;
     form.elements.legal_name.value = profile?.legal_name || '';
     form.elements.address.value = profile?.address || '';
     form.elements.sex.value = profile?.sex || '';

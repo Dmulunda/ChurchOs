@@ -12,6 +12,7 @@
 //     through the Edit modal instead, since a row here can span
 //     departments the viewer doesn't administer) and an editable global
 //     Access Level column (Super Admin only).
+import { mergePrivateFields } from '../utils/privateProfile.js';
 import { createUserCreatorModal } from './userCreatorModal.js';
 import { createUserEditModal } from './userEditModal.js';
 import { createBulkAddMembersModal } from './bulkAddMembersModal.js';
@@ -122,7 +123,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
     if (scope.type === 'department') {
       const { data, error } = await supabase
         .from('department_memberships')
-        .select('id, role, status, user_id, member:profiles!user_id ( id, full_name, phone, address, photo_path, member_title, parish, sex, birth_date, birth_country, birth_city, card_revoked_at, signature_data, voice_parts, media_tech_skills, is_silent, profile_emails ( email ) )')
+        .select('id, role, status, user_id, member:profiles!user_id ( id, full_name, phone, photo_path, member_title, parish, sex, birth_date, card_revoked_at, voice_parts, media_tech_skills, is_silent, profile_emails ( email ) )')
         .eq('department_id', scope.departmentId)
         .eq('status', 'approved');
 
@@ -158,7 +159,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
         .sort((a, b) => a.full_name.localeCompare(b.full_name));
     } else {
       const [{ data: profiles, error: profilesError }, { data: memberships, error: membershipsError }] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, phone, address, photo_path, member_title, parish, sex, birth_date, birth_country, birth_city, card_revoked_at, signature_data, global_role, removed_at, permanently_deleted_at, is_primary_admin, is_school_admin, is_silent, can_view_all_departments, can_manage_pastoral_cases, can_post_global_announcements, can_message_any_member, can_approve_any_membership, profile_emails ( email )').order('full_name'),
+        supabase.from('profiles').select('id, full_name, phone, photo_path, member_title, parish, sex, birth_date, card_revoked_at, global_role, removed_at, permanently_deleted_at, is_primary_admin, is_school_admin, is_silent, can_view_all_departments, can_manage_pastoral_cases, can_post_global_announcements, can_message_any_member, can_approve_any_membership, profile_emails ( email )').order('full_name'),
         supabase.from('department_memberships').select('user_id, role, status, departments ( key, name )').eq('status', 'approved'),
       ]);
 
@@ -220,6 +221,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
       }
     }
 
+    await mergePrivateFields(supabase, rows);
     statusEl.textContent = '';
     renderTable();
   }

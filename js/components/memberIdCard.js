@@ -36,6 +36,7 @@
 // (menuCustomizer.js) -- same color-picker/checkbox pattern as that
 // tool's existing app_theme section, just for the card instead of the
 // whole app.
+import { mergePrivateFields } from '../utils/privateProfile.js';
 import { t, appLocale } from '../i18n.js';
 import { publicPageUrl } from '../utils/publicUrl.js';
 import { getTenant } from '../tenant.js';
@@ -67,13 +68,13 @@ export async function renderMemberIdCard(container, { supabase, userId }) {
     supabase
       .from('profiles')
       .select(`
-        full_name, member_code, photo_path, address, sex, member_title, parish,
-        birth_date, birth_country, birth_city, global_role,
-        card_issued_at, card_revoked_at, signature_data
+        id, full_name, member_code, photo_path, sex, member_title, parish,
+        birth_date, global_role,
+        card_issued_at, card_revoked_at
       `)
       .eq('id', userId)
       .single(),
-    supabase.from('profiles').select('signature_data').eq('member_title', 'pastor_principal').limit(1).maybeSingle(),
+    supabase.rpc('get_card_pastor_signature').then((r) => ({ ...r, data: r.data ? { signature_data: r.data } : null })),
     supabase.from('card_settings').select('card_color, show_sex, show_birth_date, show_function, show_parish, show_address, show_birth_info').maybeSingle(),
   ]);
 
@@ -82,6 +83,7 @@ export async function renderMemberIdCard(container, { supabase, userId }) {
     return;
   }
 
+  await mergePrivateFields(supabase, [profile]);
   const cardSettings = { ...CARD_SETTINGS_DEFAULTS, ...(settingsRow || {}) };
   const cardColor = cardSettings.card_color || NAVY;
 
