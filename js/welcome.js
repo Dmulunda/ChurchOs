@@ -4,6 +4,7 @@
 // contact, program, public events, sermons). No member information is
 // ever read here. Each button links to an existing public page.
 import { supabase } from './supabaseClient.js';
+import { fetchLiveStatus } from './liveStatus.js';
 
 const LANG_KEY = 'choir-hub-lang';
 const TEXT = {
@@ -19,7 +20,7 @@ const TEXT = {
     program: 'Church program', noProgram: 'The program will be posted soon.', special: 'Special', flyer: 'Flyer',
     events: 'Upcoming events', noEvents: 'No public events right now.', register: 'Register', free: 'Free',
     sermons: 'Recent sermons', noSermons: 'Sermons will appear here soon.', watch: 'Watch', listen: 'Listen', notes: 'Notes', more: 'Show more',
-    contact: 'Find us', follow: 'Follow us', account: 'Want your own account? You can create one from the sign-in page; a pastor or admin then welcomes you into the church and your departments.',
+    contact: 'Find us', follow: 'Follow us', watchLive: 'Watch live', watchLiveSub: 'Services streamed on YouTube', liveNow: 'We are live now!', liveNowSub: 'Tap to join the service', upcomingLive: 'Live soon', account: 'Want your own account? You can create one from the sign-in page; a pastor or admin then welcomes you into the church and your departments.',
     privacy: 'This page never shows information about our members.',
     error: 'Could not load the latest information. Please try again later.',
     langSwitch: 'Français',
@@ -36,7 +37,7 @@ const TEXT = {
     program: "Programme de l'église", noProgram: 'Le programme sera bientôt publié.', special: 'Spécial', flyer: 'Affiche',
     events: 'Événements à venir', noEvents: "Aucun événement public pour l'instant.", register: "S'inscrire", free: 'Gratuit',
     sermons: 'Prédications récentes', noSermons: 'Les prédications apparaîtront ici bientôt.', watch: 'Regarder', listen: 'Écouter', notes: 'Notes', more: 'Voir plus',
-    contact: 'Nous trouver', follow: 'Suivez-nous', account: "Vous voulez votre propre compte ? Créez-le depuis la page de connexion ; un pasteur ou un administrateur vous accueille ensuite dans l'église et vos départements.",
+    contact: 'Nous trouver', follow: 'Suivez-nous', watchLive: 'Regarder en direct', watchLiveSub: 'Les cultes diffusés sur YouTube', liveNow: 'Nous sommes en direct !', liveNowSub: 'Touchez pour rejoindre le culte', upcomingLive: 'Bientôt en direct', account: "Vous voulez votre propre compte ? Créez-le depuis la page de connexion ; un pasteur ou un administrateur vous accueille ensuite dans l'église et vos départements.",
     privacy: "Cette page n'affiche jamais d'information sur nos membres.",
     error: "Impossible de charger les dernières informations. Réessayez plus tard.",
     langSwitch: 'English',
@@ -66,6 +67,7 @@ const fmtDate = (ymd) => new Date(`${ymd}T12:00:00`).toLocaleDateString(locale()
 const fmtPrice = (c) => (c ? new Intl.NumberFormat(locale(), { style: 'currency', currency: 'CAD' }).format(c / 100) : tx('free'));
 
 let data = null;
+let liveState = null;
 let loading = true;
 let showAllSermons = false;
 
@@ -95,9 +97,11 @@ function render() {
       <p class="text-sm uppercase tracking-widest text-amber-300 font-semibold">${esc(church.name)}</p>
       <h1 class="text-3xl font-bold mt-1">${esc(tx('welcome'))}</h1>
       <p class="text-slate-200 mt-2 text-sm leading-relaxed">${esc(tx('intro'))}</p>
-    </div>`;
+    </div>
+    <div data-el="live-banner"></div>`;
 
   const tiles = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+    ${liveState?.configured ? tile('live.html', '📺', tx('watchLive'), tx('watchLiveSub')) : ''}
     ${tile('prayer.html', '🙏', tx('prayer'), tx('prayerSub'))}
     ${tile('booking.html', '🤝', tx('pastor'), tx('pastorSub'))}
     ${tile('give.html', '💝', tx('give'), tx('giveSub'))}
@@ -178,7 +182,20 @@ function render() {
   bind();
 }
 
+function renderLiveBanner() {
+  const el = document.querySelector('[data-el="live-banner"]');
+  if (!el) return;
+  if (!liveState || !(liveState.live || liveState.upcoming)) { el.innerHTML = ''; return; }
+  el.innerHTML = `<a href="live.html" class="mt-4 flex items-center gap-3 rounded-2xl ${liveState.live ? 'bg-red-600' : 'bg-amber-500'} text-white p-4 shadow-lg">
+    <span class="relative flex h-3 w-3 shrink-0">${liveState.live ? '<span class="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping"></span>' : ''}<span class="relative inline-flex h-3 w-3 rounded-full bg-white"></span></span>
+    <span class="min-w-0"><span class="block font-bold">${esc(liveState.live ? tx('liveNow') : tx('upcomingLive'))}</span>
+    <span class="block text-sm opacity-90 truncate">${esc(liveState.title || tx('liveNowSub'))}</span></span>
+    <span class="ml-auto text-2xl">›</span>
+  </a>`;
+}
+
 function bind() {
+  renderLiveBanner();
   document.querySelector('[data-action="lang"]')?.addEventListener('click', () => {
     lang = lang === 'fr' ? 'en' : 'fr';
     try { localStorage.setItem(LANG_KEY, lang); } catch { /* storage blocked */ }
@@ -187,8 +204,18 @@ function bind() {
   document.querySelector('[data-action="more"]')?.addEventListener('click', () => { showAllSermons = true; render(); });
 }
 
+async function checkLive() {
+  const next = await fetchLiveStatus();
+  if (!next) return;
+  const hadTile = !!liveState?.configured;
+  liveState = next;
+  if (hadTile !== !!next.configured) render(); else renderLiveBanner();
+}
+
 async function main() {
   render();
+  checkLive();
+  setInterval(() => { if (document.visibilityState === 'visible') checkLive(); }, 60000);
   const { data: result, error } = await supabase.functions.invoke('public-portal', { body: {} });
   if (!error && result) data = result;
   loading = false;

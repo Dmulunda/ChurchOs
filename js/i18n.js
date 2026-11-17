@@ -1947,6 +1947,11 @@ const TRANSLATIONS = {
     'logo.social.tiktok_url': 'TikTok',
     'logo.social.whatsapp_url': 'WhatsApp (channel or group link)',
     'logo.socialInvalid': 'The {field} link does not look right. Paste the full address, starting with https://',
+    'logo.youtubeLiveHint': 'The YouTube link is also used for the live page (live.html): when the channel goes live, the service appears there and on the welcome page by itself.',
+    'live.bannerLive': 'The service is live now',
+    'live.bannerSoon': 'The service starts soon',
+    'live.watch': 'Watch',
+    'live.close': 'Close',
 
     'menuCustomizer.title': 'Customize Menu & Appearance',
     'menuCustomizer.intro': 'Rename any navigation label, quick-action item, or department name, and set the app-wide colors and font — in both languages.',
@@ -5445,6 +5450,11 @@ const TRANSLATIONS = {
     'logo.social.tiktok_url': 'TikTok',
     'logo.social.whatsapp_url': 'WhatsApp (lien de chaîne ou de groupe)',
     'logo.socialInvalid': "Le lien {field} ne semble pas correct. Collez l'adresse complète, commençant par https://",
+    'logo.youtubeLiveHint': "Le lien YouTube sert aussi à la page du direct (live.html) : dès que la chaîne passe en direct, le culte y apparaît tout seul, ainsi que sur la page d'accueil.",
+    'live.bannerLive': 'Le culte est en direct',
+    'live.bannerSoon': 'Le culte commence bientôt',
+    'live.watch': 'Regarder',
+    'live.close': 'Fermer',
 
     'menuCustomizer.title': 'Personnaliser le menu et l’apparence',
     'menuCustomizer.intro': "Renommez n'importe quel libellé de navigation, élément du menu d'actions rapides, ou nom de département, et définissez les couleurs et la police de l'application — dans les deux langues.",

@@ -1,6 +1,7 @@
 // Tab navigation — swaps which panel is visible and highlights the active nav link.
 import { supabase } from './supabaseClient.js';
 import { initVersionCheck } from './versionCheck.js';
+import { initLiveBanner } from './components/liveBanner.js';
 import { renderSchedulingTab } from './scheduling.js';
 import { renderSongbookTab } from './songbook.js';
 import { renderVoiceExercises } from './components/voiceExercises.js';
@@ -2031,6 +2032,7 @@ async function showApp(session, { isFreshSignIn = false } = {}) {
   refreshInboxBadge();
   refreshNotificationsBadge();
   checkSpecialProgramPopup(supabase);
+  initLiveBanner();
 }
 
 // Shown right after a genuine sign-in (not a page reload restoring an
