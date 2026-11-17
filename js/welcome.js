@@ -19,7 +19,7 @@ const TEXT = {
     program: 'Church program', noProgram: 'The program will be posted soon.', special: 'Special', flyer: 'Flyer',
     events: 'Upcoming events', noEvents: 'No public events right now.', register: 'Register', free: 'Free',
     sermons: 'Recent sermons', noSermons: 'Sermons will appear here soon.', watch: 'Watch', listen: 'Listen', notes: 'Notes', more: 'Show more',
-    contact: 'Find us', account: 'Want your own account? You can create one from the sign-in page; a pastor or admin then welcomes you into the church and your departments.',
+    contact: 'Find us', follow: 'Follow us', account: 'Want your own account? You can create one from the sign-in page; a pastor or admin then welcomes you into the church and your departments.',
     privacy: 'This page never shows information about our members.',
     error: 'Could not load the latest information. Please try again later.',
     langSwitch: 'Français',
@@ -36,7 +36,7 @@ const TEXT = {
     program: "Programme de l'église", noProgram: 'Le programme sera bientôt publié.', special: 'Spécial', flyer: 'Affiche',
     events: 'Événements à venir', noEvents: "Aucun événement public pour l'instant.", register: "S'inscrire", free: 'Gratuit',
     sermons: 'Prédications récentes', noSermons: 'Les prédications apparaîtront ici bientôt.', watch: 'Regarder', listen: 'Écouter', notes: 'Notes', more: 'Voir plus',
-    contact: 'Nous trouver', account: "Vous voulez votre propre compte ? Créez-le depuis la page de connexion ; un pasteur ou un administrateur vous accueille ensuite dans l'église et vos départements.",
+    contact: 'Nous trouver', follow: 'Suivez-nous', account: "Vous voulez votre propre compte ? Créez-le depuis la page de connexion ; un pasteur ou un administrateur vous accueille ensuite dans l'église et vos départements.",
     privacy: "Cette page n'affiche jamais d'information sur nos membres.",
     error: "Impossible de charger les dernières informations. Réessayez plus tard.",
     langSwitch: 'English',
@@ -157,12 +157,21 @@ function render() {
     c.phone && `<p>📞 <a class="underline" href="tel:${attr(c.phone.replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a></p>`,
     c.email && `<p>✉️ <a class="underline" href="mailto:${attr(c.email)}">${esc(c.email)}</a></p>`,
   ].filter(Boolean).join('');
+  const SOCIAL = [['website', '🌐', 'Website / Site web'], ['facebook', 'f', 'Facebook'], ['youtube', '▶', 'YouTube'], ['instagram', '◎', 'Instagram'], ['tiktok', '♪', 'TikTok'], ['whatsapp', '✆', 'WhatsApp']];
+  const social = c.social || {};
+  const socialLinks = SOCIAL.filter(([k]) => social[k]).map(([k, icon, label]) => `
+    <a href="${attr(social[k])}" target="_blank" rel="noopener" class="flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-3 py-2.5 hover:border-amber-400">
+      <span class="h-7 w-7 shrink-0 rounded-full bg-[#0B1F3A] text-white text-sm font-bold flex items-center justify-center">${esc(icon)}</span>
+      <span class="text-sm font-medium">${esc(k === 'website' ? (lang === 'fr' ? 'Site web' : 'Website') : label)}</span>
+    </a>`).join('');
+  const follow = socialLinks ? section(tx('follow'), `<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${socialLinks}</div>`) : '';
   const contact = contactBits ? section(tx('contact'), `<div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-1 text-sm">${contactBits}</div>`) : '';
 
   root.innerHTML = header + tiles
     + section(tx('program'), program)
     + section(tx('events'), events)
     + section(tx('sermons'), sermons)
+    + follow
     + contact
     + `<div class="mt-8 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">${esc(tx('account'))}</div>`
     + `<p class="mt-4 text-xs text-slate-400 text-center">🔒 ${esc(tx('privacy'))}</p>`;

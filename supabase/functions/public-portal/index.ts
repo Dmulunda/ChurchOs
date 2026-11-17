@@ -4,7 +4,7 @@
 // Privacy: this function runs with the service role, so it returns ONLY
 // a fixed list of public fields. No people, no member data, no internal
 // events. What is public:
-//   * church name, logo, address/email/phone from church_branding
+//   * church name, logo, address/email/phone and social links from church_branding
 //   * the church program for the next 8 weeks (title, description, date,
 //     special flag, flyer)
 //   * events with visibility 'public' that are not cancelled and not over
@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
   const until = new Date(now.getTime() + 56 * 86400000);
 
   const [branding, dates, events, sermons] = await Promise.all([
-    admin.from('church_branding').select('logo_url, address, email, phone').eq('id', true).maybeSingle(),
+    admin.from('church_branding').select('logo_url, address, email, phone, website_url, facebook_url, youtube_url, instagram_url, tiktok_url, whatsapp_url').eq('id', true).maybeSingle(),
     admin.from('church_program_dates')
       .select('date, program:church_programs!program_id ( title, description, is_special, flyer_storage_path )')
       .gte('date', ymd(now)).lte('date', ymd(until)).order('date').limit(60),
@@ -73,6 +73,9 @@ Deno.serve(async (req) => {
       address: branding.data?.address || null,
       email: branding.data?.email || null,
       phone: branding.data?.phone || null,
+      social: Object.fromEntries(['website', 'facebook', 'youtube', 'instagram', 'tiktok', 'whatsapp']
+        .map((k) => [k, (branding.data as any)?.[`${k}_url`]])
+        .filter(([, v]) => typeof v === 'string' && /^https:\/\/\S+$/.test(v))),
     },
     program,
     events: (events.data || []).map((e: any) => ({
