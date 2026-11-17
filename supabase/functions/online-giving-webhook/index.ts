@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
   const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
   const webhookSecret = Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET');
   if (!stripeSecretKey || !webhookSecret) {
-    return new Response('Online giving webhook is not configured (STRIPE_SECRET_KEY/STRIPE_CONNECT_WEBHOOK_SECRET)', { status: 500 });
+    return new Response(`Online giving webhook is not configured (${!stripeSecretKey ? 'STRIPE_SECRET_KEY ' : ''}${!webhookSecret ? 'STRIPE_CONNECT_WEBHOOK_SECRET' : ''})`, { status: 500 });
   }
   const stripe = new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' });
 

@@ -54,14 +54,17 @@ function json(body, status = 200) {
   });
 }
 
-// Only send donors back to our own pages -- never to an arbitrary URL a
-// caller supplies (open-redirect protection).
+// Only send people back to our own site -- never to an arbitrary URL a
+// caller supplies (open-redirect protection). An address on another origin
+// (for example a local copy of the app at http://localhost) is rebuilt on
+// the first allowed origin with the same path and query, so it still works.
 function safeReturnUrl(raw) {
   const allowed = (Deno.env.get('GIVING_RETURN_ORIGINS') || 'https://www.churchonpoint.com')
     .split(',').map((s) => s.trim()).filter(Boolean);
   try {
     const url = new URL(raw);
-    return allowed.includes(url.origin) ? url : null;
+    if (allowed.includes(url.origin)) return url;
+    return new URL(url.pathname + url.search, allowed[0]);
   } catch {
     return null;
   }

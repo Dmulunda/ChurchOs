@@ -98,13 +98,25 @@ export async function renderOnlineGivingSettings(container, { supabase }) {
     returnUrl.search = '';
     returnUrl.hash = '';
     const { data, error: fnError } = await supabase.functions.invoke('online-giving', { body: { action: 'connect_link', returnUrl: returnUrl.toString() } });
-    if (fnError || !data?.url) { showStripeError(t('givingAdmin.stripeError')); e.target.disabled = false; return; }
+    if (fnError || !data?.url) {
+      // Show the server's own reason (e.g. Stripe Connect not enabled) next to the generic message.
+      let detail = '';
+      try { detail = (await fnError?.context?.json?.())?.error || ''; } catch { /* not JSON */ }
+      showStripeError(detail ? `${t('givingAdmin.stripeError')} (${detail})` : t('givingAdmin.stripeError'));
+      e.target.disabled = false;
+      return;
+    }
     window.location.href = data.url;
   });
 
   const refresh = async () => {
     const { error: fnError } = await supabase.functions.invoke('online-giving', { body: { action: 'refresh_status' } });
-    if (fnError) { showStripeError(t('givingAdmin.stripeError')); return; }
+    if (fnError) {
+      let detail = '';
+      try { detail = (await fnError.context?.json?.())?.error || ''; } catch { /* not JSON */ }
+      showStripeError(detail ? `${t('givingAdmin.stripeError')} (${detail})` : t('givingAdmin.stripeError'));
+      return;
+    }
     renderOnlineGivingSettings(container, { supabase });
   };
   container.querySelector('[data-action="refresh"]')?.addEventListener('click', refresh);
