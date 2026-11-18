@@ -1,0 +1,116 @@
+/* Brand layer for the member app — navy #0B1F3A, gold #E0B654, cream
+   #F6F4EF, warm borders #E6E1D6, Inter for text and Fraunces for page
+   titles. Same palette as the guest pages (js/publicTheme.js).
+   Tailwind comes from the CDN with no config, so like the theme and
+   night-mode blocks in index.html this works by recolouring the
+   utility classes the app already uses. Loaded after those blocks. */
+
+:root {
+  --brand-navy: #0B1F3A;
+  --brand-navy-2: #1D3A66;
+  --brand-gold: #E0B654;
+  --brand-cream: #F6F4EF;
+  --brand-line: #E6E1D6;
+  --brand-muted: #5B6475;
+  --brand-ink: #1B2433;
+  /* Defaults for the Super Admin theme variables; a saved theme
+     (app_theme) still overrides these from theme.js. */
+  --theme-primary: #0B1F3A;
+  --theme-primary-hover: #1D3A66;
+  --theme-text: #1B2433;
+  --theme-bg: #F6F4EF;
+  --theme-font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.font-display,
+#app-shell main h1,
+#app-shell main h2.text-xl,
+#app-shell main h2.text-2xl {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+html:not(.dark) #app-shell main h1 { color: var(--brand-navy); }
+
+/* Logo on a white pill, as on the guest pages */
+.brand-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff; border-radius: 10px; padding: 3px 7px; flex: none;
+}
+.brand-pill img { height: 28px; width: auto; display: block; }
+
+/* Header */
+#app-header { min-height: 56px; }
+#app-header .hover\:bg-slate-800:hover { background-color: rgba(255,255,255,.1); }
+#app-header .bg-slate-800 { background-color: rgba(255,255,255,.1); }
+#app-header .border-slate-700 { border-color: rgba(255,255,255,.18); }
+#app-header .bg-slate-700 { background-color: rgba(255,255,255,.18); }
+#app-header .bg-rose-500 { background-color: var(--brand-gold); color: var(--brand-navy); }
+#app-header #account-menu-btn { background-color: var(--brand-gold) !important; color: var(--brand-navy) !important; }
+#app-header #header-new-member-btn { background-color: var(--brand-gold) !important; color: var(--brand-navy) !important; }
+#topbar-lang-select option { color: #0B1F3A; background: #fff; }
+
+/* Sidebar / drawer */
+#sidebar .border-slate-800 { border-color: rgba(255,255,255,.09); }
+#sidebar .hover\:bg-slate-800:hover,
+#sidebar .hover\:bg-\[\#1e2130\]:hover { background-color: rgba(255,255,255,.07); }
+#sidebar .bg-slate-800 { background-color: rgba(255,255,255,.08); }
+#sidebar .border-slate-700 { border-color: rgba(255,255,255,.14); }
+#sidebar .bg-indigo-600,
+#sidebar .bg-\[\#2a2d3d\] {
+  background-color: rgba(224,182,84,.16) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 var(--brand-gold);
+}
+#sidebar #role-switcher-wrap .bg-indigo-600 {
+  background-color: #fff !important; color: var(--brand-navy) !important; box-shadow: none;
+}
+#sidebar .text-slate-500 { color: #8C98AD; }
+#sidebar .text-sky-300 { color: var(--brand-gold); }
+.dept-badge {
+  width: 22px; height: 22px; border-radius: 6px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .02em;
+}
+.drawer-chip {
+  height: 38px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14);
+  color: #fff; font-size: 13px; font-weight: 600; background: rgba(255,255,255,.05);
+}
+.drawer-chip:hover { background: rgba(255,255,255,.1); }
+
+/* Primary buttons: navy, with the gold focus ring */
+.bg-indigo-500, .hover\:bg-indigo-500:hover { background-color: var(--theme-primary-hover) !important; }
+.focus\:ring-indigo-500:focus, .focus\:ring-indigo-400:focus { --tw-ring-color: var(--brand-gold) !important; }
+.focus\:border-indigo-500:focus { border-color: var(--brand-gold) !important; }
+html:not(.dark) .bg-indigo-50 { background-color: #FBF6E9; }
+html:not(.dark) .bg-indigo-100 { background-color: #F6ECD2; }
+html:not(.dark) .border-indigo-200, html:not(.dark) .border-indigo-100 { border-color: #EADBB2; }
+
+/* Cards: warm hairline border, softer shadow (light mode only) */
+html:not(.dark) #app-shell main .bg-white.shadow,
+html:not(.dark) #app-shell main .bg-white.shadow-sm {
+  box-shadow: 0 1px 2px rgba(11,31,58,.05);
+  border: 1px solid var(--brand-line);
+}
+html:not(.dark) #app-shell main .rounded-xl.bg-white { border-radius: 16px; }
+html:not(.dark) .border-slate-200 { border-color: var(--brand-line); }
+
+/* Bottom bar: line icons with labels, gold bar on the active item */
+#bottom-nav .bn-item {
+  position: relative; flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  color: var(--brand-muted); font-size: 11px; font-weight: 600;
+  background: transparent !important; text-decoration: none;
+}
+#bottom-nav .bn-item.bg-indigo-600 { color: var(--brand-navy) !important; }
+#bottom-nav .bn-item.bg-indigo-600::before {
+  content: ''; position: absolute; top: 0; left: 28%; right: 28%;
+  height: 3px; border-radius: 0 0 3px 3px; background: var(--brand-gold);
+}
+html.dark #bottom-nav { background: #0f172a; border-color: #334155; }
+html.dark #bottom-nav .bn-item { color: #94a3b8; }
+html.dark #bottom-nav .bn-item.bg-indigo-600 { color: #fff !important; }
+
+/* Same text size for every sidebar row (the lower group used the
+   browser default and looked larger than the rows above it) */
+#sidebar nav button.w-full, #sidebar nav a.w-full { font-size: 13.5px; }

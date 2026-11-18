@@ -824,10 +824,24 @@ function populateDepartmentSwitcher() {
         class="w-full text-left px-2 py-1.5 rounded-lg text-[12.8px] font-medium transition-colors flex items-center gap-2.5 ${
           d.key === activeKey ? 'bg-[#2a2d3d] text-white' : 'text-slate-300 hover:bg-[#1e2130] hover:text-white'
         }">
-      <span class="w-[18px] text-center shrink-0">${departmentIcon(d.key, d.icon)}</span>
+      <span class="dept-badge" style="background:${departmentColor(d.key)}" aria-hidden="true">${d.icon ? departmentIcon(d.key, d.icon) : departmentInitials(departmentLabel(d.key))}</span>
       <span class="truncate">${departmentLabel(d.key)}</span>
     </button>
   `).join('');
+}
+
+// Coloured initials instead of emoji in the ministries list -- the
+// colour is derived from the key so it stays the same everywhere.
+const DEPT_COLORS = ['#7A4E9E', '#2F6F5E', '#B5562C', '#2D5D9F', '#8A6A1F', '#9E3B5A', '#4B6B2E', '#5B4B8A'];
+function departmentColor(key) {
+  let h = 0;
+  for (const c of String(key)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return DEPT_COLORS[h % DEPT_COLORS.length];
+}
+function departmentInitials(label) {
+  const words = String(label).replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter((w) => w.length > 3 || /^\p{Lu}/u.test(w));
+  const letters = (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || '?').slice(0, 2));
+  return letters.toUpperCase();
 }
 
 departmentSwitcherListEl.addEventListener('click', (e) => {
@@ -1729,7 +1743,7 @@ sidebarBackdrop.addEventListener('click', closeSidebar);
 // whichever department they're currently viewing -- same modal
 // deptDashboard.js's own "Manage Roster" button opens, just triggered
 // from here too instead of requiring a trip to that tab first.
-document.querySelector('[data-mobile-nav="directory"]')?.addEventListener('click', () => {
+document.querySelectorAll('[data-mobile-nav="directory"]').forEach((el) => el.addEventListener('click', () => {
   if (hasGlobalReach()) {
     openDirectory();
     return;
@@ -1742,33 +1756,49 @@ document.querySelector('[data-mobile-nav="directory"]')?.addEventListener('click
     currentUserId,
     title: t('nav.members'),
   }).open();
-});
+}));
 
 // Schedule: jumps straight to whichever scheduling tab is correct for
 // the active department (Choir's own vs. the shared dept-scheduling
 // tab), reusing resolveLandingTab()'s existing Finance/Church Program
 // exclusion (those two have no scheduling at all) rather than
 // duplicating that check here.
-document.querySelector('[data-mobile-nav="schedule"]')?.addEventListener('click', () => {
+document.querySelectorAll('[data-mobile-nav="schedule"]').forEach((el) => el.addEventListener('click', () => {
   const active = getActiveDepartment();
   if (!active) return;
   const isChoir = active.key === 'choir';
   activateTab(resolveLandingTab('scheduling', active, isChoir) || (isChoir ? 'dashboard' : 'dept-dashboard'));
   closeSidebar();
-});
+}));
 
-document.querySelector('[data-mobile-nav="quick-access"]')?.addEventListener('click', openQuickAccess);
+// Quick Access: opens quick-access-dialog (defined above, near the
+// Account dialog it's modeled on) -- VPD Academy, Service Program,
+// Budget (department leadership only), and the active department's
+// Dashboard.
+document.querySelectorAll('[data-mobile-nav="quick-access"]').forEach((el) => el.addEventListener('click', () => { closeSidebar(); openQuickAccess(); }));
 
 // Settings: the Tools tab, for everyone -- not just global-reach roles
-// (unlike the sidebar's own Tools nav entry, which stays admin-only).
-document.querySelector('[data-mobile-nav="settings"]')?.addEventListener('click', () => {
+// (unlike the sidebar's own Tools nav entry, which stays admin-only;
+// see toolsPage.js's "My Account" category for what an ordinary member
+// finds here: profile, church rules, change password, etc.).
+document.querySelectorAll('[data-mobile-nav="settings"]').forEach((el) => el.addEventListener('click', () => {
   if (!isHomeActive()) {
     setActiveDepartmentKey(HOME_KEY);
     populateDepartmentSwitcher();
   }
   activateTab('tools');
   closeSidebar();
-});
+}));
+
+// Menu: the bottom bar's last slot opens the same drawer as the
+// header's hamburger. Theme and Help live in that drawer on phones
+// (the header only has room for them on desktop), and just forward to
+// the header's own buttons so there is one code path for each.
+document.querySelectorAll('[data-mobile-nav="menu"]').forEach((el) => el.addEventListener('click', openSidebar));
+document.querySelectorAll('[data-drawer-action]').forEach((el) => el.addEventListener('click', () => {
+  closeSidebar();
+  document.querySelector(el.dataset.drawerAction === 'theme' ? '#topbar-theme-toggle' : '#help-btn')?.click();
+}));
 
 // ---- Auth gating ----
 const authScreenEl = document.querySelector('#auth-screen');

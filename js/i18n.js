@@ -3199,6 +3199,11 @@ const TRANSLATIONS = {
     'nav.home': 'Home',
     'nav.quickAccess': 'Quick Access',
     'nav.tools': 'Settings',
+    'bottomNav.home': 'Home',
+    'bottomNav.schedule': 'Schedule',
+    'bottomNav.live': 'Live',
+    'bottomNav.directory': 'Directory',
+    'bottomNav.menu': 'Menu',
     'directory.title': 'User Directory',
     'directory.intro': 'Every user across every department, in one place.',
     'directory.userStatus.new_guest': 'New Guest',
@@ -3289,7 +3294,7 @@ const TRANSLATIONS = {
 
     'sidebar.roleSwitcher': 'Mode',
     'sidebar.superAdminMode': 'Super Admin',
-    'sidebar.standardUserMode': 'Standard User',
+    'sidebar.standardUserMode': 'Member',
     'sidebar.previewAsMember': 'Preview as Member',
     'previewAsMember.banner': 'Previewing as a Member — read-only',
 
@@ -6709,6 +6714,11 @@ const TRANSLATIONS = {
     'nav.home': 'Accueil',
     'nav.quickAccess': 'Accès rapide',
     'nav.tools': 'Paramètres',
+    'bottomNav.home': 'Accueil',
+    'bottomNav.schedule': 'Planning',
+    'bottomNav.live': 'Direct',
+    'bottomNav.directory': 'Annuaire',
+    'bottomNav.menu': 'Menu',
     'directory.title': 'Annuaire des utilisateurs',
     'directory.userStatus.new_guest': 'Nouveau visiteur',
     'directory.userStatus.visitor_other_church': "Visiteur d'une autre église",
@@ -6799,7 +6809,7 @@ const TRANSLATIONS = {
 
     'sidebar.roleSwitcher': 'Mode',
     'sidebar.superAdminMode': 'Super Admin',
-    'sidebar.standardUserMode': 'Utilisateur standard',
+    'sidebar.standardUserMode': 'Membre',
     'sidebar.previewAsMember': 'Aperçu en tant que membre',
     'previewAsMember.banner': 'Aperçu en tant que membre — lecture seule',
 

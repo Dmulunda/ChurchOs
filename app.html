@@ -141,14 +141,15 @@
     html.dark input::placeholder,
     html.dark textarea::placeholder { color: #64748b; }
   </style>
+  <!-- Brand layer (navy / gold / cream, Inter + Fraunces) — same look as
+       the guest pages. Loaded last so it wins over the theme block above. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="css/brand.css" />
 </head>
 <body class="bg-slate-100 text-slate-800">
 
-  <!-- Faint logo watermark behind every screen. z-0 vs. z-10 on the two
-       screens below is an explicit (not relied-on-DOM-order) stacking
-       guarantee that content always renders above it. -->
-  <div aria-hidden="true" class="fixed inset-0 z-0 pointer-events-none bg-no-repeat bg-center"
-       style="background-image: url('img/church-on-point-icon.png'); background-size: min(60vw, 640px); opacity: 0.06;"></div>
 
   <!-- Shown briefly right after a successful sign-in, on top of
        everything else, while the app underneath finishes loading —
@@ -188,7 +189,7 @@
          on the right are always visible. All actual navigation lives
          in #sidebar below (permanent column on desktop, off-canvas
          drawer on mobile), not here. -->
-    <header class="flex items-center bg-slate-900 text-white px-4 py-3 sticky top-0 z-20 gap-4">
+    <header id="app-header" class="flex items-center bg-[#0B1F3A] text-white pl-2 pr-2 sm:px-4 py-2 sticky top-0 z-20 gap-2 sm:gap-4">
       <div class="flex items-center gap-1 md:hidden">
         <button type="button" id="menu-open-btn" data-i18n-aria-label="menu.open" aria-label="Open menu"
                 class="p-2 -ml-2 rounded-lg hover:bg-slate-800">
@@ -226,7 +227,7 @@
         <span class="truncate" data-i18n="header.searchPlaceholder">Search members, cases, departments</span>
       </div>
 
-      <div class="flex items-center gap-2 ml-auto">
+      <div class="flex items-center gap-0.5 sm:gap-2 ml-auto">
         <!-- Wrapper carries the "desktop only" responsive rule; the
              button itself is toggled hidden/flex in plain JS for the
              pastoral-team role gate, so the two hiding mechanisms never
@@ -249,7 +250,7 @@
         </select>
 
         <button type="button" id="topbar-theme-toggle" data-i18n-aria-label="sidebar.theme" aria-label="Theme"
-                class="p-2 rounded-lg hover:bg-slate-800">
+                class="hidden md:block p-2 rounded-lg hover:bg-slate-800">
           <svg id="topbar-theme-icon-sun" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1.5m0 15V21m9-9h-1.5m-15 0H3m15.364-6.364l-1.06 1.06M6.696 17.304l-1.06 1.06m12.728 0l-1.06-1.06M6.696 6.696l-1.06-1.06M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
           </svg>
@@ -300,7 +301,7 @@
         <!-- Help / training — opens the tenant's training PDF (uploaded by
              their Super Admin) so a new user or admin has something to
              follow along with. See js/components/helpModal.js. -->
-        <button type="button" id="help-btn" data-i18n-aria-label="help.title" aria-label="Help" class="p-2 rounded-lg hover:bg-slate-800">
+        <button type="button" id="help-btn" data-i18n-aria-label="help.title" aria-label="Help" class="hidden md:block p-2 rounded-lg hover:bg-slate-800">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -424,9 +425,12 @@
          nav lives here now for both breakpoints; the header above only
          carries branding/search/account. -->
     <aside id="sidebar"
-           class="fixed md:static inset-y-0 left-0 z-40 w-64 shrink-0 bg-[#12141c] text-slate-300 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
-      <div class="px-6 py-5 flex items-center justify-between border-b border-slate-800">
-        <span class="text-xl font-semibold text-white" data-nav-group="org-name">ChurchOnPoint</span>
+           class="fixed md:static inset-y-0 left-0 z-40 w-72 md:w-64 shrink-0 bg-[#0B1F3A] text-slate-300 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
+      <div class="px-5 py-4 flex items-center justify-between gap-3 border-b border-slate-800">
+        <span class="flex items-center gap-3 min-w-0">
+          <span class="brand-pill"><img data-tenant-logo src="img/church-on-point-icon.png" alt="" /></span>
+          <span class="font-display text-[15px] leading-tight font-semibold text-white" data-nav-group="org-name">ChurchOnPoint</span>
+        </span>
         <button type="button" id="menu-close-btn" data-i18n-aria-label="menu.close" aria-label="Close menu" class="md:hidden p-1 text-slate-400 hover:text-white">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -476,11 +480,11 @@
         <div id="global-nav-group" data-nav-group="global" class="hidden space-y-0.5 mb-2 pb-2 border-b border-slate-800">
           <button data-tab-target="super-home"
                   class="w-full text-left px-3 py-2 rounded-lg text-[12.8px] font-medium transition-colors hover:bg-slate-800 flex items-center gap-2.5">
-            <span class="w-[18px] text-center">🏠</span> <span data-i18n="nav.home">Home</span>
+            <svg class="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg> <span data-i18n="nav.home">Home</span>
           </button>
           <button data-tab-target="tools"
                   class="w-full text-left px-3 py-2 rounded-lg text-[12.8px] font-medium transition-colors hover:bg-slate-800 flex items-center gap-2.5">
-            <span class="w-[18px] text-center">🧰</span> <span data-i18n="nav.tools">Settings</span>
+            <svg class="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg> <span data-i18n="nav.tools">Settings</span>
           </button>
         </div>
 
@@ -648,6 +652,13 @@
                 class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-2 py-1.5">
           <option value=""></option>
         </select>
+      </div>
+
+      <div class="md:hidden px-6 py-3 border-t border-slate-800 grid grid-cols-2 gap-2">
+        <button type="button" data-mobile-nav="quick-access" class="drawer-chip" data-i18n="nav.quickAccess">Quick Access</button>
+        <button type="button" data-mobile-nav="settings" class="drawer-chip" data-i18n="nav.tools">Settings</button>
+        <button type="button" data-drawer-action="theme" class="drawer-chip" data-i18n="sidebar.theme">Theme</button>
+        <button type="button" data-drawer-action="help" class="drawer-chip" data-i18n="help.title">Help</button>
       </div>
 
       <div class="px-6 py-3 border-t border-slate-800">
@@ -1013,19 +1024,14 @@
          (so it shares styling/gating/click-handling automatically,
          see js/app.js's `tabs` loop); Directory/Schedule/Quick Access/
          Settings are wired directly in js/app.js since they're not
-         plain tabs (their target depends on role/active department).
-         Member Cases/Members/Notifications (the old gated bar's extra
-         icons) aren't lost -- Member Cases/Members still have their
-         usual sidebar nav entries, one hamburger-tap away, and
-         Notifications has its own header bell on every screen size
-         already. -->
-    <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 flex items-center justify-around h-16"
+         plain tabs (their target depends on role/active department). -->
+    <nav id="bottom-nav" class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[#E6E1D6] flex items-stretch justify-around h-16"
          style="padding-bottom: env(safe-area-inset-bottom)">
-      <button type="button" data-tab-target="super-home" data-i18n-aria-label="nav.home" aria-label="Home" class="flex-1 h-16 flex items-center justify-center text-xl text-slate-400">🏠</button>
-      <button type="button" data-mobile-nav="directory" data-i18n-aria-label="directory.title" aria-label="Directory" class="flex-1 h-16 flex items-center justify-center text-xl text-slate-400">👤</button>
-      <button type="button" data-mobile-nav="schedule" data-i18n-aria-label="nav.scheduling" aria-label="Schedule" class="flex-1 h-16 flex items-center justify-center text-xl text-slate-400">📅</button>
-      <button type="button" data-mobile-nav="quick-access" data-i18n-aria-label="nav.quickAccess" aria-label="Quick Access" class="flex-1 h-16 flex items-center justify-center text-xl text-slate-400">☰</button>
-      <button type="button" data-mobile-nav="settings" data-i18n-aria-label="nav.tools" aria-label="Settings" class="flex-1 h-16 flex items-center justify-center text-xl text-slate-400">⚙️</button>
+      <button type="button" data-tab-target="super-home" class="bn-item"><svg class="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="bottomNav.home">Home</span></button>
+      <button type="button" data-mobile-nav="schedule" class="bn-item"><svg class="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span data-i18n="bottomNav.schedule">Schedule</span></button>
+      <a href="live.html" class="bn-item"><svg class="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg><span data-i18n="bottomNav.live">Live</span></a>
+      <button type="button" data-mobile-nav="directory" class="bn-item"><svg class="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M15 15c3 0 6 1.5 6 4.5"/></svg><span data-i18n="bottomNav.directory">Directory</span></button>
+      <button type="button" data-mobile-nav="menu" class="bn-item"><svg class="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span data-i18n="bottomNav.menu">Menu</span></button>
     </nav>
   </div>
 
