@@ -37,6 +37,18 @@ export const HEADCOUNT_DEPARTMENT_KEYS = ['ushers', 'welcoming_socialisation', '
 const NO_MEETING_DEPARTMENT_NAMES = ['VPD Community', 'Church Calendar'];
 const LOCALE_BY_LANG = { en: 'en-US', fr: 'fr-FR' };
 
+// Same coloured initials as the ministries list in the menu (app.js).
+const DEPT_COLORS = ['#7A4E9E', '#2F6F5E', '#B5562C', '#2D5D9F', '#8A6A1F', '#9E3B5A', '#4B6B2E', '#5B4B8A'];
+function deptColor(key) {
+  let h = 0;
+  for (const c of String(key)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return DEPT_COLORS[h % DEPT_COLORS.length];
+}
+function deptInitials(label) {
+  const words = String(label).replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter((w) => w.length > 3 || /^\p{Lu}/u.test(w));
+  return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || '?').slice(0, 2)).toUpperCase();
+}
+
 export async function renderDeptDashboardTab() {
   const supabase = getEffectiveSupabase();
   const container = document.querySelector('#dept-dashboard-content');
@@ -59,9 +71,9 @@ export async function renderDeptDashboardTab() {
   container.innerHTML = `
     <div class="flex items-start justify-between flex-wrap gap-3 mb-4">
       <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base shrink-0 bg-indigo-50">${departmentIcon(active.key, active.icon)}</div>
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-[13px] font-bold text-white shrink-0" style="background:${deptColor(active.key)}" aria-hidden="true">${active.icon ? departmentIcon(active.key, active.icon) : escapeHtml(deptInitials(departmentLabel(active.key)))}</div>
         <div>
-          <h1 class="text-lg sm:text-xl font-bold text-slate-900 leading-tight">${escapeHtml(departmentLabel(active.key))}</h1>
+          <h1 class="font-display text-[24px] sm:text-[28px] text-[#0B1F3A] leading-tight">${escapeHtml(departmentLabel(active.key))}</h1>
           <div class="text-xs text-slate-400">${escapeHtml(todayFormatted)}</div>
         </div>
       </div>

@@ -393,11 +393,12 @@ export async function renderMyReminders(container, { supabase, departments }) {
     <section class="home-card mb-4" aria-label="${escapeHtml(t('home.todoMine'))}">
       <div class="home-kicker mb-1">${t('home.todoMine')}</div>
       ${shown.map((i, idx) => `
-        <div class="flex items-center gap-3 py-2.5 ${idx ? 'border-t border-[#EFEBE2]' : ''}">
-          <span class="w-2 h-2 rounded-full shrink-0 ${i.tone === 'gold' ? 'bg-[#E0B654]' : 'bg-slate-300'}"></span>
-          <span class="flex-1 text-[14px] text-slate-700">${escapeHtml(i.text)}</span>
-          <button type="button" data-go="${idx}" class="home-btn h-9 px-3 text-[13px]">${escapeHtml(i.action)}</button>
-          <button type="button" data-hide="${idx}" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" aria-label="${escapeHtml(t('home.todoHide'))}" title="${escapeHtml(t('home.todoHide'))}">×</button>
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 py-2.5 ${idx ? 'border-t border-[#EFEBE2]' : ''}">
+          <span class="basis-full sm:basis-auto sm:flex-1 min-w-0 text-[14px] text-slate-700"><span class="inline-block w-2 h-2 rounded-full mr-2 align-middle ${i.tone === 'gold' ? 'bg-[#E0B654]' : 'bg-slate-300'}"></span>${escapeHtml(i.text)}</span>
+          <span class="flex items-center gap-1 ml-4 sm:ml-0">
+            <button type="button" data-go="${idx}" class="home-btn h-9 px-3 text-[13px]">${escapeHtml(i.action)}</button>
+            <button type="button" data-hide="${idx}" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" aria-label="${escapeHtml(t('home.todoHide'))}" title="${escapeHtml(t('home.todoHide'))}">×</button>
+          </span>
         </div>`).join('')}
     </section>`;
   container.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {

@@ -14,7 +14,18 @@
 // hunting for a separate calendar -- plain read-only list, not a second
 // grid, since this data is sparse (a handful of announcements), not
 // dense day-by-day data the way availability is.
-import { t, departmentLabel } from '../i18n.js';
+import { t, departmentLabel, appLocale } from '../i18n.js';
+
+// "mer. 18 nov." and sentence case for titles typed in capitals.
+function shortDate(iso) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(appLocale(), { weekday: 'short', day: 'numeric', month: 'short' });
+}
+function cap(s) {
+  const v = String(s || '');
+  if (v !== v.toUpperCase()) return v;
+  const lower = v.toLocaleLowerCase(appLocale());
+  return lower.charAt(0).toLocaleUpperCase(appLocale()) + lower.slice(1);
+}
 import { todayLocal } from '../utils/date.js';
 
 const UPCOMING_LIMIT = 10;
@@ -108,9 +119,9 @@ export async function renderUpcomingChurchEvents(container, { supabase }) {
     <h2 class="text-lg font-semibold mb-3">${t('churchEvents.title')}</h2>
     <ul class="space-y-2">
       ${items.map((item) => `
-        <li class="flex items-baseline gap-3 text-sm flex-wrap">
-          <span class="font-medium text-slate-700 whitespace-nowrap">${escapeHtml(item.dates.join(', '))}</span>
-          <span class="text-slate-600">${escapeHtml(item.title)}</span>
+        <li class="flex items-baseline gap-x-3 gap-y-0.5 text-sm flex-wrap">
+          <span class="font-semibold text-slate-800">${escapeHtml(cap(item.title))}</span>
+          <span class="text-slate-500">${escapeHtml(item.dates.slice(0, 4).map(shortDate).join(' · '))}${item.dates.length > 4 ? ` · +${item.dates.length - 4}` : ''}</span>
           ${item.kind === 'program' && item.isSpecial ? `<span class="px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">${t('churchProgram.specialBadge')}</span>` : ''}
           ${item.kind === 'department' && item.notes ? `<span class="text-slate-400">— ${escapeHtml(item.notes)}</span>` : ''}
           ${item.kind === 'department' ? `<span class="text-slate-400 text-xs whitespace-nowrap">${escapeHtml(t('churchProgram.fromDepartment', { dept: departmentLabel(item.departmentKey) }))}</span>` : ''}

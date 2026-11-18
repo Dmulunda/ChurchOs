@@ -10,9 +10,9 @@ export function renderSongLibrary(container, { supabase, isAdmin, viewerVoicePar
   let debounceTimer = null;
 
   container.innerHTML = `
-    <div class="flex items-center gap-3 mb-4">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
       <input type="search" data-el="search" placeholder="${t('songbook.searchPlaceholder')}"
-             class="flex-1 border border-slate-300 rounded-lg px-3 py-2" />
+             class="flex-1 min-w-0 basis-56 border border-slate-300 rounded-lg px-3 py-2" />
       ${isAdmin ? `
         <button type="button" data-action="add-song"
                 class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 whitespace-nowrap">

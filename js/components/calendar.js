@@ -226,7 +226,10 @@ export function renderAvailabilityCalendar(container, { supabase, userId, depart
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'text-left rounded px-1.5 py-1 text-[11px] leading-tight border border-dashed border-slate-300 text-slate-400 hover:bg-slate-50 hover:text-slate-500 transition-colors';
-    chip.textContent = t('calendar.setYours');
+    // Phones: the day boxes are narrow, so just a "+" (the word is
+    // kept for screen readers and wider screens).
+    chip.innerHTML = `<span class="hidden sm:inline">${t('calendar.setYours')}</span><span class="sm:hidden text-center block" aria-hidden="true">+</span>`;
+    chip.setAttribute('aria-label', t('calendar.setYours'));
     chip.addEventListener('click', () => toggleDate(dateStr));
     return chip;
   }
