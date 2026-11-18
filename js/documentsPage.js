@@ -112,7 +112,7 @@ export async function renderDocumentsTab() {
       ${groups.get(k).map((d) => `
         <article class="bg-white rounded-xl shadow p-3" data-doc="${d.id}">
           <div class="flex flex-wrap items-start justify-between gap-2">
-            <button type="button" data-open="${d.id}" class="text-left min-w-0 flex-1">
+            <button type="button" data-open="${d.id}" class="text-left min-w-0 grow basis-56">
               <p class="font-medium">${KIND_ICON[d.kind]} ${escapeHtml(d.title)}</p>
               <p class="text-xs text-slate-500 mt-0.5">${d.kind === 'minutes' && d.meeting_date ? `${t('documents.meetingOn', { date: formatDate(d.meeting_date) })} · ` : ''}${t('documents.updated', { date: formatDate(d.updated_at) })}</p>
             </button>

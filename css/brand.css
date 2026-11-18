@@ -156,3 +156,25 @@ html.dark .home-qa-icon { background: #334155; color: #f8fafc; }
 html.dark .home-btn:not(.home-btn--primary) { background: #1e293b; border-color: #334155; color: #e2e8f0; }
 .home-grid { display: grid; gap: 20px; align-items: start; }
 @media (min-width: 1024px) { .home-grid { grid-template-columns: minmax(0, 1fr) 340px; } }
+
+/* ---- Step 3: page polish ---- */
+/* Wide tables on phones scroll sideways instead of squeezing every
+   column into one-word lines. */
+.overflow-x-auto > table th { white-space: nowrap; }
+@media (max-width: 640px) {
+  .overflow-x-auto > table { min-width: 720px; }
+}
+/* Section titles inside cards use the display font */
+html:not(.dark) #app-shell main .bg-white h2.text-lg,
+html:not(.dark) #app-shell main .bg-white h2.text-xl {
+  font-family: 'Fraunces', Georgia, serif; font-weight: 600; color: var(--brand-navy);
+}
+/* Form fields: warm border, gold focus */
+html:not(.dark) #app-shell main input:not([type=checkbox]):not([type=radio]),
+html:not(.dark) #app-shell main select,
+html:not(.dark) #app-shell main textarea { border-color: #DAD3C4; }
+#app-shell main input:focus, #app-shell main select:focus, #app-shell main textarea:focus {
+  outline: none; border-color: var(--brand-gold) !important; box-shadow: 0 0 0 3px rgba(224,182,84,.25);
+}
+/* Rounded buttons a bit softer, consistent with the guest pages */
+#app-shell main button.rounded-lg.bg-indigo-600 { border-radius: 10px; }

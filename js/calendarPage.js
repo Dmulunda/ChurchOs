@@ -75,7 +75,7 @@ export async function renderCalendarTab() {
         const d = new Date(`${day}T12:00:00`);
         return `
         <div class="bg-white rounded-xl shadow p-3 ${day === todayKey ? 'ring-2 ring-indigo-300' : ''}">
-          <p class="text-sm font-semibold text-slate-700 capitalize mb-1">${escapeHtml(d.toLocaleDateString(appLocale(), { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
+          <p class="text-sm font-semibold text-slate-700 first-letter:uppercase mb-1">${escapeHtml(d.toLocaleDateString(appLocale(), { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
           <div class="space-y-1">${list.map((it) => `
             <div class="flex items-start gap-2 text-sm">
               <span class="shrink-0 w-14 text-xs text-slate-500 pt-0.5">${it.all_day ? t('calendar.allDay') : escapeHtml(new Date(it.starts_at).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' }))}</span>

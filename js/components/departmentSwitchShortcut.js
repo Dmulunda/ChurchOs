@@ -24,7 +24,7 @@ export function renderDepartmentSwitchShortcut(container, { activeKey }) {
   container.innerHTML = `
     <div class="flex items-center gap-2 mb-4 text-sm">
       <label class="text-slate-500 font-medium whitespace-nowrap">${t('deptScheduling.switchDepartment')}</label>
-      <select data-el="switch-select" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm">
+      <select data-el="switch-select" class="min-w-0 flex-1 sm:flex-none max-w-xs border border-slate-300 rounded-lg px-2 py-1.5 text-sm">
         ${departments.map((d) => `<option value="${d.key}" ${d.key === activeKey ? 'selected' : ''}>${escapeHtml(departmentLabel(d.key))}</option>`).join('')}
       </select>
     </div>

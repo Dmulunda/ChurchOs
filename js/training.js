@@ -23,11 +23,11 @@ export async function renderTrainingTab() {
   const isSchoolAdmin = getIsSchoolAdmin();
 
   container.innerHTML = isSchoolAdmin ? `
-    <div class="flex gap-2 mb-4">
-      <button type="button" data-el="tab-catalog" class="px-3 py-1.5 rounded-lg text-sm font-medium">${t('courses.myCourses')}</button>
-      <button type="button" data-el="tab-manage" class="px-3 py-1.5 rounded-lg text-sm font-medium">${t('courses.manageTitle')}</button>
-      <button type="button" data-el="tab-approvals" class="px-3 py-1.5 rounded-lg text-sm font-medium">${t('courses.approvalsTab')}</button>
-      <button type="button" data-el="tab-access" class="px-3 py-1.5 rounded-lg text-sm font-medium">${t('courses.accessTab')}</button>
+    <div class="flex gap-2 mb-4 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+      <button type="button" data-el="tab-catalog" class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium">${t('courses.myCourses')}</button>
+      <button type="button" data-el="tab-manage" class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium">${t('courses.manageTitle')}</button>
+      <button type="button" data-el="tab-approvals" class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium">${t('courses.approvalsTab')}</button>
+      <button type="button" data-el="tab-access" class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium">${t('courses.accessTab')}</button>
     </div>
     <div data-el="body"></div>
   ` : `<div data-el="body"></div>`;
