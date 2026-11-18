@@ -18,6 +18,50 @@ import { t } from './i18n.js';
 
 const PASTORAL_TEAM_ROLES = ['super_admin', 'pastor_admin', 'church_secretary'];
 
+// Line icons for the tiles (same 24px stroke style as the menu and the
+// bottom bar), looked up by the emoji each tile was defined with so the
+// tile list itself stays readable. Unknown emoji fall back to the emoji.
+const P = {
+  card: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M14 10h4M14 14h4"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  scroll: '<path d="M6 3h11v14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6h3zM6 3v14M10 8h4M10 12h4"/>',
+  door: '<path d="M5 21V4a1 1 0 0 1 1-1h9v18M15 3l4 2v16M3 21h18M12 12h.01"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  prayer: '<path d="M12 3c-1 3-4 5-4 9a4 4 0 0 0 8 0c0-4-3-6-4-9zM5 21h14"/>',
+  form: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  silent: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6M3 3l18 18"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  down: '<path d="M3 5l6 6 4-4 8 8M21 9v6h-6"/>',
+  hands: '<path d="M7 11V6a2 2 0 0 1 4 0v5M11 9a2 2 0 0 1 4 0v4M15 11a2 2 0 0 1 4 0v3a7 7 0 0 1-7 7h-1a6 6 0 0 1-6-6v-2a2 2 0 0 1 4 0"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  megaphone: '<path d="M3 10v4h4l6 4V6L7 10zM17 9a4 4 0 0 1 0 6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  trend: '<path d="M3 17l6-6 4 4 8-8M21 7v6h-6"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
+  building: '<path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/>',
+  flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M8 7h7"/>',
+  inbox: '<path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+};
+const EMOJI_ICON = {
+  '🪪': 'card', '✉️': 'mail', '🔒': 'lock', '📜': 'scroll', '🚪': 'door', '🗓️': 'calendar', '🙏': 'prayer', '📝': 'form',
+  '👤': 'user', '🤫': 'silent', '📋': 'clipboard', '🗂️': 'folder', '📉': 'down', '🙌': 'hands', '🔗': 'link', '📊': 'chart',
+  '📣': 'megaphone', '⏳': 'clock', '📈': 'trend', '🔑': 'key', '🏛️': 'building', '🧭': 'compass', '🖼️': 'image', '🚩': 'flag',
+  '📖': 'book', '📥': 'inbox', moon: 'moon', sun: 'sun',
+};
+function tileIcon(icon) {
+  const d = P[EMOJI_ICON[icon]];
+  return d ? `<svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>` : icon;
+}
+
 let commHubModal = null;
 function openCommunicationHub() {
   if (!commHubModal) commHubModal = createCommunicationHubModal({ supabase: getEffectiveSupabase() });
@@ -75,15 +119,15 @@ export function renderToolsTab() {
 
   container.innerHTML = categories.map((cat, catIndex) => `
     <div class="mb-8">
-      <h2 class="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">${cat.label}</h2>
+      <h2 class="home-kicker mb-3">${cat.label}</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         ${cat.items.map((item, itemIndex) => `
           <button type="button" data-cat="${catIndex}" data-item="${itemIndex}"
-              class="text-left bg-white border border-slate-100 rounded-xl p-3.5 hover:border-indigo-200 hover:-translate-y-0.5 transition-all flex items-start gap-2.5">
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0" style="background:${item.color}18; color:${item.color};">${item.icon}</div>
+              class="tool-tile text-left bg-white border border-[#E6E1D6] rounded-2xl p-3.5 hover:border-[#E0B654] transition-all flex items-start gap-3">
+            <div class="tool-tile-icon w-9 h-9 rounded-xl flex items-center justify-center shrink-0">${tileIcon(item.icon)}</div>
             <div class="min-w-0">
-              <div class="text-[12.3px] font-bold text-slate-900">${escapeHtml(item.name)}</div>
-              <div class="text-[10.8px] text-slate-400 mt-0.5 leading-snug">${escapeHtml(item.desc)}</div>
+              <div class="text-[13.5px] font-semibold text-slate-900">${escapeHtml(item.name)}</div>
+              <div class="text-[12px] text-slate-500 mt-0.5 leading-snug">${escapeHtml(item.desc)}</div>
             </div>
           </button>
         `).join('')}

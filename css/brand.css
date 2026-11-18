@@ -178,3 +178,6 @@ html:not(.dark) #app-shell main textarea { border-color: #DAD3C4; }
 }
 /* Rounded buttons a bit softer, consistent with the guest pages */
 #app-shell main button.rounded-lg.bg-indigo-600 { border-radius: 10px; }
+.tool-tile-icon { background: #F6F0E1; color: var(--brand-navy); }
+html.dark .tool-tile { background: #1e293b; border-color: #334155; }
+html.dark .tool-tile-icon { background: #334155; color: #f8fafc; }
