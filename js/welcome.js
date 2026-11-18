@@ -5,6 +5,7 @@
 // ever read here. Each button links to an existing public page.
 import { supabase } from './supabaseClient.js';
 import { fetchLiveStatus } from './liveStatus.js';
+import { serviceState, formatCountdown, formatServiceTime } from './liveSchedule.js';
 
 const LANG_KEY = 'choir-hub-lang';
 const TEXT = {
@@ -20,7 +21,7 @@ const TEXT = {
     program: 'Church program', noProgram: 'The program will be posted soon.', special: 'Special', flyer: 'Flyer',
     events: 'Upcoming events', noEvents: 'No public events right now.', register: 'Register', free: 'Free',
     sermons: 'Recent sermons', noSermons: 'Sermons will appear here soon.', watch: 'Watch', listen: 'Listen', notes: 'Notes', more: 'Show more',
-    contact: 'Find us', follow: 'Follow us', watchLive: 'Watch live', watchLiveSub: 'Services streamed on YouTube', liveNow: 'We are live now!', liveNowSub: 'Tap to join the service', upcomingLive: 'Live soon', account: 'Want your own account? You can create one from the sign-in page; a pastor or admin then welcomes you into the church and your departments.',
+    contact: 'Find us', follow: 'Follow us', watchLive: 'Watch live', watchLiveSub: 'Services streamed on YouTube', liveNow: 'The service is live now!', liveNowSub: 'Tap to join the service', nextLive: 'Next live service', nextLiveIn: 'in {time}', starting: 'The service is starting', startingSub: 'The live stream will appear in a moment', account: 'Want your own account? You can create one from the sign-in page; a pastor or admin then welcomes you into the church and your departments.',
     privacy: 'This page never shows information about our members.',
     error: 'Could not load the latest information. Please try again later.',
     langSwitch: 'Français',
@@ -37,7 +38,7 @@ const TEXT = {
     program: "Programme de l'église", noProgram: 'Le programme sera bientôt publié.', special: 'Spécial', flyer: 'Affiche',
     events: 'Événements à venir', noEvents: "Aucun événement public pour l'instant.", register: "S'inscrire", free: 'Gratuit',
     sermons: 'Prédications récentes', noSermons: 'Les prédications apparaîtront ici bientôt.', watch: 'Regarder', listen: 'Écouter', notes: 'Notes', more: 'Voir plus',
-    contact: 'Nous trouver', follow: 'Suivez-nous', watchLive: 'Regarder en direct', watchLiveSub: 'Les cultes diffusés sur YouTube', liveNow: 'Nous sommes en direct !', liveNowSub: 'Touchez pour rejoindre le culte', upcomingLive: 'Bientôt en direct', account: "Vous voulez votre propre compte ? Créez-le depuis la page de connexion ; un pasteur ou un administrateur vous accueille ensuite dans l'église et vos départements.",
+    contact: 'Nous trouver', follow: 'Suivez-nous', watchLive: 'Regarder en direct', watchLiveSub: 'Les cultes diffusés sur YouTube', liveNow: 'Le culte est en direct !', liveNowSub: 'Touchez pour rejoindre le culte', nextLive: 'Prochain direct', nextLiveIn: 'dans {time}', starting: 'Le culte commence', startingSub: 'Le direct va apparaître dans un instant', account: "Vous voulez votre propre compte ? Créez-le depuis la page de connexion ; un pasteur ou un administrateur vous accueille ensuite dans l'église et vos départements.",
     privacy: "Cette page n'affiche jamais d'information sur nos membres.",
     error: "Impossible de charger les dernières informations. Réessayez plus tard.",
     langSwitch: 'English',
@@ -107,7 +108,7 @@ function render() {
     ${tile('give.html', '💝', tx('give'), tx('giveSub'))}
     ${tile(`guest-checkin.html?d=${todayLocal()}`, '👋', tx('newHere'), tx('newHereSub'))}
     ${tile('register.html', '✍️', tx('member'), tx('memberSub'))}
-    ${tile('index.html', '🔑', tx('signIn'), tx('signInSub'), true)}
+    ${tile('index.html?signin=1', '🔑', tx('signIn'), tx('signInSub'), true)}
   </div>`;
 
   if (!data) {
@@ -182,16 +183,52 @@ function render() {
   bind();
 }
 
+let countdownTimer = null;
+
 function renderLiveBanner() {
   const el = document.querySelector('[data-el="live-banner"]');
+  clearInterval(countdownTimer);
   if (!el) return;
-  if (!liveState || !(liveState.live || liveState.upcoming)) { el.innerHTML = ''; return; }
-  el.innerHTML = `<a href="live.html" class="mt-4 flex items-center gap-3 rounded-2xl ${liveState.live ? 'bg-red-600' : 'bg-amber-500'} text-white p-4 shadow-lg">
-    <span class="relative flex h-3 w-3 shrink-0">${liveState.live ? '<span class="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping"></span>' : ''}<span class="relative inline-flex h-3 w-3 rounded-full bg-white"></span></span>
-    <span class="min-w-0"><span class="block font-bold">${esc(liveState.live ? tx('liveNow') : tx('upcomingLive'))}</span>
-    <span class="block text-sm opacity-90 truncate">${esc(liveState.title || tx('liveNowSub'))}</span></span>
-    <span class="ml-auto text-2xl">›</span>
-  </a>`;
+  if (!liveState || !liveState.configured) { el.innerHTML = ''; return; }
+  if (liveState.live) {
+    el.innerHTML = `<a href="live.html" class="mt-4 flex items-center gap-3 rounded-2xl bg-red-600 text-white p-4 shadow-lg">
+      <span class="relative flex h-3 w-3 shrink-0"><span class="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping"></span><span class="relative inline-flex h-3 w-3 rounded-full bg-white"></span></span>
+      <span class="min-w-0"><span class="block font-bold">${esc(tx('liveNow'))}</span>
+      <span class="block text-sm opacity-90 truncate">${esc(liveState.title || tx('liveNowSub'))}</span></span>
+      <span class="ml-auto text-2xl">›</span>
+    </a>`;
+    return;
+  }
+  const tz = liveState.timezone || 'America/Toronto';
+  const paint = () => {
+    const st = serviceState(liveState.schedule, tz);
+    if (st.state === 'starting') {
+      el.innerHTML = `<a href="live.html" class="mt-4 flex items-center gap-3 rounded-2xl bg-amber-500 text-white p-4 shadow-lg">
+        <span class="text-2xl">⏳</span>
+        <span class="min-w-0"><span class="block font-bold">${esc(tx('starting'))}</span>
+        <span class="block text-sm opacity-90">${esc(tx('startingSub'))}</span></span>
+        <span class="ml-auto text-2xl">›</span>
+      </a>`;
+      return;
+    }
+    if (!st.next) { el.innerHTML = ''; return; }
+    el.innerHTML = `<a href="live.html" class="mt-4 flex items-center gap-3 rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+      <span class="text-2xl">📺</span>
+      <span class="min-w-0"><span class="block text-xs uppercase tracking-wide text-slate-500 font-semibold">${esc(tx('nextLive'))}</span>
+      <span class="block font-semibold first-letter:uppercase">${esc(formatServiceTime(st.next, tz, lang))}</span>
+      <span class="block text-sm text-indigo-700 font-medium tabular-nums">${esc(tx('nextLiveIn').replace('{time}', formatCountdown(st.next - Date.now(), lang)))}</span></span>
+      <span class="ml-auto text-2xl text-slate-400">›</span>
+    </a>`;
+  };
+  paint();
+  let lastState = serviceState(liveState.schedule, tz).state;
+  countdownTimer = setInterval(() => {
+    paint();
+    // The moment the countdown reaches the service time, ask YouTube.
+    const now = serviceState(liveState.schedule, tz).state;
+    if (now === 'starting' && lastState !== 'starting') checkLive();
+    lastState = now;
+  }, 1000);
 }
 
 function bind() {
@@ -216,6 +253,10 @@ async function main() {
   render();
   checkLive();
   setInterval(() => { if (document.visibilityState === 'visible') checkLive(); }, 60000);
+  setInterval(() => {
+    if (document.visibilityState === 'visible' && liveState?.configured && !liveState.live
+      && serviceState(liveState.schedule, liveState.timezone).state === 'starting') checkLive();
+  }, 20000);
   const { data: result, error } = await supabase.functions.invoke('public-portal', { body: {} });
   if (!error && result) data = result;
   loading = false;

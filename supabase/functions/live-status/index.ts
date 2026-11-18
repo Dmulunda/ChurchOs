@@ -3,7 +3,8 @@
 // Reads the YouTube link saved in church_branding.youtube_url (Super
 // Admin Home -> Change Info), finds the channel, and checks the
 // channel's /live page. Returns
-//   { configured, live, upcoming, video_id, title, starts_at, channel_url }
+//   { configured, live, upcoming, video_id, title, starts_at, channel_url,
+//     schedule: [{ day: 0-6 (Sunday = 0), time: 'HH:MM' }], timezone }
 // The answer is cached for 60 seconds in live_status_cache, so many
 // visitors cause at most one YouTube check per minute.
 // Public on purpose (called with the anon key): it only says whether
@@ -58,14 +59,19 @@ async function checkLive(channelId: string) {
     || html.match(/"videoDetails":\{"videoId":"([\w-]{11})"/);
   if (!current) return none;
   const titleMatch = primary;
-  const isLive = /"videoViewCountRenderer":\{[\s\S]{0,600}?"isLive":true/.test(html);
-  const upcomingAt = html.match(/"upcomingEventData":\{"startTime":"(\d+)"/);
+  // Accept-Language is en-US, so YouTube's labels are English. A stream
+  // that is really on air shows "N watching now" / "Started streaming";
+  // a scheduled or abandoned waiting room shows "N waiting" /
+  // "Scheduled for ..." and must NOT count as live.
+  const viewCount = html.match(/"videoViewCountRenderer":\{"viewCount":\{"runs":\[([\s\S]{0,300}?)\]\}/);
+  const dateText = html.match(/"dateText":\{"simpleText":"([^"]*)"/);
+  const isLive = (!!viewCount && /watching now/.test(viewCount[1])) || (!!dateText && /^Started streaming/.test(dateText[1]));
   return {
     live: isLive,
-    upcoming: !isLive && !!upcomingAt,
-    video_id: current[1],
-    title: titleMatch ? unescapeJson(titleMatch[1]) : null,
-    starts_at: !isLive && upcomingAt ? new Date(Number(upcomingAt[1]) * 1000).toISOString() : null,
+    upcoming: false,
+    video_id: isLive ? current[1] : null,
+    title: isLive && titleMatch ? unescapeJson(titleMatch[1]) : null,
+    starts_at: null,
   };
 }
 
@@ -73,13 +79,14 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  const { data: branding } = await admin.from('church_branding').select('youtube_url').eq('id', true).maybeSingle();
+  const { data: branding } = await admin.from('church_branding').select('youtube_url, live_schedule, live_timezone').eq('id', true).maybeSingle();
   const sourceUrl = (branding?.youtube_url || '').trim();
-  if (!sourceUrl) return json({ configured: false, live: false });
+  const schedule = { schedule: Array.isArray(branding?.live_schedule) ? branding.live_schedule : [], timezone: branding?.live_timezone || 'America/Toronto' };
+  if (!sourceUrl) return json({ configured: false, live: false, ...schedule });
 
   const { data: cache } = await admin.from('live_status_cache').select('*').eq('id', true).maybeSingle();
   const fresh = cache && cache.source_url === sourceUrl && Date.now() - new Date(cache.checked_at).getTime() < CACHE_SECONDS * 1000;
-  if (fresh) return json(cache.payload);
+  if (fresh) return json({ ...cache.payload, ...schedule });
 
   let channelId = cache && cache.source_url === sourceUrl ? cache.channel_id : null;
   let payload: Record<string, unknown>;
@@ -93,5 +100,5 @@ Deno.serve(async (req) => {
     payload = cache?.payload && cache.source_url === sourceUrl ? cache.payload : { configured: true, channel_url: sourceUrl, live: false, error: 'check_failed' };
   }
   await admin.from('live_status_cache').upsert({ id: true, source_url: sourceUrl, channel_id: channelId, payload, checked_at: new Date().toISOString() });
-  return json(payload);
+  return json({ ...payload, ...schedule });
 });
