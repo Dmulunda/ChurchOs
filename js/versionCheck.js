@@ -108,10 +108,11 @@ function showUpdateModal(info) {
   const root = document.createElement('div');
   root.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4';
   root.innerHTML = `
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-      <h2 class="text-lg font-bold text-slate-800 mb-2">${t('app.updateAvailableTitle')}</h2>
-      ${notes.length ? `<ul class="text-sm text-slate-600 mb-4 space-y-1 list-disc pl-5">${notes.map((note) => `<li>${escapeHtml(note)}</li>`).join('')}</ul>` : ''}
-      <div class="flex items-center gap-2 flex-wrap">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[88vh] flex flex-col">
+      <h2 class="font-display text-[20px] text-[#0B1F3A] mb-1">${t('app.updateAvailableTitle')}</h2>
+      ${notes.length ? `<p class="text-xs text-slate-500 mb-2">${t('app.updateWhatsNew', { n: notes.length })}</p>
+      <ul class="text-sm text-slate-700 mb-4 space-y-2 list-disc pl-5 overflow-y-auto min-h-0 flex-1 pr-2 border-y border-[#EFEBE2] py-3" style="overscroll-behavior:contain">${notes.map((note) => `<li>${escapeHtml(note)}</li>`).join('')}</ul>` : ''}
+      <div class="flex items-center gap-2 flex-wrap shrink-0">
         <button type="button" data-action="now" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">${t('app.updateNow')}</button>
         <button type="button" data-action="later" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">${t('app.updateLater')}</button>
         <button type="button" data-action="refuse" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-100">${t('app.updateRefuse')}</button>

@@ -552,6 +552,7 @@ const DEPARTMENT_RELATIVE_TABS = new Set([
 // e.g. eventsPage.js's own "Create Flyer" button switching straight
 // to the Flyers tab with that event's details pre-filled.
 export function activateTab(name) {
+  if (!canOpenTab(name)) name = isHomeActive() || !getActiveDepartment() ? 'super-home' : (getActiveDepartment().key === 'choir' ? 'dashboard' : 'dept-dashboard');
   // Only an actual switch should touch scroll memory -- some call sites
   // re-invoke activateTab() with the tab that's already active (e.g.
   // just to refresh nav highlighting), and yanking the user's current
@@ -658,9 +659,9 @@ function rememberedDeptTab(active, isChoir) {
     case 'voice-exercises':
     case 'members': return isChoir ? tab : null;
     case 'uniform': return (isChoir || active.key === 'ushers') ? tab : null;
-    case 'dept-projection': return active.key === 'media_tech' && (active.role === 'admin' || active.role === 'super_admin') ? tab : null;
-    case 'dept-equipment': return active.key === 'media_tech' || equipmentForAllDepts ? tab : null;
-    case 'dept-supplies': return active.key === 'cleaning' ? tab : null;
+    case 'dept-projection': return active.key === 'media_tech' && isMediaAdmin() ? tab : null;
+    case 'dept-equipment': return active.key === 'media_tech' && isMediaAdmin() ? tab : null;
+    case 'dept-supplies': return active.key === 'cleaning' || ADMIN_ROLES.includes(active.role) ? tab : null;
     case 'child-checkin': return active.key === 'ecodem' && childCheckinAvailable ? tab : null;
     case 'headcount-tally': return HEADCOUNT_DEPARTMENT_KEYS.includes(active.key) ? tab : null;
     default: return null;
@@ -676,6 +677,25 @@ function rememberedDeptTab(active, isChoir) {
 function forEachNavGroup(name, fn) {
   document.querySelectorAll(`[data-nav-group="${name}"]`).forEach(fn);
 }
+
+// Who sees what (decided by the church, Nov 2026):
+//  * Events, Flyers, Projection and Equipment: Media & Tech admins
+//    (and Super Admin) only.
+//  * Supplies: every department admin (and all of Cleaning, whose
+//    volunteers use it), Inventory: every department admin.
+const ADMIN_ROLES = ['admin', 'super_admin'];
+function isMediaAdmin() {
+  return getMyDepartments().some((d) => d.key === 'media_tech' && ADMIN_ROLES.includes(d.role));
+}
+function isAnyDepartmentAdmin() {
+  return getMyDepartments().some((d) => ADMIN_ROLES.includes(d.role));
+}
+const MEDIA_ADMIN_TABS = ['events', 'flyers', 'dept-projection', 'dept-equipment'];
+function canOpenTab(name) {
+  if (MEDIA_ADMIN_TABS.includes(name)) return isMediaAdmin();
+  return true;
+}
+export { isAnyDepartmentAdmin };
 
 // The Budget nav button (Finance/Budget module) deliberately isn't
 // built-then-CSS-hidden like every other conditional nav item above --
@@ -812,7 +832,25 @@ function updateOfferingsNavVisibility() {
 // placeholder until their own phase ships. The switcher itself only
 // ever lists departments the signed-in user actually has approved
 // access to (or every department, for a super admin/viewer).
+// The active department's own pages (Dashboard, Schedule, Projection…)
+// are shown right under its row in the menu instead of further down,
+// so no scrolling is needed to find them. The two groups are moved
+// back to their place before the list is rebuilt.
+const deptNavGroups = ['#choir-nav-group', '#lightweight-nav-group'].map((sel) => document.querySelector(sel)).filter(Boolean);
+const deptNavAnchor = document.createComment('department pages');
+deptNavGroups[0]?.parentNode.insertBefore(deptNavAnchor, deptNavGroups[0]);
+function nestDepartmentPages(activeKey) {
+  deptNavGroups.forEach((g) => deptNavAnchor.parentNode.insertBefore(g, deptNavAnchor.nextSibling));
+  const row = activeKey ? departmentSwitcherListEl.querySelector(`[data-dept-key="${activeKey}"]`) : null;
+  if (!row) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'dept-subnav';
+  deptNavGroups.forEach((g) => wrap.appendChild(g));
+  row.after(wrap);
+}
+
 function populateDepartmentSwitcher() {
+  deptNavGroups.forEach((g) => deptNavAnchor.parentNode.insertBefore(g, deptNavAnchor.nextSibling));
   const departments = getMyDepartments();
   departmentSwitcherWrapEl.classList.toggle('hidden', departments.length === 0);
 
@@ -828,6 +866,7 @@ function populateDepartmentSwitcher() {
       <span class="truncate">${departmentLabel(d.key)}</span>
     </button>
   `).join('');
+  nestDepartmentPages(activeKey);
 }
 
 // Coloured initials instead of emoji in the ministries list -- the
@@ -844,9 +883,15 @@ function departmentInitials(label) {
   return letters.toUpperCase();
 }
 
+// Clicking a department in the menu always opens that department's
+// home page (its Dashboard), not whatever kind of tab was open before
+// (e.g. Ushers' Schedule -> Media's Schedule was confusing).
+let landOnDepartmentHome = false;
 departmentSwitcherListEl.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-dept-key]');
-  if (btn) handleDepartmentSwitch(btn.dataset.deptKey);
+  if (!btn) return;
+  landOnDepartmentHome = true;
+  handleDepartmentSwitch(btn.dataset.deptKey).finally(() => { landOnDepartmentHome = false; });
 });
 
 function applyActiveDepartment() {
@@ -869,6 +914,7 @@ function applyActiveDepartment() {
   // since active is intentionally null while on the Home console —
   // Home itself lives inside this same nav group.
   forEachNavGroup('global', (el) => el.classList.toggle('hidden', !hasGlobalReach()));
+  forEachNavGroup('media-admin-nav', (el) => el.classList.toggle('hidden', !isMediaAdmin()));
   updateBudgetNavVisibility();
   updateOfferingsNavVisibility();
   updateSmallGroupsNav();
@@ -925,23 +971,14 @@ function applyActiveDepartment() {
   // Uniform: Choir always has its own button in choir-nav-group: this
   // one (in the shared lightweight nav) is only for Ushers.
   forEachNavGroup('uniform-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'ushers')));
-  // Projection: its own page, Media & Tech only -- and (sql/88) only
-  // its admin/super admin can even open it; other Media members still
-  // see the rest of the department, just not this tab.
-  forEachNavGroup('dept-projection-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'media_tech' && (active.role === 'admin' || active.role === 'super_admin'))));
-  // Equipment inventory: Media & Tech, or every department once sql 166 is applied.
-  forEachNavGroup('dept-equipment-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && (active.key === 'media_tech' || equipmentForAllDepts))));
-  if (!equipmentProbed) {
-    equipmentProbed = true;
-    equipmentExtendedAvailable().then((ok) => {
-      equipmentForAllDepts = ok;
-      const a = getActiveDepartment();
-      if (ok && a && (a.kind === 'lightweight' || a.kind === 'custom')) forEachNavGroup('dept-equipment-nav', (el) => el.classList.remove('hidden'));
-    });
-  }
-  // Supplies: Cleaning only.
-  forEachNavGroup('dept-supplies-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'cleaning')));
-  // Children's check-in: Sunday School only, once sql/saas_platform/152 is applied.
+  // Projection: its own page, Media & Tech only.
+  // Projection and Equipment: Media & Tech admins only.
+  const mediaAdminHere = isDeptDashboardKind && active.key === 'media_tech' && isMediaAdmin();
+  forEachNavGroup('dept-projection-nav', (el) => el.classList.toggle('hidden', !mediaAdminHere));
+  forEachNavGroup('dept-equipment-nav', (el) => el.classList.toggle('hidden', !mediaAdminHere));
+  // Supplies: Cleaning (all members) and every department's admins.
+  forEachNavGroup('dept-supplies-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && (active.key === 'cleaning' || ADMIN_ROLES.includes(active.role)))));
+  // Children's check-in: Sunday School only, once sql/149 is applied.
   forEachNavGroup('child-checkin-nav', (el) => el.classList.toggle('hidden', !(isDeptDashboardKind && active.key === 'ecodem' && childCheckinAvailable)));
   if (!childCheckinProbed && active.key === 'ecodem') {
     childCheckinProbed = true;
@@ -958,7 +995,7 @@ function applyActiveDepartment() {
   if (isChoir) {
     comingSoonPanelEl.classList.add('hidden');
     loadedTabs.delete('uniform');
-    activateTab(GLOBAL_STANDALONE_TABS.has(previousTabName) ? previousTabName : (rememberedDeptTab(active, true) || resolveLandingTab(previousTabName, active, true) || 'dashboard'));
+    activateTab(landOnDepartmentHome ? 'dashboard' : GLOBAL_STANDALONE_TABS.has(previousTabName) ? previousTabName : (rememberedDeptTab(active, true) || resolveLandingTab(previousTabName, active, true) || 'dashboard'));
   } else if (isDeptDashboardKind) {
     comingSoonPanelEl.classList.add('hidden');
     deptDashboardNameEl.textContent = departmentLabel(active.key);
@@ -974,7 +1011,7 @@ function applyActiveDepartment() {
     loadedTabs.delete('dept-supplies');
     loadedTabs.delete('child-checkin');
     loadedTabs.delete('headcount-tally');
-    activateTab(GLOBAL_STANDALONE_TABS.has(previousTabName) ? previousTabName : (rememberedDeptTab(active, false) || resolveLandingTab(previousTabName, active, false) || 'dept-dashboard'));
+    activateTab(landOnDepartmentHome ? 'dept-dashboard' : GLOBAL_STANDALONE_TABS.has(previousTabName) ? previousTabName : (rememberedDeptTab(active, false) || resolveLandingTab(previousTabName, active, false) || 'dept-dashboard'));
   } else {
     // Unreachable today — every department kind ('choir', 'lightweight',
     // 'custom') is handled above; kept as a fallback in case a future
@@ -1200,13 +1237,15 @@ function buildQuickAccessItems() {
   const items = [
     { icon: '📖', label: t('nav.serviceProgram'), tab: 'service-program' },
     { icon: '🧾', label: t('nav.tax'), tab: 'tax' },
-    { icon: '🎟️', label: t('nav.events'), tab: 'events' },
   ];
   if (canSeePastoralDashboardClient()) items.push({ icon: '🧑‍🤝‍🧑', label: t('sidebar.pastoralDashboard'), tab: 'pastoral-dashboard' });
   // Plan-gated -- a dead-end tile for a feature the tenant's plan
   // doesn't include would be worse than just not offering the shortcut.
   if (hasFeature('vpd_academy')) items.push({ icon: '🎓', label: t('nav.training'), tab: 'training' });
-  if (hasFeature('flyers')) items.push({ icon: '🖼️', label: t('nav.flyers'), tab: 'flyers' });
+  if (isMediaAdmin()) {
+    items.push({ icon: '🎟️', label: t('nav.events'), tab: 'events' });
+    if (hasFeature('flyers')) items.push({ icon: '🖼️', label: t('nav.flyers'), tab: 'flyers' });
+  }
   if (hasAnyDeptLeadership()) items.push({ icon: '💰', label: t('nav.budget'), tab: 'budget' });
   if (canRecordOfferings()) items.push({ icon: '🙏', label: t('nav.offerings'), tab: 'offerings' });
   if (active) {
@@ -1217,9 +1256,9 @@ function buildQuickAccessItems() {
     if (isChoir) items.push({ icon: '🎵', label: t('nav.songbook'), tab: 'songbook' });
     if (isChoir) items.push({ icon: '🎤', label: t('nav.voiceExercises'), tab: 'voice-exercises' });
     if (isChoir || active.key === 'ushers') items.push({ icon: '🎽', label: t('nav.uniform'), tab: 'uniform' });
-    if (active.key === 'media_tech' && hasFeature('projection') && (active.role === 'admin' || active.role === 'super_admin')) items.push({ icon: '🎥', label: t('nav.projection'), tab: 'dept-projection' });
-    if (active.key === 'media_tech' || equipmentForAllDepts) items.push({ icon: '🎦', label: t('nav.equipment'), tab: 'dept-equipment' });
-    if (active.key === 'cleaning') items.push({ icon: '🧹', label: t('nav.supplies'), tab: 'dept-supplies' });
+    if (active.key === 'media_tech' && hasFeature('projection') && isMediaAdmin()) items.push({ icon: '🎥', label: t('nav.projection'), tab: 'dept-projection' });
+    if (active.key === 'media_tech' && isMediaAdmin()) items.push({ icon: '🎦', label: t('nav.equipment'), tab: 'dept-equipment' });
+    if (active.key === 'cleaning' || ADMIN_ROLES.includes(active.role)) items.push({ icon: '🧹', label: t('nav.supplies'), tab: 'dept-supplies' });
     if (active.key === 'ecodem' && childCheckinAvailable) items.push({ icon: '🧒', label: t('childCheckin.title'), tab: 'child-checkin' });
     if (HEADCOUNT_DEPARTMENT_KEYS.includes(active.key)) items.push({ icon: '🔢', label: t('nav.headcountTally'), tab: 'headcount-tally' });
   }

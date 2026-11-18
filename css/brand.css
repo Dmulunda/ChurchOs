@@ -310,3 +310,8 @@ html.dark .proj-chip { background: #334155; color: #e2e8f0; }
 .proj-sources select, .proj-sources input[type=text] { max-width: 100%; }
 .proj-btn--ok { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.45); color: #D3F5DF; }
 .proj-btn--warn { background: rgba(224,182,84,.2); border-color: rgba(224,182,84,.55); color: #F6E3B4; }
+
+/* Active department's own pages, shown right under it in the menu */
+#sidebar .dept-subnav { margin: 2px 0 6px 18px; padding-left: 8px; border-left: 2px solid rgba(224,182,84,.45); }
+#sidebar .dept-subnav > div { margin: 0; padding: 0; border: 0; }
+#sidebar .dept-subnav button.w-full { font-size: 13px; padding-top: 6px; padding-bottom: 6px; }

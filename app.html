@@ -530,14 +530,14 @@
                js/eventsPage.js (department admin of the organizing
                department, or Super Admin), same as every other
                department-scoped write in this app. -->
-          <button data-tab-target="events" data-i18n="nav.events"
-                  class="w-full text-left px-3 py-2 rounded-lg font-medium transition-colors hover:bg-slate-800">
+          <button data-tab-target="events" data-i18n="nav.events" data-nav-group="media-admin-nav"
+                  class="hidden w-full text-left px-3 py-2 rounded-lg font-medium transition-colors hover:bg-slate-800">
             Events
           </button>
           <!-- Flyers -- same unconditional placement; a real Fabric.js
                drag-and-drop editor, js/components/flyerEditor.js. -->
-          <button data-tab-target="flyers" data-entitlement-feature="flyers"
-                  class="w-full text-left px-3 py-2 rounded-lg font-medium transition-colors hover:bg-slate-800 flex items-center justify-between gap-2">
+          <button data-tab-target="flyers" data-entitlement-feature="flyers" data-nav-group="media-admin-nav"
+                  class="hidden w-full text-left px-3 py-2 rounded-lg font-medium transition-colors hover:bg-slate-800 flex items-center justify-between gap-2">
             <span data-i18n="nav.flyers">Flyers</span>
             <span data-el="flyers-lock" class="hidden text-xs font-normal text-amber-400">🔒 <span data-i18n="entitlements.upgrade">Upgrade</span></span>
           </button>

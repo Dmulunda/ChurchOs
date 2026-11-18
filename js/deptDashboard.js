@@ -18,6 +18,7 @@ import { createGuestCheckinQrModal } from './components/guestCheckinQrModal.js';
 import { renderGuestAttendanceDashboard } from './components/guestAttendanceDashboard.js';
 import { renderNextUpcomingWidget } from './components/nextUpcomingWidget.js';
 import { renderMyPreachingWidget } from './components/myPreachingWidget.js';
+import { renderMyReminders } from './components/homeFeed.js';
 import { renderChurchProgramBoard } from './components/churchProgramBoard.js';
 import { createPrayerRequestQueueModal } from './components/prayerRequests.js';
 import { ensureAgreementsSigned } from './components/agreementSigningModal.js';
@@ -67,6 +68,8 @@ export async function renderDeptDashboardTab() {
       <div class="flex items-center gap-2 flex-wrap" data-el="header-actions"></div>
     </div>
 
+    <div data-el="reminders"></div>
+
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 max-w-xl" data-el="stats"></div>
 
     <div data-el="my-preaching"></div>
@@ -75,6 +78,7 @@ export async function renderDeptDashboardTab() {
 
     <div data-el="full-width" class="space-y-4"></div>
   `;
+  renderMyReminders(container.querySelector('[data-el="reminders"]'), { supabase, departments: getMyDepartments() });
 
   const headerActionsEl = container.querySelector('[data-el="header-actions"]');
   const statsEl = container.querySelector('[data-el="stats"]');

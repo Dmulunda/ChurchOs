@@ -319,3 +319,92 @@ export async function renderTodo(container, { supabase, actions }) {
     </section>`;
   container.querySelectorAll('[data-i]').forEach((b) => b.addEventListener('click', () => items[Number(b.dataset.i)].go?.()));
 }
+
+// ---- "À faire" (shown when the app opens: Home and each department's
+// home page) ------------------------------------------------------------
+// 1) Check your schedule: services waiting for an answer first.
+// 2) Add your availability: when nothing is entered for the rest of this
+//    month, and -- from a week before a new month -- for next month.
+// Each line can be hidden for the rest of the day (×).
+function ymdLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function monthName(d) {
+  return d.toLocaleDateString(appLocale(), { month: 'long' });
+}
+const REMINDER_HIDE_KEY = 'vpd-reminders-hidden';
+function hiddenToday() {
+  try {
+    const v = JSON.parse(localStorage.getItem(REMINDER_HIDE_KEY) || '{}');
+    return v.day === ymdLocal(new Date()) ? new Set(v.ids || []) : new Set();
+  } catch { return new Set(); }
+}
+function hideForToday(id) {
+  try {
+    const ids = [...hiddenToday(), id];
+    localStorage.setItem(REMINDER_HIDE_KEY, JSON.stringify({ day: ymdLocal(new Date()), ids }));
+  } catch { /* storage blocked */ }
+}
+
+export async function renderMyReminders(container, { supabase, departments }) {
+  if (!container) return;
+  container.innerHTML = '';
+  const mine = (departments || []).filter((d) => d.key !== 'church_program' && d.key !== 'finance');
+  if (!mine.length) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const now = new Date();
+  const today = ymdLocal(now);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const nextFirst = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const nextEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  const lastWeek = (nextFirst - now) <= 7 * 86400000;
+  const restOfMonth = monthEnd.getDate() - now.getDate() >= 3; // a few days left to plan
+
+  const count = (from, to) => supabase.from('availability').select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id).gte('date', from).lte('date', to)
+    .then((r) => (r.error ? null : r.count || 0), () => null);
+
+  const [services, thisMonth, nextMonth] = await Promise.all([
+    supabase.rpc('get_my_upcoming_services', { p_limit: 10 }).then((r) => (r.error ? [] : r.data || []), () => []),
+    restOfMonth ? count(today, ymdLocal(monthEnd)) : Promise.resolve(1),
+    lastWeek ? count(ymdLocal(nextFirst), ymdLocal(nextEnd)) : Promise.resolve(1),
+  ]);
+
+  const pending = services.filter((s) => s.status === 'pending' && s.kind !== 'preacher');
+  const firstKey = (pending[0] || services[0] || {}).department_key || mine[0].key;
+  const items = [];
+  if (pending.length) {
+    items.push({ id: 'confirm', tone: 'gold', text: t('home.todoConfirm', { n: pending.length }), action: t('home.todoSeeSchedule'), key: pending[0].department_key });
+  } else {
+    items.push({ id: 'schedule', tone: 'plain', text: services.length ? t('home.todoCheckScheduleNext', { date: longDate(services[0].service_date) }) : t('home.todoCheckSchedule'), action: t('home.todoSeeSchedule'), key: firstKey });
+  }
+  if (nextMonth === 0) {
+    items.push({ id: `avail-${ymdLocal(nextFirst)}`, tone: 'gold', text: t('home.todoAvailabilityNext', { month: monthName(nextFirst) }), action: t('home.todoAddAvailability'), key: firstKey });
+  } else if (thisMonth === 0) {
+    items.push({ id: `avail-${today.slice(0, 7)}`, tone: 'gold', text: t('home.todoAvailability', { month: monthName(now) }), action: t('home.todoAddAvailability'), key: firstKey });
+  }
+
+  const hidden = hiddenToday();
+  const shown = items.filter((i) => !hidden.has(i.id));
+  if (!shown.length) return;
+  container.innerHTML = `
+    <section class="home-card mb-4" aria-label="${escapeHtml(t('home.todoMine'))}">
+      <div class="home-kicker mb-1">${t('home.todoMine')}</div>
+      ${shown.map((i, idx) => `
+        <div class="flex items-center gap-3 py-2.5 ${idx ? 'border-t border-[#EFEBE2]' : ''}">
+          <span class="w-2 h-2 rounded-full shrink-0 ${i.tone === 'gold' ? 'bg-[#E0B654]' : 'bg-slate-300'}"></span>
+          <span class="flex-1 text-[14px] text-slate-700">${escapeHtml(i.text)}</span>
+          <button type="button" data-go="${idx}" class="home-btn h-9 px-3 text-[13px]">${escapeHtml(i.action)}</button>
+          <button type="button" data-hide="${idx}" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" aria-label="${escapeHtml(t('home.todoHide'))}" title="${escapeHtml(t('home.todoHide'))}">×</button>
+        </div>`).join('')}
+    </section>`;
+  container.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('app:open-department-schedule', { detail: { key: shown[Number(b.dataset.go)].key } }));
+  }));
+  container.querySelectorAll('[data-hide]').forEach((b) => b.addEventListener('click', () => {
+    hideForToday(shown[Number(b.dataset.hide)].id);
+    renderMyReminders(container, { supabase, departments });
+  }));
+}

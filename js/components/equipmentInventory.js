@@ -8,7 +8,7 @@
 // date/value, warranty end, next maintenance date, a borrower name for people
 // without an account, and a maintenance log. Without it, the original basic
 // fields (sql/saas_platform/84) are used. RLS enforces who may do what.
-import { getEffectiveSupabase, getActiveDepartment } from '../departments.js';
+import { getEffectiveSupabase, getActiveDepartment, getMyDepartments } from '../departments.js';
 import { t, formatDate, formatMoney, departmentLabel } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 
@@ -64,8 +64,12 @@ export async function renderEquipmentInventoryTab() {
 }
 
 // Church-wide page (pastoral team).
+// The church-wide Inventory page: pastoral team, and every department
+// admin (each sees and manages their own departments' items -- RLS on
+// equipment_items decides which rows).
 export async function probeInventoryPage() {
   if (!(await equipmentExtendedAvailable())) return { error: 'not installed' };
+  if (getMyDepartments().some((d) => d.role === 'admin' || d.role === 'super_admin')) return { error: null };
   const { data } = await getEffectiveSupabase().rpc('is_pastoral_team');
   return data ? { error: null } : { error: 'hidden' };
 }

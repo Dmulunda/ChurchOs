@@ -1,6 +1,7 @@
 // Dashboard tab entry point: department announcements, roster overview,
 // and a snapshot of the next upcoming service.
-import { getEffectiveSupabase, getActiveDepartment, canPostAnnouncements, isGlobalAnnouncer } from './departments.js';
+import { getEffectiveSupabase, getActiveDepartment, canPostAnnouncements, isGlobalAnnouncer, getMyDepartments } from './departments.js';
+import { renderMyReminders } from './components/homeFeed.js';
 import { renderDashboard } from './components/dashboardOverview.js';
 import { renderAnnouncements } from './components/departmentAnnouncements.js';
 import { renderMyPreachingWidget } from './components/myPreachingWidget.js';
@@ -31,6 +32,10 @@ export async function renderDashboardTab() {
   await ensureAgreementsSigned({ supabase, userId: user.id, departmentId: active.id });
 
   container.innerHTML = '';
+
+  const remindersEl = document.createElement('div');
+  container.appendChild(remindersEl);
+  renderMyReminders(remindersEl, { supabase, departments: getMyDepartments() });
 
   const dateHeaderEl = document.createElement('div');
   container.appendChild(dateHeaderEl);

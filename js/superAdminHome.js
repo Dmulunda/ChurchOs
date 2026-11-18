@@ -12,10 +12,10 @@
 // exports below so Tools' buttons (and the header's own "New Member"
 // button, via openGuestOnboardingHub) can reach them without
 // duplicating the create/teardown logic in a second file.
-import { getEffectiveSupabase, getGlobalRole, hasGlobalReach } from './departments.js';
+import { getEffectiveSupabase, getGlobalRole, hasGlobalReach, getMyDepartments } from './departments.js';
 import { hasFeature } from './entitlements.js';
 import { openPlansModal } from './app.js';
-import { greeting, escapeHtml as esc, renderNextService, renderQuickActions, renderThisWeek, renderLive, renderTodo, loadLiveInfo } from './components/homeFeed.js';
+import { greeting, escapeHtml as esc, renderNextService, renderQuickActions, renderThisWeek, renderLive, renderTodo, loadLiveInfo, renderMyReminders } from './components/homeFeed.js';
 import { createUserManagerModal } from './components/userManager.js';
 import { createSilentDirectoryModal } from './components/silentDirectory.js';
 import { renderAllDepartmentApprovals } from './components/allDepartmentApprovals.js';
@@ -169,6 +169,7 @@ export async function renderSuperAdminHomeTab() {
           <h2 class="font-display text-[28px] sm:text-[32px] leading-tight text-[#0B1F3A] mt-0.5">${esc(greeting(displayName))}</h2>
           <div data-el="live-chip" class="mt-2.5 lg:hidden"></div>
         </div>
+        <div data-el="reminders"></div>
         <div data-el="next-service"></div>
         <div data-el="quick"></div>
         <div data-el="w-announcements"></div>
@@ -196,6 +197,7 @@ export async function renderSuperAdminHomeTab() {
 
   const liveInfo = loadLiveInfo(supabase);
   renderLive(container.querySelector('[data-el="live-card"]'), container.querySelector('[data-el="live-chip"]'), { liveInfo });
+  renderMyReminders(container.querySelector('[data-el="reminders"]'), { supabase, departments: getMyDepartments() });
   renderNextService(container.querySelector('[data-el="next-service"]'), { supabase });
   renderQuickActions(container.querySelector('[data-el="quick"]'));
   renderThisWeek(container.querySelector('[data-el="this-week"]'), { supabase, liveInfo });
