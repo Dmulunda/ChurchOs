@@ -392,7 +392,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
       }
 
       const actionsCell = document.createElement('td');
-      actionsCell.className = 'px-4 py-2.5';
+      actionsCell.className = 'px-4 py-2.5 user-actions'; // actions sit side by side (brand.css), not one per line
 
       const editBtn = document.createElement('button');
       editBtn.type = 'button';

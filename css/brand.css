@@ -335,3 +335,11 @@ html.dark .proj-chip { background: #334155; color: #e2e8f0; }
   #app-shell main div:has(> button[data-action^="tab-"]) { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
   #app-shell main div:has(> button[data-action^="tab-"]) > button { white-space: nowrap; flex-shrink: 0; }
 }
+
+/* Review group 3: the directory's row actions sat one per line, making
+   every row ~170 px tall; now they flow side by side. */
+td.user-actions { min-width: 640px; }
+td.user-actions > * { display: inline-block !important; margin: 0 14px 4px 0 !important; vertical-align: middle; }
+/* Member card (fixed 400 px so the PNG/PDF export is always the same):
+   on narrow phones it scrolls sideways instead of being cut off. */
+div:has(> [data-el="card-front"]) { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
