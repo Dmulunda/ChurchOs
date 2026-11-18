@@ -9,6 +9,7 @@
 import { supabase } from './supabaseClient.js';
 import { fetchLiveStatus } from './liveStatus.js';
 import { serviceState, formatServiceTime, slotFor, placeLabel } from './liveSchedule.js';
+import { clipPageUrl } from './utils/videoClip.js';
 
 const LANG_KEY = 'choir-hub-lang';
 const NAVY = '#0B1F3A';
@@ -279,6 +280,14 @@ function programSection() {
   </section>`;
 }
 
+// A sermon can be a part of a full livestream (start/end, sql/166): the
+// link then opens YouTube's player limited to that part.
+function sermonLink(s) {
+  const a = Number.isInteger(s.video_start_seconds) ? s.video_start_seconds : null;
+  const b = Number.isInteger(s.video_end_seconds) ? s.video_end_seconds : null;
+  return a == null && b == null ? s.video_url : clipPageUrl(s.video_url, a, b);
+}
+
 function sermonSection() {
   const all = data?.sermons || [];
   if (!all.length) return '';
@@ -286,7 +295,7 @@ function sermonSection() {
   const vid = youtubeId(first.video_url);
   const meta = [first.preacher, first.preached_on && new Date(`${first.preached_on}T12:00:00`).toLocaleDateString(locale(), { day: 'numeric', month: 'long' }), first.scripture].filter(Boolean).join(' · ');
   const buttons = (s, big) => `<div class="flex flex-wrap gap-2 ${big ? 'pt-2' : 'pt-1'}">
-      ${s.video_url ? `<a href="${attr(s.video_url)}" target="_blank" rel="noopener" class="h-11 px-4 rounded-xl text-white text-sm font-semibold flex items-center gap-1.5" style="background:${NAVY}">${PLAY(14)} ${esc(tx('watch'))}</a>` : ''}
+      ${s.video_url ? `<a href="${attr(sermonLink(s))}" target="_blank" rel="noopener" class="h-11 px-4 rounded-xl text-white text-sm font-semibold flex items-center gap-1.5" style="background:${NAVY}">${PLAY(14)} ${esc(tx('watch'))}</a>` : ''}
       ${s.audio_url ? `<a href="${attr(s.audio_url)}" target="_blank" rel="noopener" class="h-11 px-4 rounded-xl text-sm font-semibold flex items-center" style="background:#EEF2F8;color:${NAVY}">${esc(tx('listen'))}</a>` : ''}
       ${s.notes_url ? `<a href="${attr(s.notes_url)}" target="_blank" rel="noopener" class="h-11 px-4 rounded-xl text-sm font-semibold flex items-center" style="color:${NAVY}">${esc(tx('notes'))}</a>` : ''}
     </div>`;
@@ -299,7 +308,7 @@ function sermonSection() {
   return `<section class="px-5 pt-7 flex flex-col gap-3">
     ${sectionTitle(tx('latestSermon'), toggle)}
     <div class="bg-white border border-[#E6E1D6] rounded-[18px] overflow-hidden flex flex-col">
-      ${vid ? `<a href="${attr(first.video_url)}" target="_blank" rel="noopener" class="relative block" style="background:#1B2B47;aspect-ratio:16/9">
+      ${vid ? `<a href="${attr(sermonLink(first))}" target="_blank" rel="noopener" class="relative block" style="background:#1B2B47;aspect-ratio:16/9">
         <img src="https://i.ytimg.com/vi/${encodeURIComponent(vid)}/hqdefault.jpg" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">
         <span class="absolute inset-0 flex items-center justify-center"><span class="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center" style="color:${NAVY}">${PLAY(26)}</span></span>
       </a>` : ''}

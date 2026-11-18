@@ -9,7 +9,8 @@
 //     special flag, flyer)
 //   * events with visibility 'public' that are not cancelled and not over
 //   * the 12 most recent sermons (not archived), with short-lived signed
-//     links for audio and notes
+//     links for audio and notes, and the sermon's start/end inside the
+//     video (sql/166) so a full livestream link plays only the sermon
 // Called with the anon key (verify_jwt stays on).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
       .gte('start_at', new Date(now.getTime() - 6 * 3600000).toISOString())
       .order('start_at').limit(12),
     admin.from('sermons')
-      .select('title, preacher, preached_on, series, scripture, language, summary, video_url, audio_path, notes_path')
+      .select('title, preacher, preached_on, series, scripture, language, summary, video_url, video_start_seconds, video_end_seconds, audio_path, notes_path')
       .is('archived_at', null).order('preached_on', { ascending: false }).limit(12),
   ]);
 
@@ -62,6 +63,8 @@ Deno.serve(async (req) => {
     title: s.title, preacher: s.preacher, preached_on: s.preached_on, series: s.series, scripture: s.scripture,
     language: s.language, summary: s.summary,
     video_url: /^https:\/\//.test(s.video_url || '') ? s.video_url : null,
+    video_start_seconds: Number.isInteger(s.video_start_seconds) ? s.video_start_seconds : null,
+    video_end_seconds: Number.isInteger(s.video_end_seconds) ? s.video_end_seconds : null,
     audio_url: await sign('sermon-files', s.audio_path),
     notes_url: await sign('sermon-files', s.notes_path),
   })));
