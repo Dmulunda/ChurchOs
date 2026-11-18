@@ -22,7 +22,13 @@ export async function renderDashboardTab() {
   }
 
   const active = getActiveDepartment();
-  if (active) await ensureAgreementsSigned({ supabase, userId: user.id, departmentId: active.id });
+  // Reached with no department selected (e.g. a direct link to this
+  // tab): say what to do instead of crashing.
+  if (!active) {
+    container.innerHTML = `<p class="text-slate-500 ${cardClass}">${t('dashboard.pickDepartment')}</p>`;
+    return;
+  }
+  await ensureAgreementsSigned({ supabase, userId: user.id, departmentId: active.id });
 
   container.innerHTML = '';
 

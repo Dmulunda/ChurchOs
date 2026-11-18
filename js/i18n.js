@@ -2796,7 +2796,7 @@ const TRANSLATIONS = {
     'deptScheduling.deleteFailed': 'Failed to delete: {message}',
     'deptScheduling.unavailableOnDate': 'unavailable that day',
     'deptScheduling.alreadyAssignedTo': 'already in {department}',
-    'deptScheduling.switchDepartment': 'Make a schedule for:',
+    'deptScheduling.switchDepartment': 'Department:',
 
     'preaching.title': 'Schedule a Service',
     'preaching.multipleHint': 'A day can have more than one entry — e.g. two services, or several speakers with different themes. Submitting always adds a new entry unless you clicked Edit on an existing one.',
@@ -2983,6 +2983,7 @@ const TRANSLATIONS = {
     'ecodem.saveGeneric': 'Save',
 
     'dashboard.placeholder': 'Dashboard content will be rendered here.',
+    'dashboard.pickDepartment': 'Pick a ministry in the menu to see its dashboard.',
     'scheduling.placeholder': 'Availability calendar and service plans will be rendered here.',
     'songbook.placeholder': 'Song list, lyrics, and track links will be rendered here.',
     'voiceExercises.placeholder': 'Warm-up and practice material will be rendered here.',
@@ -3146,6 +3147,8 @@ const TRANSLATIONS = {
     'calendar.setYours': 'Set yours',
     'calendar.prev': '← Prev',
     'calendar.next': 'Next →',
+    'calendar.prevMonth': 'Previous month',
+    'calendar.nextMonth': 'Next month',
     'calendar.available': 'Available',
     'calendar.unavailable': 'Unavailable',
     'calendar.notSet': 'Not set',
@@ -6367,7 +6370,7 @@ const TRANSLATIONS = {
     'deptScheduling.deleteFailed': 'Échec de la suppression : {message}',
     'deptScheduling.unavailableOnDate': 'indisponible ce jour-là',
     'deptScheduling.alreadyAssignedTo': 'déjà dans {department}',
-    'deptScheduling.switchDepartment': 'Créer un planning pour :',
+    'deptScheduling.switchDepartment': 'Département :',
 
     'preaching.title': 'Planifier un service',
     'preaching.multipleHint': "Un même jour peut avoir plusieurs entrées — par exemple deux services, ou plusieurs orateurs avec des thèmes différents. Valider ajoute toujours une nouvelle entrée, sauf si vous avez cliqué sur Modifier pour une entrée existante.",
@@ -6554,6 +6557,7 @@ const TRANSLATIONS = {
     'ecodem.saveGeneric': 'Enregistrer',
 
     'dashboard.placeholder': 'Le contenu du tableau de bord sera affiché ici.',
+    'dashboard.pickDepartment': 'Choisissez un ministère dans le menu pour voir son tableau de bord.',
     'scheduling.placeholder': 'Le calendrier de disponibilité et les plans de service seront affichés ici.',
     'songbook.placeholder': 'La liste des chants, les paroles et les liens audio seront affichés ici.',
     'voiceExercises.placeholder': "Les exercices d'échauffement et de pratique seront affichés ici.",
@@ -6717,6 +6721,8 @@ const TRANSLATIONS = {
     'calendar.setYours': 'Indiquer',
     'calendar.prev': '← Précédent',
     'calendar.next': 'Suivant →',
+    'calendar.prevMonth': 'Mois précédent',
+    'calendar.nextMonth': 'Mois suivant',
     'calendar.available': 'Disponible',
     'calendar.unavailable': 'Indisponible',
     'calendar.notSet': 'Non défini',

@@ -46,7 +46,7 @@ function metricCard(title, weekly, key, fmt) {
         ${weekly.map((w) => {
           const v = w[key];
           const h = v === null || v === undefined ? 0 : Math.max(4, Math.round((v / max) * 100));
-          return `<div class="flex-1 rounded-t ${v === null || v === undefined ? 'bg-slate-100' : 'bg-indigo-400'}" style="height:${v === null || v === undefined ? 4 : h}%" title="${escapeHtml(formatDate(w.week))}: ${v === null || v === undefined ? '—' : escapeHtml(fmt(v))}"></div>`;
+          return `<div class="flex-1 rounded-t ${v === null || v === undefined ? 'bg-slate-100' : 'bg-[#0B1F3A]'}" style="height:${v === null || v === undefined ? 4 : h}%" title="${escapeHtml(formatDate(w.week))}: ${v === null || v === undefined ? '—' : escapeHtml(fmt(v))}"></div>`;
         }).join('')}
       </div>
       <div class="flex justify-between text-[11px] text-slate-400 mt-1"><span>${escapeHtml(formatDate(weekly[0]?.week))}</span><span>${escapeHtml(formatDate(weekly[weekly.length - 1]?.week))}</span></div>

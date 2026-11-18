@@ -24,11 +24,11 @@ export function renderDepartmentCalendarGrid(container, { supabase, departmentId
 
   container.innerHTML = `
     <div class="flex items-center justify-between mb-4">
-      <button type="button" data-action="prev-month" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">${t('calendar.prev')}</button>
+      <button type="button" data-action="prev-month" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"><span aria-hidden="true">‹</span><span class="sr-only">${t('calendar.prevMonth')}</span></button>
       <h2 data-el="month-label" class="text-lg font-semibold"></h2>
       <div class="flex items-center gap-2">
         ${canAdminister && onImportClick ? `<button type="button" data-action="import-pdf" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm">${t('deptCalendar.importPdf')}</button>` : ''}
-        <button type="button" data-action="next-month" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">${t('calendar.next')}</button>
+        <button type="button" data-action="next-month" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"><span aria-hidden="true">›</span><span class="sr-only">${t('calendar.nextMonth')}</span></button>
       </div>
     </div>
     <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500 mb-1">

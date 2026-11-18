@@ -43,10 +43,10 @@ export function renderAvailabilityCalendar(container, { supabase, userId, depart
   container.innerHTML = `
     <div class="flex items-center justify-between mb-4">
       <button type="button" data-action="prev-month"
-              class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">${t('calendar.prev')}</button>
+              class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"><span aria-hidden="true">‹</span><span class="sr-only">${t('calendar.prevMonth')}</span></button>
       <h2 data-el="month-label" class="text-lg font-semibold"></h2>
       <button type="button" data-action="next-month"
-              class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">${t('calendar.next')}</button>
+              class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"><span aria-hidden="true">›</span><span class="sr-only">${t('calendar.nextMonth')}</span></button>
     </div>
 
     <div class="flex items-center gap-4 text-sm text-slate-500 mb-3 flex-wrap">

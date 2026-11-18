@@ -30,9 +30,9 @@ export function renderPastorAvailabilityCalendar(container, { supabase, pastorId
   container.innerHTML = `
     <div data-el="pause-control" class="bg-white rounded-xl shadow p-4 sm:p-6 mb-6"></div>
     <div class="flex items-center justify-between mb-4">
-      <button type="button" data-action="prev-month" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">${t('calendar.prev')}</button>
+      <button type="button" data-action="prev-month" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"><span aria-hidden="true">‹</span><span class="sr-only">${t('calendar.prevMonth')}</span></button>
       <h2 data-el="month-label" class="text-lg font-semibold"></h2>
-      <button type="button" data-action="next-month" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">${t('calendar.next')}</button>
+      <button type="button" data-action="next-month" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"><span aria-hidden="true">›</span><span class="sr-only">${t('calendar.nextMonth')}</span></button>
     </div>
     <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500 mb-1">
       <div>${t('calendar.days.sun')}</div><div>${t('calendar.days.mon')}</div><div>${t('calendar.days.tue')}</div><div>${t('calendar.days.wed')}</div><div>${t('calendar.days.thu')}</div><div>${t('calendar.days.fri')}</div><div>${t('calendar.days.sat')}</div>
