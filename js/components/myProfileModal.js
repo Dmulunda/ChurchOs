@@ -13,6 +13,7 @@ import { createSignaturePad } from './signaturePad.js';
 import { hasFeature } from '../entitlements.js';
 import { confirmDialog } from './confirmDialog.js';
 import { exitReasonDialog } from './memberExitModal.js';
+import { safeFileName } from '../utils/safeFileName.js';
 
 // Member Card is a plan-gated feature (sql/saas_platform/86_pricing_v2.sql)
 // -- its own data is just ordinary profile columns used elsewhere too,
@@ -184,7 +185,7 @@ export function createMyProfileModal({ supabase, userId }) {
 
     const file = form.querySelector('[data-el="photo-input"]')?.files?.[0];
     if (file) {
-      const path = `${userId}/${Date.now()}-${file.name}`;
+      const path = `${userId}/${Date.now()}-${safeFileName(file.name)}`;
       const { error: uploadError } = await supabase.storage.from('member-photos').upload(path, file);
       if (uploadError) {
         formStatusEl.className = 'text-sm text-rose-600';

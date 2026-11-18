@@ -9,6 +9,7 @@ import { confirmDialog } from './confirmDialog.js';
 import { t, departmentLabel, formatDate } from '../i18n.js';
 import { formatAmount } from './budgetBoard.js';
 import { canApproveFinance } from '../departments.js';
+import { safeFileName } from '../utils/safeFileName.js';
 
 const RECEIPT_BUCKET = 'budget-receipts';
 
@@ -120,7 +121,7 @@ function renderFormBody(container, { supabase, departmentId, currentUserId }) {
 
     let receiptPath = null;
     if (file) {
-      const path = `${departmentId}/reimbursements/${Date.now()}-${file.name}`;
+      const path = `${departmentId}/reimbursements/${Date.now()}-${safeFileName(file.name)}`;
       const { error: uploadError } = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file);
       if (uploadError) {
         formStatusEl.className = 'text-sm text-rose-600';

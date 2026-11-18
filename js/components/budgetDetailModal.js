@@ -8,6 +8,7 @@ import { confirmDialog } from './confirmDialog.js';
 import { formatAmount } from './budgetBoard.js';
 import { printBudgetSummary } from './budgetPdf.js';
 import { hasFinanceOversight } from '../departments.js';
+import { safeFileName } from '../utils/safeFileName.js';
 
 const RECEIPT_BUCKET = 'budget-receipts';
 
@@ -217,7 +218,7 @@ export function createBudgetDetailModal({ supabase, budgetId, departmentId, curr
       triggerEl.textContent = t('common.saving');
       triggerEl.disabled = true;
 
-      const path = `${departmentId}/${budgetId}/${Date.now()}-${file.name}`;
+      const path = `${departmentId}/${budgetId}/${Date.now()}-${safeFileName(file.name)}`;
       const { error: uploadError } = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file);
       if (uploadError) {
         triggerEl.textContent = original;
@@ -296,7 +297,7 @@ export function createBudgetDetailModal({ supabase, budgetId, departmentId, curr
 
       let receiptPath = null;
       if (file) {
-        const path = `${departmentId}/${budgetId}/${Date.now()}-${file.name}`;
+        const path = `${departmentId}/${budgetId}/${Date.now()}-${safeFileName(file.name)}`;
         const { error: uploadError } = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file);
         if (uploadError) {
           statusEl.className = 'text-sm text-rose-600';

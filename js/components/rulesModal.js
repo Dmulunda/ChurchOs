@@ -8,6 +8,7 @@
 // scope: { type: 'church', canAdminister } | { type: 'department', departmentId, departmentKey, canAdminister }
 import { confirmDialog } from './confirmDialog.js';
 import { t, appLocale } from '../i18n.js';
+import { safeFileName } from '../utils/safeFileName.js';
 
 const SIGNED_URL_TTL_SECONDS = 300;
 
@@ -144,7 +145,7 @@ export function createRulesModal({ supabase, scope, currentUserId, title }) {
       }
     }
 
-    const path = `${folderPath()}/${Date.now()}-${file.name}`;
+    const path = `${folderPath()}/${Date.now()}-${safeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage.from('rules').upload(path, file, { contentType: 'application/pdf' });
     if (uploadError) {
       button.disabled = false;

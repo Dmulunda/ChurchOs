@@ -7,6 +7,7 @@
 // lesson id — see courseBuilder.js, which creates the lesson row first.
 import { t } from '../i18n.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabaseClient.js';
+import { safeFileName } from '../utils/safeFileName.js';
 
 const MC_COUNT = 7;
 const TF_COUNT = 3;
@@ -206,7 +207,7 @@ export function createLessonEditorModal({ supabase, onSaved }) {
       const file = fileInput.files?.[0];
       if (!file) return;
       pdfStatusEl.textContent = t('courses.uploading');
-      const path = `${lesson.id}/${Date.now()}-${file.name}`;
+      const path = `${lesson.id}/${Date.now()}-${safeFileName(file.name)}`;
       const { error: uploadError } = await supabase.storage.from('course-pdfs').upload(path, file);
       if (uploadError) { pdfStatusEl.textContent = t('courses.saveFailed', { message: uploadError.message }); return; }
       const { error } = await supabase.from('lessons').update({ pdf_storage_path: path, pdf_file_name: file.name }).eq('id', lesson.id);

@@ -9,6 +9,7 @@ import { t, formatDate } from '../i18n.js';
 import { confirmDialog } from './confirmDialog.js';
 import { todayLocal } from '../utils/date.js';
 import { getGlobalRole } from '../departments.js';
+import { safeFileName } from '../utils/safeFileName.js';
 
 export function renderUniformSchedule(container, { supabase, departmentId, canAdminister }) {
   const dateMinAttr = getGlobalRole() === 'super_admin' ? '' : `min="${todayLocal()}"`;
@@ -78,7 +79,7 @@ export function renderUniformSchedule(container, { supabase, departmentId, canAd
     let imagePath;
     const file = form.elements['photo-input']?.files?.[0];
     if (file) {
-      const path = `${departmentId}/${date}-${Date.now()}-${file.name}`;
+      const path = `${departmentId}/${date}-${Date.now()}-${safeFileName(file.name)}`;
       const { error: uploadError } = await supabase.storage.from('uniform-photos').upload(path, file);
       if (uploadError) {
         formStatusEl.className = 'text-sm text-rose-600';
