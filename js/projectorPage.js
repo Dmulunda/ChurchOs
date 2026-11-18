@@ -355,7 +355,23 @@ function showPresentation(payload) {
   }
 }
 
+// Same text re-sent (e.g. the operator moving the text-size slider)
+// should not flash; anything new fades in.
+let lastShownKey = '';
+function fadeIn() {
+  [linesEl, referenceEl, imageEl, presentationSlideEl, countdownContainerEl].forEach((el) => {
+    el.classList.remove('fade');
+    void el.offsetWidth; // restart the animation
+    el.classList.add('fade');
+  });
+}
+
 function show(payload) {
+  // Images/slides carry a file (not comparable): always treated as new.
+  const key = payload ? JSON.stringify([payload.kind, payload.lines, payload.reference, payload.text, payload.endsAt, payload.videoId, payload.backgroundColor, (payload.blob || payload.backgroundBlob) ? Math.random() : 0]) : 'none';
+  const isNew = key !== lastShownKey && !(payload?.kind === 'video' && payload.action !== 'play');
+  lastShownKey = key;
+  if (isNew) fadeIn();
   if (!payload || payload.kind === 'blank') {
     hideAllContent();
     idleEl.style.display = 'block';
@@ -398,6 +414,9 @@ channel.onmessage = (e) => {
 // live (and the current backdrop) — this page may have just opened,
 // or reconnected after the laptop went to sleep mid-service.
 channel.postMessage({ event: 'hello' });
+// Lets the operator panel show "Screen connected" / "Screen not open".
+setInterval(() => channel.postMessage({ event: 'ping' }), 3000);
+window.addEventListener('pagehide', () => channel.postMessage({ event: 'bye' }));
 
 function escapeHtml(str) {
   const div = document.createElement('div');

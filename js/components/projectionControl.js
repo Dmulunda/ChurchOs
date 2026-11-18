@@ -138,26 +138,29 @@ function readProjectionState() {
 
 export function renderProjectionControl(container, { supabase }) {
   container.innerHTML = `
-    <div class="bg-white rounded-xl shadow p-4 sm:p-6 mb-6">
-      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h2 class="text-lg font-semibold">${t('projection.title')}</h2>
+    <div class="proj-console mb-6">
+      <div class="proj-bar">
+        <div class="flex items-center gap-3 min-w-0">
+          <h2 class="font-display text-[20px] text-white m-0">${t('projection.title')}</h2>
+          <span data-el="screen-status" class="proj-status" title="${t('projection.statusHint')}"><span class="proj-status-dot"></span><span data-el="screen-status-text">${t('projection.screenOff')}</span></span>
+        </div>
         <div class="flex items-center gap-2 flex-wrap">
-          <button type="button" data-action="open-screen" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
+          <button type="button" data-action="open-screen" class="proj-btn proj-btn--gold">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
             ${t('projection.openScreen')}
           </button>
-          <button type="button" data-action="blank" class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-300">
-            ${t('projection.blankScreen')}
+          <button type="button" data-action="blank" class="proj-btn" title="${t('projection.blankShortcut')}">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+            ${t('projection.blankScreen')} <kbd class="proj-kbd">B</kbd>
           </button>
-          <button type="button" data-action="setup-local-folder" data-el="local-folder-btn" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">
-            ${t('projection.setupLocalFolder')}
-          </button>
-          <button type="button" data-action="open-themes" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">
-            ${t('projection.themes')}
-          </button>
+          <button type="button" data-action="open-themes" class="proj-btn">${t('projection.themes')}</button>
+          <button type="button" data-action="setup-local-folder" data-el="local-folder-btn" class="proj-btn">${t('projection.setupLocalFolder')}</button>
         </div>
       </div>
+      <div class="proj-grid">
+      <div class="proj-sources">
 
-      <div class="mb-4 pb-4 border-b border-slate-100">
+      <div class="mb-4 pb-4 border-b border-[#EFEBE2]">
         <div class="flex flex-wrap items-center gap-4">
           <div class="flex items-center gap-2">
             <label class="text-sm text-slate-600">${t('projection.textSize')}</label>
@@ -178,11 +181,11 @@ export function renderProjectionControl(container, { supabase }) {
         </div>
       </div>
 
-      <div class="flex gap-2 mb-4 border-b border-slate-200 flex-wrap">
-        <button type="button" data-mode-tab="bible" class="px-3 py-2 text-sm font-medium border-b-2 border-indigo-600 text-indigo-700">${t('projection.bibleTab')}</button>
-        <button type="button" data-mode-tab="song" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('projection.songTab')}</button>
-        <button type="button" data-mode-tab="media" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('projection.mediaTab')}</button>
-        <button type="button" data-mode-tab="schedule" class="px-3 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">${t('projection.scheduleTab')}</button>
+      <div class="proj-tabs mb-4" role="tablist">
+        <button type="button" role="tab" data-mode-tab="bible">${t('projection.bibleTab')}</button>
+        <button type="button" role="tab" data-mode-tab="song">${t('projection.songTab')}</button>
+        <button type="button" role="tab" data-mode-tab="media">${t('projection.mediaTab')}</button>
+        <button type="button" role="tab" data-mode-tab="schedule">${t('projection.scheduleTab')}</button>
       </div>
 
       <div data-el="bible-panel">
@@ -217,8 +220,8 @@ export function renderProjectionControl(container, { supabase }) {
           <select data-el="book-select" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm sm:col-span-2"></select>
           <select data-el="chapter-select" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm"></select>
         </div>
-        <div class="flex items-center gap-2 mb-3">
-          <select data-el="verse-select" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm flex-1"></select>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <select data-el="verse-select" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-0 basis-full sm:basis-0"></select>
           <button type="button" data-action="project-verse" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
             ${t('projection.preview')}
           </button>
@@ -359,25 +362,25 @@ export function renderProjectionControl(container, { supabase }) {
         <div data-el="schedule-list" class="space-y-1.5"></div>
       </div>
 
-      <div class="mt-4 pt-3 border-t border-slate-100">
-        <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-center">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">${t('projection.preview')}</p>
-            <div data-el="preview-box" class="rounded-lg bg-slate-600 text-white p-4 min-h-[4.5rem] flex flex-col items-center justify-center text-center">
-              <p class="text-slate-300 text-sm">${t('projection.nothingStaged')}</p>
-            </div>
-          </div>
-          <button type="button" data-action="send-staged" title="${t('projection.sendToLive')}"
-                  class="justify-self-center shrink-0 w-10 h-10 rounded-full bg-indigo-600 text-white text-lg font-bold hover:bg-indigo-700 disabled:opacity-40 flex items-center justify-center" disabled>
-            &rarr;
-          </button>
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">${t('projection.nowShowing')}</p>
-            <div data-el="now-showing" class="rounded-lg bg-slate-900 text-white p-4 min-h-[4.5rem] flex flex-col items-center justify-center text-center">
-              <p class="text-slate-400 text-sm">${t('projection.nothingLive')}</p>
-            </div>
-          </div>
+      </div>
+      <aside class="proj-monitors">
+        <div>
+          <div class="proj-mon-label">${t('projection.preview')} <span class="text-slate-400 normal-case font-normal tracking-normal">· ${t('projection.previewHint')}</span></div>
+          <div data-el="preview-box" class="proj-monitor"><p class="proj-empty">${t('projection.nothingStaged')}</p></div>
         </div>
+        <button type="button" data-action="send-staged" class="proj-send" disabled>
+          ${t('projection.sendToLive')} <kbd class="proj-kbd">⏎</kbd>
+        </button>
+        <div>
+          <div class="proj-mon-label proj-mon-label--live"><span class="proj-live-dot"></span>${t('projection.nowShowing')}</div>
+          <div data-el="now-showing" class="proj-monitor proj-monitor--live"><p class="proj-empty">${t('projection.nothingLive')}</p></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" data-action="step-prev" class="proj-step">‹ ${t('projection.previous')} <kbd class="proj-kbd">←</kbd></button>
+          <button type="button" data-action="step-next" class="proj-step">${t('projection.next')} › <kbd class="proj-kbd">→</kbd></button>
+        </div>
+        <p class="text-[11px] leading-snug text-slate-500">${t('projection.shortcutsHint')}</p>
+      </aside>
       </div>
     </div>
   `;
@@ -714,8 +717,23 @@ export function renderProjectionControl(container, { supabase }) {
   // exactly the real setup (laptop -> HDMI -> projector), and means
   // none of this needs an internet connection once the page has loaded.
   const channel = createProjectionChannel();
+  // Projector connection: projector.html says 'hello' on open, 'ping'
+  // every few seconds and 'bye' when closed.
+  const screenStatusEl = container.querySelector('[data-el="screen-status"]');
+  const screenStatusTextEl = container.querySelector('[data-el="screen-status-text"]');
+  let lastScreenPing = 0;
+  function updateScreenStatus() {
+    const on = Date.now() - lastScreenPing < 8000 || !!(projectorWindowRef && !projectorWindowRef.closed);
+    screenStatusEl.classList.toggle('is-on', on);
+    screenStatusTextEl.textContent = on ? t('projection.screenOn') : t('projection.screenOff');
+  }
+  const screenStatusTimer = setInterval(updateScreenStatus, 2000);
   channel.onmessage = (e) => {
+    if (e.data?.event === 'ping') { lastScreenPing = Date.now(); updateScreenStatus(); return; }
+    if (e.data?.event === 'bye') { lastScreenPing = 0; setTimeout(updateScreenStatus, 300); return; }
     if (e.data?.event !== 'hello') return;
+    lastScreenPing = Date.now();
+    updateScreenStatus();
     // The projector just (re)connected — resend what's live, the
     // current backdrop, and every category's active theme, since it
     // has no other way to know any of them.
@@ -774,12 +792,48 @@ export function renderProjectionControl(container, { supabase }) {
 
   modeTabs.forEach((tab) => tab.addEventListener('click', () => { setMode(tab.dataset.modeTab); saveState(); }));
 
+  // Previous / Next for whatever is being run: the tab that's open
+  // (Bible verses, song slides, presentation slides), otherwise the
+  // kind that is live right now. Same buttons the panels already have,
+  // so their own enable/disable rules apply.
+  function stepButtons() {
+    const kind = currentMode === 'media' ? (mediaKind === 'presentation' ? 'presentation' : null) : currentMode;
+    const k = kind === 'schedule' || !kind ? currentPayload?.kind : kind;
+    if (k === 'bible') return [prevVerseBtn, nextVerseBtn];
+    if (k === 'song') return [prevSlideBtn, nextSlideBtn];
+    if (k === 'presentation') return [prevPresentationSlideBtn, nextPresentationSlideBtn];
+    return [null, null];
+  }
+  function step(dir) {
+    const btn = stepButtons()[dir < 0 ? 0 : 1];
+    if (btn && !btn.disabled) btn.click();
+  }
+  container.querySelector('[data-action="step-prev"]').addEventListener('click', () => step(-1));
+  container.querySelector('[data-action="step-next"]').addEventListener('click', () => step(1));
+
+  // Keyboard and presentation clickers (they send PageUp/PageDown and
+  // "b" or "." for a black screen). Ignored while typing in a field.
+  function onKey(e) {
+    if (!container.isConnected || e.altKey || e.ctrlKey || e.metaKey) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+    if (document.querySelector('.fixed.inset-0:not(.hidden)')) return; // a dialog is open
+    const k = e.key;
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ') { e.preventDefault(); step(1); }
+    else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); step(-1); }
+    else if (k === 'Enter') { if (!sendStagedBtn.disabled) { e.preventDefault(); sendStagedBtn.click(); } }
+    else if (k === 'b' || k === 'B' || k === '.') { e.preventDefault(); container.querySelector('[data-action="blank"]').click(); }
+    else if (k === 'Escape') { if (stagedPayload) clearStaged(); }
+  }
+  document.addEventListener('keydown', onKey);
+
   function setMode(mode) {
     currentMode = mode;
     Object.entries(panels).forEach(([key, el]) => el.classList.toggle('hidden', key !== mode));
     modeTabs.forEach((tab) => {
       const active = tab.dataset.modeTab === mode;
-      tab.className = `px-3 py-2 text-sm font-medium border-b-2 ${active ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
   }
 
@@ -788,7 +842,7 @@ export function renderProjectionControl(container, { supabase }) {
     Object.entries(mediaKindPanels).forEach(([key, el]) => el.classList.toggle('hidden', key !== kind));
     mediaKindBtns.forEach((btn) => {
       const active = btn.dataset.mediaKind === kind;
-      btn.className = `px-3 py-1.5 rounded-lg text-sm font-medium ${active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`;
+      btn.className = `proj-chip${active ? ' is-active' : ''}`;
     });
   }
   mediaKindBtns.forEach((btn) => btn.addEventListener('click', () => setMediaKind(btn.dataset.mediaKind)));
@@ -813,61 +867,106 @@ export function renderProjectionControl(container, { supabase }) {
     saveState();
   }
 
-  // "Now Showing" — a preview of the actual live content right in the
-  // operator panel, since the operator can't always see the physical
-  // projector screen from where they're running the laptop.
+  // The two monitors on the right (Aperçu / À l'écran) are small 16:9
+  // copies of the projector: same background (toolbar image, else the
+  // category's theme), same text colour, text scaled to the box. Object
+  // URLs are cached per Blob (WeakMap) instead of minted on every
+  // render, so a long service of PDF slides doesn't keep leaking memory.
+  const blobUrls = new WeakMap();
+  function blobUrl(blob) {
+    if (!blob) return '';
+    let url = blobUrls.get(blob);
+    if (!url) { url = URL.createObjectURL(blob); blobUrls.set(blob, url); }
+    return url;
+  }
+  function themeFor(kind) {
+    const category = kind === 'song' ? 'songs' : kind === 'bible' ? 'bible' : 'media';
+    try { return activeThemes[category] || null; } catch { return null; }
+  }
+  function styleMonitor(el, payload) {
+    const theme = payload ? themeFor(payload.kind) : null;
+    if (payload && currentBackdropObjectUrl && (payload.kind === 'bible' || payload.kind === 'song' || payload.kind === 'countdown')) {
+      el.style.background = `#000 center / cover no-repeat url("${currentBackdropObjectUrl}")`;
+    } else if (payload && theme?.background_value && payload.kind !== 'image' && payload.kind !== 'video') {
+      el.style.background = theme.background_value;
+      if (/^url\(|^https?:/.test(theme.background_value)) el.style.backgroundSize = 'cover';
+    } else {
+      el.style.background = '';
+    }
+    el.style.color = theme?.text_color || '';
+  }
+
   function contentPreviewHtml(payload, staged) {
     if (payload.kind === 'bible' || payload.kind === 'song') {
+      const scale = Math.min(1.6, Math.max(0.6, payload.fontScale || currentFontScale || 1));
+      const long = payload.lines.join(' ').length;
+      const size = Math.max(10, Math.min(22, (long > 220 ? 12 : long > 120 ? 14 : 17) * scale));
       return `
-        <p class="text-sm leading-snug">${payload.lines.map((l) => escapeHtml(l)).join('<br>')}</p>
-        ${payload.reference ? `<p class="text-xs text-slate-300 mt-2">${escapeHtml(payload.reference)}</p>` : ''}
+        <div class="proj-mon-text" style="font-size:${size}px">${payload.lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}</div>
+        ${payload.reference ? `<p class="proj-mon-ref">${escapeHtml(payload.reference)}</p>` : ''}
       `;
     }
     if (payload.kind === 'image') {
-      // Fine to mint a fresh object URL per render here — this tab's
-      // own preview only, images are shown far less often than
-      // verses/songs, and it's all released anyway the moment this
-      // page reloads or closes.
-      return `<img src="${escapeAttr(URL.createObjectURL(payload.blob))}" class="max-h-24 rounded" alt="" />`;
+      return `<img src="${escapeAttr(blobUrl(payload.blob))}" class="absolute inset-0 w-full h-full object-contain" alt="" />`;
     }
     if (payload.kind === 'video') {
       // A staged video hasn't actually started playing yet — only the
       // live "Now Showing" copy of this reflects real playback state.
       const state = staged ? t('projection.videoStagedLabel') : (payload.action === 'pause' ? t('projection.videoPaused') : t('projection.videoPlaying'));
-      return `<p class="text-sm">🎬 ${escapeHtml(state)}</p>`;
+      const thumb = payload.source === 'youtube' && payload.videoId ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(payload.videoId)}/hqdefault.jpg" class="absolute inset-0 w-full h-full object-cover opacity-60" alt="" onerror="this.remove()">` : '';
+      return `${thumb}<p class="relative text-sm font-semibold">🎬 ${escapeHtml(state)}</p>`;
     }
     if (payload.kind === 'presentation') {
       if (payload.backgroundBlob) {
-        return `<img src="${escapeAttr(URL.createObjectURL(payload.backgroundBlob))}" class="max-h-24 rounded" alt="" />`;
+        return `<img src="${escapeAttr(blobUrl(payload.backgroundBlob))}" class="absolute inset-0 w-full h-full object-contain" alt="" />`;
       }
-      return `<div class="rounded p-3 text-sm" style="background:${escapeAttr(payload.backgroundColor || '#000')};color:#fff;">${escapeHtml(payload.text || '')}</div>`;
+      return `<div class="absolute inset-0 flex items-center justify-center p-4 text-center text-[15px] font-semibold" style="background:${escapeAttr(payload.backgroundColor || '#000')};color:#fff;">${escapeHtml(payload.text || '')}</div>`;
     }
     if (payload.kind === 'countdown') {
-      return `<p class="text-sm">⏱ ${escapeHtml(payload.text || '')} — ${t('projection.countdownRunning')}</p>`;
+      const left = Math.max(0, new Date(payload.endsAt).getTime() - Date.now());
+      const mm = String(Math.floor(left / 60000)).padStart(2, '0');
+      const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+      return `<p class="text-xs opacity-80">${escapeHtml(payload.text || '')}</p><p class="text-[28px] font-bold tabular-nums leading-none mt-1">${staged ? '' : `${mm}:${ss}`}</p>${staged ? `<p class="text-xs mt-1">⏱ ${t('projection.countdownRunning')}</p>` : ''}`;
     }
     return '';
   }
 
   function renderNowShowing(payload) {
-    nowShowingEl.innerHTML = (!payload || payload.kind === 'blank')
-      ? `<p class="text-slate-400 text-sm">${t('projection.nothingLive')}</p>`
+    const empty = !payload || payload.kind === 'blank';
+    styleMonitor(nowShowingEl, empty ? null : payload);
+    nowShowingEl.classList.toggle('is-blank', empty);
+    nowShowingEl.innerHTML = empty
+      ? `<p class="proj-empty">${payload?.kind === 'blank' ? t('projection.blankShowing') : t('projection.nothingLive')}</p>`
       : contentPreviewHtml(payload, false);
   }
 
   function renderStagePreview(payload) {
+    styleMonitor(previewBoxEl, payload);
     previewBoxEl.innerHTML = !payload
-      ? `<p class="text-slate-300 text-sm">${t('projection.nothingStaged')}</p>`
+      ? `<p class="proj-empty">${t('projection.nothingStaged')}</p>`
       : contentPreviewHtml(payload, true);
     sendStagedBtn.disabled = !payload;
   }
 
+  // Keep a live countdown's mini copy ticking.
+  const monitorTimer = setInterval(() => {
+    if (currentPayload?.kind === 'countdown') renderNowShowing(currentPayload);
+  }, 1000);
+
   // --- Text size / backdrop ---
 
+  // Dragging the slider fires dozens of input events a second; send at
+  // most one update per animation frame to the projector.
+  let fontScaleFrame = 0;
   fontScaleEl.addEventListener('input', () => {
     currentFontScale = Number(fontScaleEl.value) / 100;
     fontScaleValueEl.textContent = `${fontScaleEl.value}%`;
-    if (currentPayload?.kind === 'bible' || currentPayload?.kind === 'song') send(currentPayload); // also saves state
-    else saveState();
+    if (fontScaleFrame) return;
+    fontScaleFrame = requestAnimationFrame(() => {
+      fontScaleFrame = 0;
+      if (currentPayload?.kind === 'bible' || currentPayload?.kind === 'song') send(currentPayload); // also saves state
+      else saveState();
+    });
   });
 
   // A local file, picked straight from this computer — never uploaded
@@ -882,6 +981,8 @@ export function renderProjectionControl(container, { supabase }) {
     clearBackdropBtn.classList.toggle('hidden', !currentBackdropBlob);
     if (currentBackdropObjectUrl) backdropThumbEl.src = currentBackdropObjectUrl;
     channel.postMessage({ event: 'backdrop', blob: currentBackdropBlob });
+    renderNowShowing(currentPayload);
+    renderStagePreview(stagedPayload);
   }
 
   backdropInputEl.addEventListener('change', () => {
@@ -1984,6 +2085,9 @@ export function renderProjectionControl(container, { supabase }) {
 
   return {
     destroy() {
+      document.removeEventListener('keydown', onKey);
+      clearInterval(screenStatusTimer);
+      clearInterval(monitorTimer);
       channel.close();
       voiceDetector?.stop();
       document.removeEventListener('click', closeSuggestionsOnOutsideClick);
