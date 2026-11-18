@@ -180,6 +180,21 @@ export async function cacheSong(folderHandle, song) {
   await writable.close();
 }
 
+// Saves the whole song library at once (one file write), so every song
+// is on this computer even if it was never shown here yet -- a later
+// service without internet still has all the lyrics.
+export async function cacheSongs(folderHandle, songs) {
+  const cache = await readSongsCache(folderHandle);
+  const at = new Date().toISOString();
+  (songs || []).forEach((song) => {
+    if (song?.id && song.lyrics) cache[song.id] = { id: song.id, title: song.title, lyrics: song.lyrics, cachedAt: at };
+  });
+  const fileHandle = await folderHandle.getFileHandle(SONGS_CACHE_FILE, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(JSON.stringify(cache));
+  await writable.close();
+}
+
 // ---- Presentation deck, same folder -- survives a reload the same
 // way the Image/Video library already does. Each slide's own
 // background image (if any) is saved as its own file, named by the

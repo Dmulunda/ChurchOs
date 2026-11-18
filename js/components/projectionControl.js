@@ -478,7 +478,8 @@ export function renderProjectionControl(container, { supabase }) {
   let voiceDetector = null;
   let voiceSuggestion = null; // { bookNumber, chapter, verse } awaiting the operator's tap
 
-  let allSongs = []; // [{id, title}], loaded once
+  let allSongs = []; // [{id, title, lyrics}]
+  let songsFromLocalCopy = false; // list read from the local folder copy (no internet)
   let songSlides = []; // [[line, line, ...], ...]
   let songTitle = '';
   let selectedSongId = null;
@@ -580,16 +581,13 @@ export function renderProjectionControl(container, { supabase }) {
     localFolderBtnEl.textContent = localFolderHandle
       ? t('projection.localFolderConnected')
       : needsFolderReconnect ? t('projection.reconnectLocalFolder') : t('projection.setupLocalFolder');
-    localFolderBtnEl.className = `px-3 py-1.5 rounded-lg text-sm font-medium ${
-      localFolderHandle ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-      : needsFolderReconnect ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-    }`;
+    localFolderBtnEl.className = `proj-btn${localFolderHandle ? ' proj-btn--ok' : needsFolderReconnect ? ' proj-btn--warn' : ''}`;
     imageLocalHintEl.textContent = localFolderHandle ? t('projection.localFolderHint') : t('projection.localFileHint');
     videoLocalHintEl.textContent = localFolderHandle ? t('projection.localFolderHint') : t('projection.localFileHint');
     renderImageLibrary();
     renderVideoLibrary();
     restorePresentationState();
+    if (localFolderHandle) loadSongList(); // copies the song library into the folder
   }
 
   // Always a multi-item library, with or without a local folder set
@@ -851,7 +849,7 @@ export function renderProjectionControl(container, { supabase }) {
   setMediaKind('image');
 
   function send(payload) {
-    if (payload.kind === 'bible' || payload.kind === 'song') {
+    if (payload.kind === 'bible' || payload.kind === 'song' || payload.kind === 'countdown') {
       payload = { ...payload, fontScale: currentFontScale };
     }
     currentPayload = payload;
@@ -966,7 +964,7 @@ export function renderProjectionControl(container, { supabase }) {
     if (fontScaleFrame) return;
     fontScaleFrame = requestAnimationFrame(() => {
       fontScaleFrame = 0;
-      if (currentPayload?.kind === 'bible' || currentPayload?.kind === 'song') send(currentPayload); // also saves state
+      if (currentPayload?.kind === 'bible' || currentPayload?.kind === 'song' || currentPayload?.kind === 'countdown') send(currentPayload); // also saves state
       else saveState();
     });
   });
@@ -1389,9 +1387,27 @@ export function renderProjectionControl(container, { supabase }) {
   // verse 1 when the choir repeats it, without stepping through
   // everything in between.
 
+  // Songs live in the database (shared with the Choir and every
+  // computer). When a local media folder is connected, the whole
+  // library is also copied there, so a service without internet still
+  // has every song; without internet the list comes from that copy.
   async function loadSongList() {
-    const { data } = await supabase.from('songs').select('id, title').order('title');
-    allSongs = data || [];
+    let rows = null;
+    try {
+      const { data, error } = await supabase.from('songs').select('id, title, lyrics').order('title');
+      if (error) throw error;
+      rows = data || [];
+      songsFromLocalCopy = false;
+      if (localFolderHandle && rows.length) localMediaStore.cacheSongs(localFolderHandle, rows).catch(() => {});
+    } catch {
+      rows = null;
+    }
+    if (!rows && localFolderHandle) {
+      const cache = await localMediaStore.readSongsCache(localFolderHandle).catch(() => ({}));
+      rows = Object.values(cache).sort((a, b) => String(a.title).localeCompare(String(b.title)));
+      songsFromLocalCopy = rows.length > 0;
+    }
+    allSongs = rows || [];
     renderSongList(allSongs);
   }
 
@@ -1400,7 +1416,7 @@ export function renderProjectionControl(container, { supabase }) {
       songListEl.innerHTML = `<p class="text-sm text-slate-400 px-3 py-2">${t('projection.noSongsYet')}</p>`;
       return;
     }
-    songListEl.innerHTML = rows.map((r) => `<button type="button" data-song-id="${r.id}" class="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">${escapeHtml(r.title)}</button>`).join('');
+    songListEl.innerHTML = (songsFromLocalCopy ? `<p class="text-xs text-amber-700 bg-amber-50 px-3 py-1.5">${t('projection.songsLocalCopy')}</p>` : '') + rows.map((r) => `<button type="button" data-song-id="${r.id}" class="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">${escapeHtml(r.title)}</button>`).join('');
     songListEl.querySelectorAll('[data-song-id]').forEach((btn) => {
       btn.addEventListener('click', () => selectSong(btn.dataset.songId, rows.find((r) => r.id === btn.dataset.songId).title));
     });
@@ -1465,11 +1481,13 @@ export function renderProjectionControl(container, { supabase }) {
   });
 
   async function selectSong(songId, title) {
-    let lyrics = null;
+    let lyrics = allSongs.find((s) => s.id === songId)?.lyrics ?? null;
     try {
-      const { data, error } = await supabase.from('songs').select('lyrics').eq('id', songId).single();
-      if (error) throw error;
-      lyrics = data?.lyrics;
+      if (lyrics == null) {
+        const { data, error } = await supabase.from('songs').select('lyrics').eq('id', songId).single();
+        if (error) throw error;
+        lyrics = data?.lyrics;
+      }
     } catch {
       // No connectivity (or some other fetch failure) -- fall back to
       // whatever was cached locally the last time this song was shown.

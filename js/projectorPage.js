@@ -286,17 +286,25 @@ async function handleVideo(payload) {
 // otherwise push the clock/text past the edges of the screen -- there's
 // no bounded parent box here (unlike #lines' max-height), so this
 // checks against the actual viewport instead.
+// The written line ("Le culte commence dans") is meant to be read from
+// the back of the room: it starts large (about half the clock's
+// height) and follows both the Media theme's size and the operator's
+// text-size slider; the fit loop below only shrinks it if it would not
+// fit on the screen.
+let countdownFontScale = 1;
 function applyCountdownSizeTheme() {
-  const scale = themes.media?.font_scale || 1;
+  const scale = (themes.media?.font_scale || 1) * (countdownFontScale || 1);
   let factor = 1;
   function apply() {
     const f = scale * factor;
-    countdownTextEl.style.fontSize = `clamp(${1.2 * f}rem, ${4 * f}vw, ${3 * f}rem)`;
-    countdownClockEl.style.fontSize = `clamp(${3 * f}rem, ${14 * f}vw, ${10 * f}rem)`;
+    countdownTextEl.style.fontSize = `${7 * f}vw`;
+    countdownClockEl.style.fontSize = `${16 * f}vw`;
   }
   apply();
   let guard = 0;
-  while ((countdownContainerEl.scrollWidth > window.innerWidth * 0.92 || countdownContainerEl.scrollHeight > window.innerHeight * 0.85) && factor > 0.1 && guard < 40) {
+  // The box is the full usable width and the text wraps, so only the
+  // clock's own width and the total height can overflow.
+  while ((countdownClockEl.scrollWidth > countdownContainerEl.clientWidth + 1 || countdownContainerEl.scrollHeight > window.innerHeight * 0.88) && factor > 0.1 && guard < 40) {
     factor *= 0.95;
     apply();
     guard += 1;
@@ -308,6 +316,7 @@ function showCountdown(payload) {
   idleEl.style.display = 'none';
   currentCategory = 'media';
   countdownContainerEl.style.display = 'block';
+  countdownFontScale = payload.fontScale || 1;
   countdownTextEl.textContent = payload.text || '';
   applyTextTheme(countdownTextEl, 'media');
   applyTextTheme(countdownClockEl, 'media');

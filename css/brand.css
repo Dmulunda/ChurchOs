@@ -308,3 +308,5 @@ html.dark .proj-chip { background: #334155; color: #e2e8f0; }
   .proj-monitors > p { order: 5; grid-column: 1 / -1; }
 }
 .proj-sources select, .proj-sources input[type=text] { max-width: 100%; }
+.proj-btn--ok { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.45); color: #D3F5DF; }
+.proj-btn--warn { background: rgba(224,182,84,.2); border-color: rgba(224,182,84,.55); color: #F6E3B4; }
