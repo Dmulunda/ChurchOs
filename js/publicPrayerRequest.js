@@ -55,7 +55,7 @@ function renderForm(container, { tenantSlug }) {
       </div>
 
       <label class="flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" name="anonymous" checked class="rounded border-slate-300">
+        <input type="checkbox" name="anonymous" class="rounded border-slate-300">
         ${t('prayerRequest.anonymousToggle')}
       </label>
 
