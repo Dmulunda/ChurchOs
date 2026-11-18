@@ -315,3 +315,23 @@ html.dark .proj-chip { background: #334155; color: #e2e8f0; }
 #sidebar .dept-subnav { margin: 2px 0 6px 18px; padding-left: 8px; border-left: 2px solid rgba(224,182,84,.45); }
 #sidebar .dept-subnav > div { margin: 0; padding: 0; border: 0; }
 #sidebar .dept-subnav button.w-full { font-size: 13px; padding-top: 6px; padding-bottom: 6px; }
+
+/* Review group 2: tab rows (Site admin, Pastoral dashboard, Budget…)
+   stay on one line and scroll sideways on phones instead of stacking;
+   the active underline uses the brand navy instead of purple. */
+.border-indigo-600 { border-color: var(--theme-primary) !important; }
+.border-indigo-500 { border-color: var(--theme-primary) !important; }
+@media (max-width: 640px) {
+  #app-shell main div:has(> button[data-tab].border-b-2),
+  #app-shell main div:has(> button[data-view]),
+  #app-shell main div:has(> button[data-tab].rounded-lg) {
+    flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  #app-shell main div:has(> button[data-tab].border-b-2) > button,
+  #app-shell main div:has(> button[data-view]) > button,
+  #app-shell main div:has(> button[data-tab].rounded-lg) > button { white-space: nowrap; flex-shrink: 0; }
+}
+@media (max-width: 640px) {
+  #app-shell main div:has(> button[data-action^="tab-"]) { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
+  #app-shell main div:has(> button[data-action^="tab-"]) > button { white-space: nowrap; flex-shrink: 0; }
+}
