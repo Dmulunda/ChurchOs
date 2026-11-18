@@ -39,18 +39,34 @@ function stripAccents(str) {
 // accents already stripped by the time this runs). Generating both
 // forms as aliases means either spoken style gets matched.
 const ORDINAL_PREFIXES = {
-  1: ['1', 'first', 'premier', 'premiere'],
-  2: ['2', 'second', 'deuxieme'],
-  3: ['3', 'third', 'troisieme'],
+  1: ['1', '1er', '1re', '1st', 'first', 'premier', 'premiere'],
+  2: ['2', '2e', '2eme', '2nd', 'second', 'seconde', 'deuxieme'],
+  3: ['3', '3e', '3eme', '3rd', 'third', 'troisieme'],
 };
 
 function aliasesForName(name, lang) {
-  const norm = stripAccents(name).toLowerCase().trim();
+  const norm = stripAccents(name).toLowerCase().replace(/[-']/g, ' ').replace(/\s+/g, ' ').trim();
   const prefixMatch = norm.match(/^([123])\s+(.+)$/);
   if (!prefixMatch) return [{ alias: norm, lang }];
   const [, digit, rest] = prefixMatch;
   return ORDINAL_PREFIXES[Number(digit)].map((p) => ({ alias: `${p} ${rest}`, lang }));
 }
+
+// How people actually say some books, besides the name stored in
+// bible_books (singular/plural, the other common French spelling,
+// longer or shorter forms). Keyed by book number.
+const EXTRA_ALIASES = {
+  19: { fr: ['psaume', 'ps'], en: ['psalm'] },
+  21: { fr: ['qohelet', 'ecclesiastes'], en: [] },
+  22: { fr: ['cantique', 'cantiques'], en: ['song of songs', 'songs'] },
+  23: { fr: ['isaie', 'esaie'], en: [] },
+  26: { fr: ['ezekiel'], en: [] },
+  40: { fr: ['matthieu', 'mathieu'], en: ['matthew'] },
+  44: { fr: ['actes des apotres', 'acte des apotres', 'acte'], en: ['acts of the apostles'] },
+  58: { fr: ['hebreu'], en: [] },
+  59: { fr: ['jacque'], en: [] },
+  66: { fr: ['revelation', 'apocalypses'], en: ['revelations'] },
+};
 
 // [{ alias, bookNumber, lang }], longest alias first so e.g. "1
 // corinthians" is tried before a bare "corinthians" substring match
@@ -61,11 +77,24 @@ function aliasesForName(name, lang) {
 // to use for whatever follows it.
 export function buildBookAliases(books) {
   const aliases = [];
+  const seen = new Set();
+  const add = (alias, bookNumber, lang) => {
+    const key = `${alias}|${bookNumber}`;
+    if (!alias || seen.has(key)) return;
+    seen.add(key);
+    aliases.push({ alias, words: alias.split(' '), bookNumber, lang });
+  };
   (books || []).forEach((b) => {
-    aliasesForName(b.name_en || '', 'en').forEach(({ alias, lang }) => { if (alias) aliases.push({ alias, bookNumber: b.number, lang }); });
-    aliasesForName(b.name_fr || '', 'fr').forEach(({ alias, lang }) => { if (alias) aliases.push({ alias, bookNumber: b.number, lang }); });
+    aliasesForName(b.name_en || '', 'en').forEach(({ alias, lang }) => add(alias, b.number, lang));
+    aliasesForName(b.name_fr || '', 'fr').forEach(({ alias, lang }) => add(alias, b.number, lang));
+    const extra = EXTRA_ALIASES[b.number];
+    if (extra) {
+      extra.fr.forEach((x) => aliasesForName(x, 'fr').forEach(({ alias, lang }) => add(alias, b.number, lang)));
+      extra.en.forEach((x) => aliasesForName(x, 'en').forEach(({ alias, lang }) => add(alias, b.number, lang)));
+    }
   });
-  aliases.sort((a, b) => b.alias.length - a.alias.length);
+  // Longest first: "1 jean" must win over "jean" at the same place.
+  aliases.sort((a, b) => b.words.length - a.words.length || b.alias.length - a.alias.length);
   return aliases;
 }
 
@@ -145,6 +174,10 @@ const MAX_WORDS_PER_NUMBER = 4; // e.g. French "quatre vingt dix neuf" (99) is 4
 // "one hundred seventy six" resolves as a single 176, not a lone 1.
 function consumeNumberAt(words, i, lang) {
   if (/^\d+$/.test(words[i])) return { value: Number(words[i]), consumed: 1 };
+  // "1er", "2e", "3eme", "21st"…
+  const ord = /^(\d+)(er|re|e|eme|nd|st|rd|th)$/.exec(words[i] || '');
+  if (ord) return { value: Number(ord[1]), consumed: 1 };
+  if (words[i] === 'premier' || words[i] === 'premiere' || words[i] === 'first') return { value: 1, consumed: 1 };
 
   const hundredWord = HUNDRED_WORD[lang];
   const hasLeadingOne = lang === 'en' && words[i] === 'one' && words[i + 1] === hundredWord;
@@ -187,113 +220,196 @@ function findTwoNumbers(words, lang) {
   return found.length === 2 ? found : null;
 }
 
-// Looks for "<book alias> ... <number> ... <number>" within a window
-// of words right after the alias -- deliberately tolerant of whatever
-// connective words ("chapter"/"verse", "chapitre"/"verset", a colon,
-// nothing at all) Chrome's transcript happens to render, since those
-// vary by phrasing and language while the two numbers are the reliable
-// part. Requires BOTH numbers (chapter and verse) -- a bare book+
-// chapter mention is deliberately not enough to fire a suggestion,
-// since that's far more likely to be incidental sermon talk ("turning
-// to Romans 8 today...") than an actual citation.
-const WORDS_AFTER_ALIAS = 16;
-
-export function findReferenceInText(text, aliases) {
-  const norm = stripAccents(text).toLowerCase().replace(/[-:.]/g, ' ');
-  for (const { alias, bookNumber, lang } of aliases) {
-    const idx = norm.indexOf(alias);
-    if (idx === -1) continue;
-    const afterWords = norm.slice(idx + alias.length).trim().split(/\s+/).filter(Boolean).slice(0, WORDS_AFTER_ALIAS);
-    const numbers = findTwoNumbers(afterWords, lang || 'en');
-    if (!numbers) continue;
-    const [chapter, verse] = numbers;
-    if (!chapter || !verse) continue;
-    return { bookNumber, chapter, verse };
+// Turns a transcript into plain words: lower case, no accents, and
+// "3:16", "3.16", "3-16", "3,16" split into separate numbers.
+// "première épître de Jean", "évangile selon Jean", "first epistle of
+// John" are reduced to "premiere jean", "jean", "first john".
+const DROP = new Set(['epitre', 'epitres', 'lettre', 'evangile', 'gospel', 'epistle', 'letter']);
+const DROP_AFTER = new Set(['de', 'du', 'des', 'aux', 'a', 'selon', 'of', 'to', 'the', 'according']);
+function tokenize(text) {
+  const raw = stripAccents(String(text || '')).toLowerCase()
+    .replace(/(\d)[:.,](\d)/g, '$1 $2')
+    .replace(/[-'’]/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/).filter(Boolean);
+  const out = [];
+  for (let i = 0; i < raw.length; i += 1) {
+    if (DROP.has(raw[i])) {
+      while (DROP_AFTER.has(raw[i + 1])) i += 1;
+      continue;
+    }
+    out.push(raw[i]);
   }
-  return null;
+  return out;
 }
 
-const COOLDOWN_MS = 10000;
+// Words that may sit between the book name and the numbers.
+const FILLER = new Set(['chapitre', 'chapitres', 'chap', 'chapter', 'chapters', 'chapt', 'verset', 'versets', 'vers', 'verse', 'verses', 'v', 'au', 'a', 'et', 'and', 'to', 'du', 'de', 'des', 'le', 'la', 'les', 'l', 'd', 'in', 'of', 'the', 'number', 'numero', 'en', 'dans', 'livre', 'book']);
+const MAX_GAP_WORDS = 4; // non-number, non-filler words allowed before giving up
 
-// `lang`: 'fr-FR' or 'en-US' -- the audio recognition language, which
-// should match whatever language the service is actually in (garbage
-// in from a mismatched model means garbage matches out, regardless of
-// how good the alias list is). `aliases`: buildBookAliases() output.
-// `onDetect({ bookNumber, chapter, verse })` fires at most once per
-// distinct reference within COOLDOWN_MS -- a pastor re-reading the
-// same verse a moment later shouldn't re-pop a suggestion the operator
-// already dismissed or already showed. `onError(code)` fires only for
-// errors that stop listening for good (e.g. the mic permission was
-// denied) -- routine ones like a quiet pause are handled internally.
-export function createVoiceVerseDetector({ lang, aliases, onDetect, onError }) {
+function numbersAfter(words, start, lang) {
+  const found = [];
+  let i = start;
+  let gap = 0;
+  while (i < words.length && found.length < 2) {
+    const m = consumeNumberAt(words, i, lang) || consumeNumberAt(words, i, lang === 'fr' ? 'en' : 'fr');
+    if (m) { found.push(m.value); i += m.consumed; gap = 0; continue; }
+    if (!FILLER.has(words[i])) { gap += 1; if (gap > MAX_GAP_WORDS) break; }
+    i += 1;
+  }
+  return found.length === 2 ? { numbers: found, end: i } : null;
+}
+
+// Finds the LAST "<book> … <chapter> … <verse>" in the text (the most
+// recent thing said), matching book names as whole words only. Returns
+// { bookNumber, chapter, verse, end } (end = word index after the
+// verse) or null. Needs both numbers: "Romains 8" alone is more often
+// sermon talk than a citation.
+export function findReferenceInText(text, aliases) {
+  const words = Array.isArray(text) ? text : tokenize(text);
+  let best = null;
+  for (let i = 0; i < words.length; i += 1) {
+    for (const a of aliases) {
+      const w = a.words || a.alias.split(' ');
+      let ok = true;
+      for (let k = 0; k < w.length; k += 1) { if (words[i + k] !== w[k]) { ok = false; break; } }
+      if (!ok) continue;
+      const nums = numbersAfter(words, i + w.length, a.lang || 'en');
+      if (nums) {
+        const [chapter, verse] = nums.numbers;
+        if (chapter >= 1 && chapter <= 150 && verse >= 1 && verse <= 176) {
+          best = { bookNumber: a.bookNumber, chapter, verse, end: nums.end };
+        }
+      }
+      i += w.length - 1; // "1 jean": don't also read the "jean" inside it
+      break; // longest alias at this position wins
+    }
+  }
+  return best;
+}
+
+const REPEAT_WINDOW_MS = 60000; // the same reference twice within a minute is one citation
+const BUFFER_WORDS = 40; // recent speech kept across Chrome's sentence breaks
+
+// `lang`: 'fr-CA', 'fr-FR' or 'en-US'. `getAliases()`: current
+// buildBookAliases() output (a function, so books that finish loading
+// after listening started are still used). Callbacks:
+//   onDetect({ bookNumber, chapter, verse }) -- a reference was heard
+//   onHeard(text) -- what was just heard (for the on-screen caption)
+//   onStatus('listening' | 'reconnecting' | 'stopped')
+//   onError(code) -- listening stopped for good: 'not-allowed' (mic
+//     refused), 'audio-capture' (no microphone), 'network', 'restart-failed'
+export function createVoiceVerseDetector({ lang, aliases, getAliases, onDetect, onHeard, onStatus, onError }) {
   const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const recognition = new Ctor();
-  recognition.continuous = true;
-  recognition.interimResults = false;
-  recognition.lang = lang;
-
+  const aliasList = () => (getAliases ? getAliases() : aliases) || [];
+  let recognition = null;
   let listening = false;
   let stoppedByCaller = false;
-  let lastKey = null;
-  let lastFiredAt = 0;
+  let finalWords = [];
+  const fired = new Map(); // key -> time
+  let restartTimer = null;
+  let failures = 0;
 
-  recognition.onresult = (event) => {
-    for (let i = event.resultIndex; i < event.results.length; i += 1) {
-      const result = event.results[i];
-      if (!result.isFinal) continue;
-      const transcript = result[0]?.transcript || '';
-      const match = findReferenceInText(transcript, aliases);
-      if (!match) continue;
-      const key = `${match.bookNumber}:${match.chapter}:${match.verse}`;
-      const now = Date.now();
-      if (key === lastKey && now - lastFiredAt < COOLDOWN_MS) continue;
-      lastKey = key;
-      lastFiredAt = now;
-      onDetect(match);
-    }
-  };
+  function check(words, isFinal) {
+    const match = findReferenceInText(words, aliasList());
+    if (!match) return;
+    const key = `${match.bookNumber}:${match.chapter}:${match.verse}`;
+    const now = Date.now();
+    for (const [k, at] of fired) if (now - at > REPEAT_WINDOW_MS) fired.delete(k);
+    if (isFinal) finalWords = finalWords.slice(Math.min(finalWords.length, match.end)); // don't scan it again
+    if (fired.has(key)) return;
+    fired.set(key, now);
+    onDetect?.({ bookNumber: match.bookNumber, chapter: match.chapter, verse: match.verse });
+  }
 
-  recognition.onerror = (event) => {
-    // 'not-allowed'/'service-not-allowed' mean the mic permission was
-    // denied or revoked -- nothing further will work until the
-    // operator explicitly tries again, so stop cleanly rather than
-    // let onend's auto-restart spin forever against a closed door.
-    // Routine conditions ('no-speech', 'audio-capture' during a silent
-    // moment, etc.) are left to onend's restart below, not treated as
-    // real errors.
-    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-      stoppedByCaller = true;
-      listening = false;
-      onError?.(event.error);
-    }
-  };
+  function build() {
+    const r = new Ctor();
+    r.continuous = true;
+    r.interimResults = true; // react while the pastor is still talking
+    r.maxAlternatives = 1;
+    r.lang = lang;
 
-  recognition.onend = () => {
-    if (stoppedByCaller) { listening = false; return; }
-    // Chrome ends a continuous session on its own after a while even
-    // with no error at all -- restart transparently so "Listening"
-    // stays on until the operator explicitly turns it off. If the
-    // restart itself throws synchronously (rare, but means the
-    // session is actually dead rather than just between restarts),
-    // surface it instead of silently leaving isListening() reporting
-    // true forever with nothing actually running.
-    try {
-      recognition.start();
-    } catch {
-      listening = false;
-      onError?.('restart-failed');
-    }
-  };
+    r.onresult = (event) => {
+      failures = 0;
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const res = event.results[i];
+        const text = res[0]?.transcript || '';
+        if (res.isFinal) {
+          finalWords = [...finalWords, ...tokenize(text)].slice(-BUFFER_WORDS);
+          check(finalWords, true);
+        } else {
+          interim += ` ${text}`;
+        }
+      }
+      const live = [...finalWords, ...tokenize(interim)].slice(-BUFFER_WORDS);
+      if (interim.trim()) check(live, false);
+      onHeard?.(`${(event.results[event.results.length - 1]?.[0]?.transcript || '').trim()}`);
+    };
+
+    r.onerror = (event) => {
+      const e = event.error;
+      if (e === 'not-allowed' || e === 'service-not-allowed' || e === 'audio-capture') {
+        stoppedByCaller = true;
+        listening = false;
+        onStatus?.('stopped');
+        onError?.(e === 'audio-capture' ? 'audio-capture' : 'not-allowed');
+      }
+      // 'no-speech', 'aborted', 'network': onend below restarts.
+      if (e === 'network') failures += 1;
+    };
+
+    r.onend = () => {
+      if (stoppedByCaller) { listening = false; onStatus?.('stopped'); return; }
+      scheduleRestart();
+    };
+    return r;
+  }
+
+  // Chrome ends a "continuous" session by itself every minute or so,
+  // and after silence or a network blip. Start a fresh one shortly
+  // after, backing off if it keeps failing.
+  function scheduleRestart() {
+    clearTimeout(restartTimer);
+    onStatus?.('reconnecting');
+    const wait = Math.min(5000, 250 * (2 ** Math.min(failures, 4)));
+    restartTimer = setTimeout(() => {
+      if (stoppedByCaller) return;
+      try {
+        recognition = build();
+        recognition.start();
+        onStatus?.('listening');
+      } catch {
+        failures += 1;
+        if (failures > 8) {
+          listening = false;
+          onStatus?.('stopped');
+          onError?.(navigator.onLine === false ? 'network' : 'restart-failed');
+          return;
+        }
+        scheduleRestart();
+      }
+    }, wait);
+  }
 
   return {
     start() {
       stoppedByCaller = false;
-      try { recognition.start(); listening = true; } catch { /* already listening */ }
+      failures = 0;
+      finalWords = [];
+      try {
+        recognition = build();
+        recognition.start();
+        listening = true;
+        onStatus?.('listening');
+      } catch { listening = true; scheduleRestart(); }
     },
     stop() {
       stoppedByCaller = true;
       listening = false;
-      try { recognition.stop(); } catch { /* already stopped */ }
+      clearTimeout(restartTimer);
+      try { recognition?.abort(); } catch { /* already stopped */ }
+      onStatus?.('stopped');
     },
     isListening() { return listening; },
   };

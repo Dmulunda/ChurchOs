@@ -194,11 +194,13 @@ export function renderProjectionControl(container, { supabase }) {
             🎤 ${t('projection.voiceListen')}
           </button>
           <select data-el="voice-lang-select" class="border border-slate-300 rounded-lg px-2 py-1 text-xs">
+            <option value="fr-CA">${t('projection.voiceLangFrenchCa')}</option>
             <option value="fr-FR">${t('projection.voiceLangFrench')}</option>
             <option value="en-US">${t('projection.voiceLangEnglish')}</option>
           </select>
           <span data-el="voice-hint" class="text-xs text-slate-400">${t('projection.voiceHint')}</span>
         </div>
+        <p data-el="voice-heard" class="hidden mb-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 truncate"></p>
         <div data-el="voice-suggestion" class="hidden items-center justify-between gap-2 mb-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-sm">
           <span data-el="voice-suggestion-text" class="text-amber-800 font-medium"></span>
           <span class="flex gap-1.5 shrink-0">
@@ -1299,7 +1301,15 @@ export function renderProjectionControl(container, { supabase }) {
   if (voiceSupported()) {
     voiceControlsEl.classList.remove('hidden');
     voiceControlsEl.classList.add('flex');
-    voiceLangSelectEl.value = translationSelectEl.value === 'web' ? 'en-US' : 'fr-FR';
+    voiceLangSelectEl.value = translationSelectEl.value === 'web' ? 'en-US' : 'fr-CA';
+    const voiceHeardEl = container.querySelector('[data-el="voice-heard"]');
+    const showHeard = (status, text) => {
+      if (status === 'stopped') { voiceHeardEl.classList.add('hidden'); return; }
+      voiceHeardEl.classList.remove('hidden');
+      const label = status === 'reconnecting' ? t('projection.voiceReconnecting') : t('projection.voiceHeard');
+      voiceHeardEl.textContent = text ? `${label} « ${text} »` : label;
+    };
+    let voiceStatus = 'stopped';
 
     const renderVoiceSuggestion = () => {
       if (!voiceSuggestion) {
@@ -1324,11 +1334,20 @@ export function renderProjectionControl(container, { supabase }) {
     };
 
     const startVoiceListening = () => {
+      voiceDetector?.stop();
       voiceDetector = createVoiceVerseDetector({
         lang: voiceLangSelectEl.value,
-        aliases: voiceAliases,
+        getAliases: () => voiceAliases,
         onDetect: (match) => { voiceSuggestion = match; renderVoiceSuggestion(); },
-        onError: () => { setListeningButtonState(false); window.alert(t('projection.voiceMicDenied')); },
+        onHeard: (text) => { if (voiceStatus !== 'stopped') showHeard('listening', text.split(/\s+/).slice(-14).join(' ')); },
+        onStatus: (status) => { voiceStatus = status; if (status !== 'listening') showHeard(status, ''); else if (voiceHeardEl.classList.contains('hidden')) showHeard('listening', ''); },
+        onError: (code) => {
+          setListeningButtonState(false);
+          const key = code === 'not-allowed' ? 'projection.voiceMicDenied'
+            : code === 'audio-capture' ? 'projection.voiceNoMic'
+              : code === 'network' ? 'projection.voiceNetwork' : 'projection.voiceStopped';
+          window.alert(t(key));
+        },
       });
       voiceDetector.start();
       setListeningButtonState(true);
