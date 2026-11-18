@@ -72,3 +72,32 @@ export function formatCountdown(ms, lang) {
 export function formatServiceTime(date, timeZone, lang) {
   return date.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA', { timeZone, weekday: 'long', hour: 'numeric', minute: '2-digit' });
 }
+
+// The live_schedule slot a start time belongs to (same weekday and
+// HH:MM in the church's time zone), or null.
+export function slotFor(schedule, date, timeZone = 'America/Toronto') {
+  if (!date) return null;
+  const p = zoneParts(date, timeZone);
+  const weekday = new Date(Date.UTC(p.y, p.m, p.d)).getUTCDay();
+  return (schedule || []).find((s) => {
+    if (Number(s.day) !== weekday || !/^\d{1,2}:\d{2}$/.test(s.time || '')) return false;
+    const [h, mi] = s.time.split(':').map(Number);
+    return h === p.h && mi === p.mi;
+  }) || null;
+}
+
+// Where a service happens. Slots marked online_only (e.g. Wednesday)
+// are on YouTube only; the others are at the church and also streamed.
+export function placeLabel(slot, address, lang) {
+  if (!slot) return '';
+  const fr = lang === 'fr';
+  if (slot.online_only) return fr ? 'En ligne seulement (YouTube)' : 'Online only (YouTube)';
+  if (address) return fr ? `À l'église, ${address} · aussi en direct` : `At church, ${address} · also live online`;
+  return fr ? "À l'église · aussi en direct" : 'At church · also live online';
+}
+
+// Same as placeLabel for a schedule slot found by weekday only (for a
+// date without a time, e.g. a program date).
+export function slotForWeekday(schedule, weekday) {
+  return (schedule || []).find((s) => Number(s.day) === weekday && /^\d{1,2}:\d{2}$/.test(s.time || '')) || null;
+}

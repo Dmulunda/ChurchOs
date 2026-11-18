@@ -194,7 +194,7 @@ export async function renderSuperAdminHomeTab() {
       </section>` : ''}
   `;
 
-  const liveInfo = loadLiveInfo();
+  const liveInfo = loadLiveInfo(supabase);
   renderLive(container.querySelector('[data-el="live-card"]'), container.querySelector('[data-el="live-chip"]'), { liveInfo });
   renderNextService(container.querySelector('[data-el="next-service"]'), { supabase });
   renderQuickActions(container.querySelector('[data-el="quick"]'));

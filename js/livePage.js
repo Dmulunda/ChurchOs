@@ -5,7 +5,7 @@
 // account needed; nothing about members is read.
 import { supabase } from './supabaseClient.js';
 import { fetchLiveStatus, youtubeEmbedUrl, youtubeWatchUrl } from './liveStatus.js';
-import { serviceState, formatCountdown, formatServiceTime } from './liveSchedule.js';
+import { serviceState, formatCountdown, formatServiceTime, slotFor, placeLabel } from './liveSchedule.js';
 
 const LANG_KEY = 'choir-hub-lang';
 const TEXT = {
@@ -45,6 +45,7 @@ function cap(v) {
 
 let status = null;
 let nextProgram = null;
+let churchAddress = null;
 let shownVideo = null;
 
 function player(videoId) {
@@ -96,6 +97,7 @@ function render() {
       : st.next
         ? `<p class="text-xs uppercase tracking-widest text-[#E0B654] font-semibold">${esc(tx('nextLive'))}</p>
            <p class="text-xl font-bold mt-1 first-letter:uppercase" style="font-family:Fraunces,Georgia,serif">${esc(formatServiceTime(st.next, tz, lang))}</p>
+           ${placeLabel(slotFor(status.schedule, st.next, tz), churchAddress, lang) ? `<p class="text-sm text-[#E0B654] mt-1">${esc(placeLabel(slotFor(status.schedule, st.next, tz), churchAddress, lang))}</p>` : ''}
            <p class="text-sm text-slate-300 mt-4">${esc(tx('countdown'))}</p>
            <p data-el="countdown" class="text-4xl font-bold tabular-nums mt-1">${esc(formatCountdown(st.next - Date.now(), lang))}</p>
            <p class="text-xs text-slate-400 mt-4">${esc(tx('offlineSub'))}</p>`
@@ -159,7 +161,7 @@ async function refresh() {
 
 async function main() {
   render();
-  const portal = supabase.functions.invoke('public-portal', { body: {} }).then(({ data }) => { nextProgram = data?.program?.[0] || null; }).catch(() => {});
+  const portal = supabase.functions.invoke('public-portal', { body: {} }).then(({ data }) => { nextProgram = data?.program?.[0] || null; churchAddress = data?.church?.address || null; }).catch(() => {});
   await Promise.all([refresh(), portal]);
   render();
   setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60000);

@@ -9,13 +9,24 @@ import { getEffectiveSupabase } from './departments.js';
 import { SUPABASE_URL } from './supabaseClient.js';
 import { t, appLocale } from './i18n.js';
 
+// Department duty rosters are no longer calendar entries (sql/164): the
+// calendar shows what happens at church; who serves is in Planning and
+// Service teams. 'shift' only appears for departments flagged
+// is_public_calendar.
 const KIND_STYLE = {
-  item: 'bg-indigo-100 text-indigo-800',
+  program: 'bg-[#0B1F3A] text-white',
   event: 'bg-amber-100 text-amber-800',
-  shift: 'bg-sky-100 text-sky-800',
-  choir: 'bg-fuchsia-100 text-fuchsia-800',
+  item: 'bg-indigo-100 text-indigo-800',
   group: 'bg-emerald-100 text-emerald-800',
+  shift: 'bg-sky-100 text-sky-800',
 };
+// Program titles are often typed in capitals.
+function cap(s) {
+  const v = String(s || '');
+  if (v !== v.toUpperCase()) return v;
+  const lower = v.toLocaleLowerCase(appLocale());
+  return lower.charAt(0).toLocaleUpperCase(appLocale()) + lower.slice(1);
+}
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -68,6 +79,7 @@ export async function renderCalendarTab() {
         <button type="button" data-action="subscribe" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm">${t('calendar.subscribe')}</button>` : ''}
       </div>
     </div>
+    <p class="text-sm text-slate-500 mb-3">${t('calendar.intro')}</p>
     <div data-el="panel"></div>
     <div class="flex flex-wrap gap-2 mb-3 text-[11px]">${Object.keys(KIND_STYLE).map((k) => `<span class="rounded-full px-2 py-0.5 ${KIND_STYLE[k]}">${t(`calendar.kind.${k}`)}</span>`).join('')}</div>
     <div class="space-y-2">
@@ -80,7 +92,7 @@ export async function renderCalendarTab() {
             <div class="flex items-start gap-2 text-sm">
               <span class="shrink-0 w-14 text-xs text-slate-500 pt-0.5">${it.all_day ? t('calendar.allDay') : escapeHtml(new Date(it.starts_at).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' }))}</span>
               <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] ${KIND_STYLE[it.kind] || ''}">${t(`calendar.kind.${it.kind}`)}</span>
-              <span class="min-w-0 flex-1">${escapeHtml(it.title)}${it.location ? ` <span class="text-slate-400">· ${escapeHtml(it.location)}</span>` : ''}${it.visibility === 'leaders' ? ` <span class="text-[11px] text-slate-400">(${t('calendar.leadersOnly')})</span>` : ''}</span>
+              <span class="min-w-0 flex-1">${escapeHtml(it.kind === 'program' ? cap(it.title) : it.title)}${it.location ? ` <span class="text-slate-400">· ${escapeHtml(it.location)}</span>` : ''}${it.visibility === 'leaders' ? ` <span class="text-[11px] text-slate-400">(${t('calendar.leadersOnly')})</span>` : ''}</span>
               ${it.kind === 'item' && (isPastoral || it.created_by === user.id) ? `<button type="button" data-delete="${it.ref_id}" class="text-slate-400 hover:text-rose-600 text-xs">${t('calendar.delete')}</button>` : ''}
             </div>`).join('')}</div>
         </div>`;

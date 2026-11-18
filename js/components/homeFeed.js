@@ -6,7 +6,7 @@
 // rest of the page.
 import { t, getLang, appLocale, departmentLabel, mediaTechRoleLabel } from '../i18n.js';
 import { fetchLiveStatus } from '../liveStatus.js';
-import { serviceState, formatCountdown, formatServiceTime } from '../liveSchedule.js';
+import { serviceState, formatCountdown, formatServiceTime, slotFor, slotForWeekday, placeLabel } from '../liveSchedule.js';
 
 const ICONS = {
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
@@ -186,7 +186,7 @@ export async function renderThisWeek(container, { supabase, liveInfo }) {
           </div>
           <div class="min-w-0">
             <div class="font-semibold text-[15px] text-slate-800 truncate">${escapeHtml(cap(r.program.title))}${r.program.is_special ? ` <span class="home-pill home-pill--gold ml-1">★</span>` : ''}</div>
-            ${time ? `<div class="text-[13px] text-slate-500">${escapeHtml(clockLabel(time))} · ${t('home.liveTag')}</div>` : ''}
+            ${time ? `<div class="text-[13px] text-slate-500">${escapeHtml(clockLabel(time))} · ${escapeHtml(placeLabel(slotForWeekday(schedule, d.getDay()), info?.address, getLang()))}</div>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -206,8 +206,11 @@ export async function renderThisWeek(container, { supabase, liveInfo }) {
 
 // ---- Live: navy card (desktop side column) + compact chip (phone) -------
 
-export function loadLiveInfo() {
-  return fetchLiveStatus();
+export function loadLiveInfo(supabase) {
+  const address = supabase
+    ? supabase.from('church_branding').select('address').eq('id', true).maybeSingle().then((r) => r.data?.address || null, () => null)
+    : Promise.resolve(null);
+  return Promise.all([fetchLiveStatus(), address]).then(([info, addr]) => (info ? { ...info, address: addr } : null));
 }
 
 export async function renderLive(cardEl, chipEl, { liveInfo }) {
@@ -247,6 +250,7 @@ export async function renderLive(cardEl, chipEl, { liveInfo }) {
         <div class="text-[12px] font-bold uppercase tracking-wider text-[#E0B654]">${t('home.nextLive')}</div>
         <div class="font-display text-[28px] mt-2 tabular-nums">${escapeHtml(left)}</div>
         <div class="text-[13px] text-slate-300 mt-1">${escapeHtml(when.charAt(0).toUpperCase() + when.slice(1))}</div>
+        ${placeLabel(slotFor(info.schedule, st.next, tz), info.address, lang) ? `<div class="text-[13px] text-[#E0B654] mt-1">${escapeHtml(placeLabel(slotFor(info.schedule, st.next, tz), info.address, lang))}</div>` : ''}
         <a href="live.html" class="mt-4 h-10 rounded-xl bg-[#E0B654] text-[#0B1F3A] font-semibold text-sm flex items-center justify-center">${t('home.openLive')}</a>
       </section>`;
     chipEl.innerHTML = `<a href="live.html" class="home-chip"><span class="text-[#8A6A1F] font-bold">${t('home.nextLive')}</span> · ${escapeHtml(when)}</a>`;

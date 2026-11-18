@@ -249,14 +249,15 @@
           <option value="fr">FR</option>
         </select>
 
-        <button type="button" id="topbar-theme-toggle" data-i18n-aria-label="sidebar.theme" aria-label="Theme"
-                class="hidden md:block p-2 rounded-lg hover:bg-slate-800">
+        <button type="button" id="topbar-theme-toggle" aria-label="Theme"
+                class="hidden md:flex items-center gap-1.5 p-2 rounded-lg hover:bg-slate-800">
           <svg id="topbar-theme-icon-sun" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1.5m0 15V21m9-9h-1.5m-15 0H3m15.364-6.364l-1.06 1.06M6.696 17.304l-1.06 1.06m12.728 0l-1.06-1.06M6.696 6.696l-1.06-1.06M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
           </svg>
           <svg id="topbar-theme-icon-moon" xmlns="http://www.w3.org/2000/svg" class="hidden w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
           </svg>
+          <span data-el="theme-label" class="hidden xl:inline text-xs font-medium whitespace-nowrap"></span>
         </button>
 
         <!-- Messages — things a person actually wrote (direct messages,
@@ -657,7 +658,7 @@
       <div class="md:hidden px-6 py-3 border-t border-slate-800 grid grid-cols-2 gap-2">
         <button type="button" data-mobile-nav="quick-access" class="drawer-chip" data-i18n="nav.quickAccess">Quick Access</button>
         <button type="button" data-mobile-nav="settings" class="drawer-chip" data-i18n="nav.tools">Settings</button>
-        <button type="button" data-drawer-action="theme" class="drawer-chip" data-i18n="sidebar.theme">Theme</button>
+        <button type="button" data-drawer-action="theme" class="drawer-chip">Theme</button>
         <button type="button" data-drawer-action="help" class="drawer-chip" data-i18n="help.title">Help</button>
       </div>
 

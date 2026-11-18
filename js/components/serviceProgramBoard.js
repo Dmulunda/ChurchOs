@@ -29,6 +29,7 @@ import { todayLocal } from '../utils/date.js';
 
 export function renderServiceProgram(container, { supabase, userId }) {
   container.innerHTML = `
+    <p class="text-sm text-slate-500 mb-3">${t('serviceProgram.intro')}</p>
     <div class="bg-white rounded-xl shadow p-4 sm:p-6 mb-6">
       <label class="block text-sm font-medium text-slate-600 mb-1">${t('requests.date')}</label>
       <input type="date" data-el="date-input" value="${todayLocal()}" class="w-full max-w-xs border border-slate-300 rounded-lg px-3 py-2" />

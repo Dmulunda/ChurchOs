@@ -1638,10 +1638,21 @@ const topbarThemeToggle = document.querySelector('#topbar-theme-toggle');
 const topbarThemeIconSun = document.querySelector('#topbar-theme-icon-sun');
 const topbarThemeIconMoon = document.querySelector('#topbar-theme-icon-moon');
 
+// The button shows what it switches TO (moon = "go dark", sun = "go
+// light"), with the words next to it on wide screens and in the phone
+// menu, since a bare sun/moon wasn't clear.
 function updateThemeIcon() {
   const isDark = getTheme() === 'dark';
-  topbarThemeIconSun.classList.toggle('hidden', isDark);
-  topbarThemeIconMoon.classList.toggle('hidden', !isDark);
+  const label = isDark ? t('theme.toLight') : t('theme.toDark');
+  topbarThemeIconSun.classList.toggle('hidden', !isDark);
+  topbarThemeIconMoon.classList.toggle('hidden', isDark);
+  topbarThemeToggle.title = label;
+  topbarThemeToggle.setAttribute('aria-label', label);
+  const textEl = topbarThemeToggle.querySelector('[data-el="theme-label"]');
+  if (textEl) textEl.textContent = label;
+  document.querySelectorAll('[data-drawer-action="theme"]').forEach((chip) => {
+    chip.textContent = `${isDark ? '☀️' : '🌙'} ${label}`;
+  });
 }
 
 topbarThemeToggle.addEventListener('click', () => {
@@ -1655,6 +1666,7 @@ onLangChange(() => {
   applyStaticTranslations();
   applyTenantBranding();
   updateExtensionUI();
+  updateThemeIcon();
   updateLangSelect();
   renderAuthScreen(authScreenEl, { supabase });
   if (!passwordRecoveryEl.classList.contains('hidden')) {
@@ -1763,9 +1775,24 @@ document.querySelectorAll('[data-mobile-nav="directory"]').forEach((el) => el.ad
 // tab), reusing resolveLandingTab()'s existing Finance/Church Program
 // exclusion (those two have no scheduling at all) rather than
 // duplicating that check here.
-document.querySelectorAll('[data-mobile-nav="schedule"]').forEach((el) => el.addEventListener('click', () => {
+document.querySelectorAll('[data-mobile-nav="schedule"]').forEach((el) => el.addEventListener('click', async () => {
   const active = getActiveDepartment();
-  if (!active) return;
+  if (!active) {
+    // On Home no department is active, so this used to do nothing.
+    // Open the schedule of the department I serve in next, else my
+    // first department, else the church calendar.
+    closeSidebar();
+    let key = null;
+    try {
+      const { data } = await getEffectiveSupabase().rpc('get_my_upcoming_services', { p_limit: 1 });
+      key = data?.[0]?.department_key || null;
+    } catch { /* fall through */ }
+    const mine = getMyDepartments().filter((d) => d.key !== 'church_program');
+    if (!key || !mine.some((d) => d.key === key)) key = mine[0]?.key || null;
+    if (key) window.dispatchEvent(new CustomEvent('app:open-department-schedule', { detail: { key } }));
+    else window.dispatchEvent(new CustomEvent('app:open-tab', { detail: { tab: 'calendar' } }));
+    return;
+  }
   const isChoir = active.key === 'choir';
   activateTab(resolveLandingTab('scheduling', active, isChoir) || (isChoir ? 'dashboard' : 'dept-dashboard'));
   closeSidebar();

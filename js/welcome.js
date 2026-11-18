@@ -8,7 +8,7 @@
 // events, find us, and a bottom bar (Live, Give, Prayer).
 import { supabase } from './supabaseClient.js';
 import { fetchLiveStatus } from './liveStatus.js';
-import { serviceState, formatServiceTime } from './liveSchedule.js';
+import { serviceState, formatServiceTime, slotFor, placeLabel } from './liveSchedule.js';
 
 const LANG_KEY = 'choir-hub-lang';
 const NAVY = '#0B1F3A';
@@ -130,7 +130,8 @@ function scheduleLine() {
   const parts = sch.map((slot) => {
     const st = serviceState([slot], tz, now);
     const when = st.next || st.start;
-    return when ? { when, label: formatServiceTime(when, tz, lang) } : null;
+    const online = slot.online_only ? (lang === 'fr' ? ' (en ligne)' : ' (online)') : '';
+    return when ? { when, label: formatServiceTime(when, tz, lang) + online } : null;
   }).filter(Boolean).sort((a, b) => a.when - b.when);
   const list = parts.map((p) => p.label).join(' · ');
   return `<p class="m-0 text-xs text-center" style="color:#9FB0CC">${esc(tx('everyWeek', { list }))}</p>`;
@@ -174,6 +175,7 @@ function heroLiveCard() {
     </div>
     <div class="flex flex-col gap-0.5">
       <p class="m-0 text-[19px] font-bold text-white first-letter:uppercase">${esc(formatServiceTime(st.next, tz, lang))}</p>
+      ${placeLabel(slotFor(liveState.schedule, st.next, tz), data?.church?.address, lang) ? `<p class="m-0 text-sm font-semibold" style="color:${GOLD}">${esc(placeLabel(slotFor(liveState.schedule, st.next, tz), data?.church?.address, lang))}</p>` : ''}
       ${programToday ? `<p class="m-0 text-sm first-letter:uppercase" style="color:#C9D2E3">${esc(cap(programToday.title))}</p>` : ''}
     </div>
     <div data-el="countdown" class="grid grid-cols-3 gap-2">${countdownBoxes(st.next)}</div>
