@@ -1740,6 +1740,8 @@ const TRANSLATIONS = {
     'flyers.tip.keys': 'Ctrl+Z undo · Ctrl+D duplicate · arrows move · Delete removes.',
     'flyers.tips': 'Tips',
     'flyers.tolerance': 'Tolerance',
+    'flyers.imageUnreadable': "This picture format can't be opened here. Save it as JPG or PNG (on iPhone: share it, then choose JPG / 'Most compatible') and try again.",
+    'flyers.imageTooBig': 'This picture is too large even after shrinking it. Try a smaller version.',
     'nav.budget': 'Budget',
     'nav.offerings': 'Offerings',
 
@@ -5452,6 +5454,8 @@ const TRANSLATIONS = {
     'flyers.tip.keys': 'Ctrl+Z annuler · Ctrl+D dupliquer · flèches pour déplacer · Suppr pour enlever.',
     'flyers.tips': 'Astuces',
     'flyers.tolerance': 'Tolérance',
+    'flyers.imageUnreadable': "Ce format d’image ne peut pas être ouvert ici. Enregistrez-la en JPG ou PNG (sur iPhone : partagez-la puis choisissez JPG / « Le plus compatible ») et réessayez.",
+    'flyers.imageTooBig': 'Cette image reste trop lourde même après réduction. Essayez une version plus petite.',
     'nav.budget': 'Budget',
     'nav.offerings': 'Offrandes',
 

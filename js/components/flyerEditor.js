@@ -217,22 +217,73 @@ async function addImageCorner(fabric, canvas, url, size, { corner, widthFraction
   }
 }
 
-// Shrinks very large photos before upload so the editor stays quick and
-// saved flyers don't carry 12-megapixel phone pictures around.
-async function downscaleImage(file, maxSide = 2400) {
+// Every picture is re-encoded in the browser before upload so it always
+// fits the storage limit, whatever comes in: 20 MB phone photos, huge
+// PNG scans, WebP/GIF, iPhone HEIC (where the browser can open it).
+// Transparent pictures stay PNG (logos, cut-outs); everything else
+// becomes a JPEG. If the result is still too big, the size steps down.
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
+
+async function decodeImage(file) {
   try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1 && file.size < 2.5 * 1024 * 1024) return file;
-    const c = document.createElement('canvas');
-    c.width = Math.round(bitmap.width * scale);
-    c.height = Math.round(bitmap.height * scale);
-    c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);
-    const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-    return await new Promise((resolve) => c.toBlob((b) => resolve(b || file), type, 0.9));
+    return await createImageBitmap(file);
   } catch {
-    return file;
+    // Some browsers only decode certain formats (e.g. HEIC on Safari)
+    // through an <img> element.
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return img;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
+}
+
+function hasTransparency(source, w, h) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = Math.min(64, w);
+    c.height = Math.min(64, h);
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(source, 0, 0, c.width, c.height);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] < 250) return true;
+  } catch { /* ignore */ }
+  return false;
+}
+
+async function prepareImage(file, maxSide = 2400) {
+  let source;
+  try {
+    source = await decodeImage(file);
+  } catch {
+    const err = new Error(t('flyers.imageUnreadable'));
+    err.userFacing = true;
+    throw err;
+  }
+  const w0 = source.width || source.naturalWidth;
+  const h0 = source.height || source.naturalHeight;
+  const keepAlpha = (file.type === 'image/png' || file.type === 'image/webp' || file.type === 'image/gif') && hasTransparency(source, w0, h0);
+  let side = Math.min(maxSide, Math.max(w0, h0));
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const scale = side / Math.max(w0, h0);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w0 * scale));
+    c.height = Math.max(1, Math.round(h0 * scale));
+    const ctx = c.getContext('2d');
+    if (!keepAlpha) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); }
+    ctx.drawImage(source, 0, 0, c.width, c.height);
+    const type = keepAlpha ? 'image/png' : 'image/jpeg';
+    const blob = await new Promise((resolve) => c.toBlob(resolve, type, 0.86));
+    if (blob && blob.size <= MAX_UPLOAD_BYTES) return blob;
+    side = Math.round(side * 0.75);
+  }
+  const err = new Error(t('flyers.imageTooBig'));
+  err.userFacing = true;
+  throw err;
 }
 
 async function pdfFirstPageToBlob(file) {
@@ -246,7 +297,8 @@ async function pdfFirstPageToBlob(file) {
   c.width = Math.round(viewport.width);
   c.height = Math.round(viewport.height);
   await page.render({ canvasContext: c.getContext('2d'), viewport }).promise;
-  return new Promise((resolve) => c.toBlob(resolve, 'image/png'));
+  const png = await new Promise((resolve) => c.toBlob(resolve, 'image/png'));
+  return prepareImage(new File([png], 'flyer.png', { type: 'image/png' }), 2400);
 }
 
 function colorDistance(a, b) {
@@ -529,7 +581,8 @@ export async function renderFlyerEditor(container, {
 
   // ---------- helpers ----------
   async function uploadAsset(blob, name) {
-    const safe = String(name || 'image.png').replace(/[^\w.-]+/g, '_').slice(-60);
+    const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+    const safe = `${String(name || 'image').replace(/\.[a-z0-9]+$/i, '').replace(/[^\w-]+/g, '_').slice(-40)}.${ext}`;
     const path = `${tenantPrefix}${workingFlyerId}/photos/${Date.now()}-${safe}`;
     const { error } = await supabase.storage.from('flyers').upload(path, blob, { contentType: blob.type || 'image/png' });
     if (error) throw error;
@@ -654,7 +707,7 @@ export async function renderFlyerEditor(container, {
   // ---------- old flyer import ----------
   async function fileToImageBlob(file) {
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) return pdfFirstPageToBlob(file);
-    return downscaleImage(file, 2400);
+    return prepareImage(file, 2400);
   }
 
   container.querySelector('[data-el="import-input"]').addEventListener('change', async (e) => {
@@ -784,10 +837,10 @@ export async function renderFlyerEditor(container, {
   }));
 
   async function addPhotoFromFile(file) {
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file || !(file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name))) return;
     setStatus(t('common.saving'));
     try {
-      const blob = await downscaleImage(file, 2400);
+      const blob = await prepareImage(file, 2400);
       const url = await uploadAsset(blob, file.name);
       const img = await fabric.FabricImage.fromURL(url, { crossOrigin: 'anonymous' });
       const maxWidth = size.width * 0.6;
@@ -811,7 +864,7 @@ export async function renderFlyerEditor(container, {
   wrapEl.addEventListener('drop', (e) => {
     e.preventDefault();
     wrapEl.classList.remove('is-drop');
-    const file = [...(e.dataTransfer?.files || [])].find((f) => f.type.startsWith('image/'));
+    const file = [...(e.dataTransfer?.files || [])].find((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
     if (file) addPhotoFromFile(file);
   });
 
@@ -908,7 +961,7 @@ export async function renderFlyerEditor(container, {
     if (!file) return;
     setStatus(t('common.saving'));
     try {
-      const blob = await downscaleImage(file, 2400);
+      const blob = await prepareImage(file, 2400);
       const url = await uploadAsset(blob, file.name);
       const shownW = img.getScaledWidth();
       await img.setSrc(url, { crossOrigin: 'anonymous' });
@@ -1330,7 +1383,7 @@ export async function renderFlyerEditor(container, {
       if (!file) return;
       try {
         setStatus(t('common.saving'));
-        const blob = await downscaleImage(file, 2400);
+        const blob = await prepareImage(file, 2400);
         const url = await uploadAsset(blob, file.name);
         await setBackgroundImage(url);
         setStatus('');
