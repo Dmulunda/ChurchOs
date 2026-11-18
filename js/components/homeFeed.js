@@ -214,48 +214,75 @@ export function loadLiveInfo(supabase) {
 }
 
 export async function renderLive(cardEl, chipEl, { liveInfo }) {
-  const info = await liveInfo;
+  let info = await liveInfo;
   if (!info || !info.configured) { cardEl.innerHTML = ''; chipEl.innerHTML = ''; return; }
+  const address = info.address || null;
   const lang = getLang();
   const tz = info.timezone || 'America/Toronto';
+  let shape = '';
 
+  // Rebuilds the card only when what it shows changes (live / starting /
+  // next service); the countdown text itself is updated every second.
   function paint() {
-    if (!cardEl.isConnected && !chipEl.isConnected) { clearInterval(timer); return; }
-    if (info.live) {
-      cardEl.innerHTML = `
-        <section class="rounded-2xl p-5 text-white bg-[#C81E1E]">
-          <div class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider"><span class="home-dot"></span>${t('home.liveNow')}</div>
-          ${info.title ? `<div class="font-display text-[20px] mt-2 leading-snug">${escapeHtml(info.title)}</div>` : ''}
-          <a href="live.html" class="mt-4 h-10 rounded-xl bg-white text-[#C81E1E] font-semibold text-sm flex items-center justify-center">${t('home.watch')}</a>
-        </section>`;
-      chipEl.innerHTML = `<a href="live.html" class="home-chip home-chip--live"><span class="home-dot"></span>${t('home.liveNow')} · ${t('home.watch')}</a>`;
-      return;
+    if (!cardEl.isConnected && !chipEl.isConnected) { stop(); return; }
+    const now = new Date();
+    const st = info.live ? { state: 'live' } : serviceState(info.schedule || [], tz, now);
+    const key = `${st.state}:${st.next ? st.next.getTime() : ''}:${info.video_id || ''}`;
+    if (key !== shape) {
+      shape = key;
+      if (st.state === 'live') {
+        cardEl.innerHTML = `
+          <section class="rounded-2xl p-5 text-white bg-[#C81E1E]">
+            <div class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider"><span class="home-dot"></span>${t('home.liveNow')}</div>
+            ${info.title ? `<div class="font-display text-[20px] mt-2 leading-snug">${escapeHtml(info.title)}</div>` : ''}
+            <a href="live.html" class="mt-4 h-10 rounded-xl bg-white text-[#C81E1E] font-semibold text-sm flex items-center justify-center">${t('home.watch')}</a>
+          </section>`;
+        chipEl.innerHTML = `<a href="live.html" class="home-chip home-chip--live"><span class="home-dot"></span>${t('home.liveNow')} · ${t('home.watch')}</a>`;
+      } else if (st.state === 'starting') {
+        cardEl.innerHTML = `
+          <section class="rounded-2xl p-5 text-white bg-[#0B1F3A]">
+            <div class="text-[12px] font-bold uppercase tracking-wider text-[#E0B654]">${t('home.nextLive')}</div>
+            <div class="font-display text-[24px] mt-2">${t('home.starting')}</div>
+            <a href="live.html" class="mt-4 h-10 rounded-xl bg-[#E0B654] text-[#0B1F3A] font-semibold text-sm flex items-center justify-center">${t('home.openLive')}</a>
+          </section>`;
+        chipEl.innerHTML = `<a href="live.html" class="home-chip">${t('home.starting')}</a>`;
+      } else if (!st.next) {
+        cardEl.innerHTML = ''; chipEl.innerHTML = '';
+      } else {
+        const when = formatServiceTime(st.next, tz, lang);
+        const place = placeLabel(slotFor(info.schedule, st.next, tz), address, lang);
+        cardEl.innerHTML = `
+          <section class="rounded-2xl p-5 text-white bg-[#0B1F3A]">
+            <div class="text-[12px] font-bold uppercase tracking-wider text-[#E0B654]">${t('home.nextLive')}</div>
+            <div data-el="left" class="font-display text-[28px] mt-2 tabular-nums"></div>
+            <div class="text-[13px] text-slate-300 mt-1">${escapeHtml(when.charAt(0).toUpperCase() + when.slice(1))}</div>
+            ${place ? `<div class="text-[13px] text-[#E0B654] mt-1">${escapeHtml(place)}</div>` : ''}
+            <a href="live.html" class="mt-4 h-10 rounded-xl bg-[#E0B654] text-[#0B1F3A] font-semibold text-sm flex items-center justify-center">${t('home.openLive')}</a>
+          </section>`;
+        chipEl.innerHTML = `<a href="live.html" class="home-chip flex-wrap"><span class="text-[#8A6A1F] font-bold">${t('home.nextLive')}</span><span data-el="left" class="font-semibold tabular-nums text-[#0B1F3A]"></span><span class="text-slate-500">· ${escapeHtml(when)}</span></a>`;
+      }
     }
-    const st = serviceState(info.schedule || [], tz, new Date());
-    if (st.state === 'starting') {
-      cardEl.innerHTML = `
-        <section class="rounded-2xl p-5 text-white bg-[#0B1F3A]">
-          <div class="text-[12px] font-bold uppercase tracking-wider text-[#E0B654]">${t('home.nextLive')}</div>
-          <div class="font-display text-[24px] mt-2">${t('home.starting')}</div>
-          <a href="live.html" class="mt-4 h-10 rounded-xl bg-[#E0B654] text-[#0B1F3A] font-semibold text-sm flex items-center justify-center">${t('home.openLive')}</a>
-        </section>`;
-      chipEl.innerHTML = `<a href="live.html" class="home-chip">${t('home.starting')}</a>`;
-      return;
+    if (st.next) {
+      const left = formatCountdown(st.next - now, lang);
+      cardEl.querySelectorAll('[data-el="left"]').forEach((el) => { el.textContent = left; });
+      chipEl.querySelectorAll('[data-el="left"]').forEach((el) => { el.textContent = left; });
     }
-    if (!st.next) { cardEl.innerHTML = ''; chipEl.innerHTML = ''; return; }
-    const when = formatServiceTime(st.next, tz, lang);
-    const left = formatCountdown(st.next - new Date(), lang);
-    cardEl.innerHTML = `
-      <section class="rounded-2xl p-5 text-white bg-[#0B1F3A]">
-        <div class="text-[12px] font-bold uppercase tracking-wider text-[#E0B654]">${t('home.nextLive')}</div>
-        <div class="font-display text-[28px] mt-2 tabular-nums">${escapeHtml(left)}</div>
-        <div class="text-[13px] text-slate-300 mt-1">${escapeHtml(when.charAt(0).toUpperCase() + when.slice(1))}</div>
-        ${placeLabel(slotFor(info.schedule, st.next, tz), info.address, lang) ? `<div class="text-[13px] text-[#E0B654] mt-1">${escapeHtml(placeLabel(slotFor(info.schedule, st.next, tz), info.address, lang))}</div>` : ''}
-        <a href="live.html" class="mt-4 h-10 rounded-xl bg-[#E0B654] text-[#0B1F3A] font-semibold text-sm flex items-center justify-center">${t('home.openLive')}</a>
-      </section>`;
-    chipEl.innerHTML = `<a href="live.html" class="home-chip"><span class="text-[#8A6A1F] font-bold">${t('home.nextLive')}</span> · ${escapeHtml(when)}</a>`;
   }
-  const timer = setInterval(paint, 30000);
+
+  // Ask YouTube again every minute (every 20 s around the start time) so
+  // the card turns into "Live now" when the stream begins.
+  let lastCheck = Date.now();
+  async function recheck() {
+    const st = info.live ? null : serviceState(info.schedule || [], tz, new Date());
+    const every = st?.state === 'starting' ? 20000 : 60000;
+    if (Date.now() - lastCheck < every) return;
+    lastCheck = Date.now();
+    const next = await fetchLiveStatus();
+    if (next && next.configured) info = { ...next, address };
+  }
+
+  const timer = setInterval(() => { paint(); recheck(); }, 1000);
+  function stop() { clearInterval(timer); }
   paint();
 }
 
