@@ -343,3 +343,93 @@ td.user-actions > * { display: inline-block !important; margin: 0 14px 4px 0 !im
 /* Member card (fixed 400 px so the PNG/PDF export is always the same):
    on narrow phones it scrolls sideways instead of being cut off. */
 div:has(> [data-el="card-front"]) { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+
+/* ---------- Flyer editor ---------- */
+.fly-editor { display: flex; flex-direction: column; gap: 10px; }
+.fly-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fly-link { font-size: 13.5px; font-weight: 600; color: var(--brand-navy, #0B1F3A); white-space: nowrap; }
+.fly-link:hover { text-decoration: underline; }
+.fly-link--sm { font-size: 12px; color: #64748b; margin-top: 4px; }
+.fly-title { flex: 1 1 200px; min-width: 160px; max-width: 360px; height: 38px; border: 1px solid #E6E1D6; border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff; }
+.fly-top-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.fly-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #0B1F3A; background: #fff; border: 1px solid #E6E1D6; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s; }
+.fly-btn:hover { background: #F6F4EF; border-color: #d6cfbf; }
+.fly-btn--primary { background: #0B1F3A; color: #fff; border-color: #0B1F3A; }
+.fly-btn--primary:hover { background: #142d52; border-color: #142d52; }
+.fly-btn--gold { background: #FBF3DF; border-color: #EBD49A; color: #6b4e0e; }
+.fly-btn--gold:hover { background: #F7E9C4; border-color: #E0B654; }
+.fly-btn--danger { color: #be123c; }
+.fly-btn--danger:hover { background: #fff1f2; border-color: #fecdd3; }
+.fly-btn--sm { height: 32px; padding: 0 10px; font-size: 12.5px; }
+.fly-btn--block { width: 100%; margin-top: 8px; }
+.fly-beta { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: #E0B654; color: #0B1F3A; border-radius: 999px; padding: 1px 6px; }
+.fly-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; border: 1px solid #E6E1D6; background: #fff; color: #0B1F3A; cursor: pointer; font-size: 13px; }
+.fly-icon-btn:hover { background: #F6F4EF; }
+.fly-icon-btn:disabled { opacity: .35; cursor: default; }
+.fly-icon-btn.is-on { background: #0B1F3A; color: #fff; border-color: #0B1F3A; }
+.fly-icon-btn--sm { width: 30px; height: 30px; border-radius: 8px; }
+.fly-format { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 4px 0 10px; border: 1px solid #E6E1D6; border-radius: 10px; background: #fff; color: #0B1F3A; }
+.fly-format select { border: 0; background: transparent; font-size: 13px; font-weight: 600; color: #0B1F3A; max-width: 300px; padding-right: 4px; outline: none; }
+.fly-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px; background: #fff; border: 1px solid #E6E1D6; border-radius: 14px; }
+.fly-sep { width: 1px; height: 22px; background: #E6E1D6; margin: 0 4px; }
+.fly-menu { position: relative; }
+.fly-menu-list { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 190px; background: #fff; border: 1px solid #E6E1D6; border-radius: 12px; box-shadow: 0 10px 30px rgba(11,31,58,.12); padding: 6px; }
+.fly-menu-list button { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 13px; color: #0B1F3A; }
+.fly-menu-list button:hover { background: #F6F4EF; }
+.fly-body { display: flex; gap: 14px; align-items: flex-start; }
+.fly-stage { flex: 1 1 auto; min-width: 0; min-height: 440px; display: flex; align-items: center; justify-content: center; padding: 16px; border-radius: 16px; overflow: auto;
+  background-color: #ECE8DF; background-image: radial-gradient(#d9d3c6 1px, transparent 1px); background-size: 16px 16px; border: 1px solid #E6E1D6; }
+.fly-stage .canvas-container { box-shadow: 0 12px 32px rgba(11,31,58,.18), 0 2px 6px rgba(11,31,58,.08); }
+.fly-stage.is-drop { outline: 3px dashed #E0B654; outline-offset: -8px; }
+.fly-panel { width: 290px; flex: 0 0 290px; max-height: 78vh; overflow-y: auto; background: #fff; border: 1px solid #E6E1D6; border-radius: 16px; }
+.fly-panel-head { position: sticky; top: 0; z-index: 2; background: #0B1F3A; color: #fff; font-family: 'Fraunces', serif; font-weight: 600; font-size: 15px; padding: 12px 14px; }
+.fly-sec { padding: 12px 14px; border-bottom: 1px solid #F0ECE3; }
+.fly-sec:last-child { border-bottom: 0; }
+.fly-sec h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8a7d62; margin: 0 0 8px; }
+.fly-field { display: block; margin-bottom: 8px; }
+.fly-field--grow { flex: 1 1 auto; min-width: 0; }
+.fly-field-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+.fly-field-label em { font-style: normal; font-weight: 500; color: #94a3b8; }
+.fly-field input[type=range] { width: 100%; accent-color: #0B1F3A; }
+.fly-input { width: 100%; border: 1px solid #E6E1D6; border-radius: 9px; padding: 7px 9px; font-size: 13px; background: #fff; }
+textarea.fly-input { resize: vertical; margin-bottom: 8px; }
+.fly-color { display: inline-flex; align-items: center; gap: 4px; }
+.fly-color input[type=color] { width: 44px; height: 32px; border: 1px solid #E6E1D6; border-radius: 8px; padding: 2px; background: #fff; cursor: pointer; }
+.fly-field--color { flex: 0 0 auto; }
+.fly-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 6px; }
+.fly-icon-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+.fly-seg { display: flex; background: #F6F4EF; border-radius: 10px; padding: 3px; gap: 3px; margin-bottom: 8px; }
+.fly-seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; height: 30px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: #475569; }
+.fly-seg button.is-on { background: #fff; color: #0B1F3A; box-shadow: 0 1px 3px rgba(11,31,58,.15); }
+.fly-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.fly-swatches button { width: 26px; height: 26px; border-radius: 999px; border: 2px solid #fff; box-shadow: 0 0 0 1px #E6E1D6; cursor: pointer; }
+.fly-swatches button:hover { box-shadow: 0 0 0 2px #0B1F3A; }
+.fly-check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #334155; margin: 4px 0 8px; }
+.fly-hint { font-size: 12px; color: #64748b; line-height: 1.45; margin: 6px 0 4px; }
+.fly-tips { font-size: 12px; color: #64748b; line-height: 1.5; padding-left: 16px; list-style: disc; }
+.fly-status { font-size: 13px; min-height: 18px; }
+.fly-status--muted { color: #64748b; }
+.fly-status--ok { color: #047857; }
+.fly-status--error { color: #be123c; }
+@media (max-width: 1023px) {
+  .fly-body { flex-direction: column; }
+  .fly-panel { width: 100%; flex: 1 1 auto; max-height: none; }
+  .fly-stage { width: 100%; min-height: 300px; padding: 10px; }
+  .fly-top-actions { margin-left: 0; }
+}
+@media (max-width: 640px) {
+  .fly-btn span { font-size: 12.5px; }
+  .fly-tools .fly-btn { padding: 0 10px; }
+  .fly-format select { max-width: 150px; }
+}
+html.dark .fly-tools, html.dark .fly-panel, html.dark .fly-btn, html.dark .fly-icon-btn, html.dark .fly-format, html.dark .fly-title, html.dark .fly-input, html.dark .fly-menu-list { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+html.dark .fly-format select, html.dark .fly-link, html.dark .fly-menu-list button { color: #e2e8f0; }
+html.dark .fly-btn:hover, html.dark .fly-icon-btn:hover, html.dark .fly-menu-list button:hover { background: #334155; }
+html.dark .fly-btn--primary { background: #E0B654; border-color: #E0B654; color: #0B1F3A; }
+html.dark .fly-btn--gold { background: #3b2f12; border-color: #6b4e0e; color: #F7E9C4; }
+html.dark .fly-sec { border-color: #334155; }
+html.dark .fly-field-label, html.dark .fly-check { color: #cbd5e1; }
+html.dark .fly-seg { background: #0f172a; }
+html.dark .fly-seg button.is-on { background: #334155; color: #fff; }
+html.dark .fly-stage { background-color: #0f172a; background-image: radial-gradient(#1e293b 1px, transparent 1px); border-color: #334155; }
+html.dark .fly-icon-btn.is-on { background: #E0B654; color: #0B1F3A; }

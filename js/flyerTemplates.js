@@ -10,6 +10,11 @@ export const FLYER_SIZES = {
   instagram_story: { labelKey: 'flyers.size.instagramStory', width: 1080, height: 1920 },
   poster_letter: { labelKey: 'flyers.size.posterLetter', width: 850, height: 1100 },
   poster_a4: { labelKey: 'flyers.size.posterA4', width: 827, height: 1169 },
+  instagram_portrait: { labelKey: 'flyers.size.instagramPortrait', width: 1080, height: 1350 },
+  facebook_post: { labelKey: 'flyers.size.facebookPost', width: 1200, height: 630 },
+  facebook_cover: { labelKey: 'flyers.size.facebookCover', width: 1640, height: 624 },
+  screen_16_9: { labelKey: 'flyers.size.screen', width: 1920, height: 1080 },
+  half_letter: { labelKey: 'flyers.size.halfLetter', width: 550, height: 850 },
 };
 
 export const FLYER_CATEGORIES = [
