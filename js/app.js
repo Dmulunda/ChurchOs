@@ -1800,6 +1800,30 @@ document.querySelectorAll('[data-drawer-action]').forEach((el) => el.addEventLis
   document.querySelector(el.dataset.drawerAction === 'theme' ? '#topbar-theme-toggle' : '#help-btn')?.click();
 }));
 
+// ---- Home page shortcuts (js/components/homeFeed.js) ----
+// Home's quick actions and "Mon prochain service" can't import app.js
+// (it imports them), so they ask for navigation with window events.
+// A tab that the sidebar shows as a button is opened by clicking that
+// button, so it keeps the exact same gating and department handling.
+window.addEventListener('app:open-tab', (e) => {
+  const tab = e.detail?.tab;
+  if (!tab) return;
+  const navBtn = document.querySelector(`#sidebar [data-tab-target="${tab}"]`);
+  if (navBtn) navBtn.click();
+  else activateTab(tab);
+  window.scrollTo({ top: 0 });
+});
+window.addEventListener('app:open-department-schedule', async (e) => {
+  const key = e.detail?.key;
+  if (!key) return;
+  await handleDepartmentSwitch(key);
+  const active = getActiveDepartment();
+  if (!active || active.key !== key) return;
+  const isChoir = active.key === 'choir';
+  activateTab(resolveLandingTab('scheduling', active, isChoir) || (isChoir ? 'dashboard' : 'dept-dashboard'));
+  window.scrollTo({ top: 0 });
+});
+
 // ---- Auth gating ----
 const authScreenEl = document.querySelector('#auth-screen');
 const appShellEl = document.querySelector('#app-shell');

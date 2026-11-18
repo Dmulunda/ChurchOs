@@ -12,9 +12,10 @@
 // exports below so Tools' buttons (and the header's own "New Member"
 // button, via openGuestOnboardingHub) can reach them without
 // duplicating the create/teardown logic in a second file.
-import { getEffectiveSupabase, getGlobalRole } from './departments.js';
+import { getEffectiveSupabase, getGlobalRole, hasGlobalReach } from './departments.js';
 import { hasFeature } from './entitlements.js';
 import { openPlansModal } from './app.js';
+import { greeting, escapeHtml as esc, renderNextService, renderQuickActions, renderThisWeek, renderLive, renderTodo, loadLiveInfo } from './components/homeFeed.js';
 import { createUserManagerModal } from './components/userManager.js';
 import { createSilentDirectoryModal } from './components/silentDirectory.js';
 import { renderAllDepartmentApprovals } from './components/allDepartmentApprovals.js';
@@ -31,8 +32,7 @@ import { createPeopleImportModal } from './components/peopleImportModal.js';
 import { createPastorMeetingQueueModal } from './components/pastorMeetingRequests.js';
 import { createPrayerRequestQueueModal } from './components/prayerRequests.js';
 import { createPublicLinkQrModal } from './components/publicLinkQrModal.js';
-import { renderUpcomingChurchEvents } from './components/upcomingChurchEvents.js';
-import { renderBirthdaysWidget, renderPrayerRequestsWidget, renderPendingRequestsWidget, renderAttendanceWidget, renderAnnouncementsWidget } from './components/homeWidgets.js';
+import { renderBirthdaysWidget, renderAttendanceWidget, renderAnnouncementsWidget } from './components/homeWidgets.js';
 import { createAttendanceManagerModal } from './components/attendanceManager.js';
 import { t, departmentLabel, getLang } from './i18n.js';
 
@@ -154,34 +154,55 @@ export async function renderSuperAdminHomeTab() {
   const canSeeMeetings = ['super_admin', 'church_secretary'].includes(getGlobalRole());
   const isSuperAdmin = getGlobalRole() === 'super_admin';
 
+  const isLeader = hasGlobalReach();
   const displayName = document.querySelector('[data-nav-group="current-user-name"]')?.textContent?.trim() || '';
-  const todayFormatted = new Date().toLocaleDateString(LOCALE_BY_LANG[getLang()] || 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const todayFormatted = new Date().toLocaleDateString(LOCALE_BY_LANG[getLang()] || 'en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  // Redesigned Home (design canvas, step 2): what *I* need first
+  // (next service, quick actions, this week), then — for leaders —
+  // a "Gestion" column with the counts and what's waiting on them.
   container.innerHTML = `
-    <div class="flex items-baseline justify-between flex-wrap gap-1 mb-1">
-      <h2 class="text-lg sm:text-xl font-bold text-slate-900">${t('superHome.welcomeBack', { name: escapeHtml(displayName) })}</h2>
-      <span class="text-xs sm:text-sm text-slate-400">${escapeHtml(todayFormatted)}</span>
+    <div class="home-grid">
+      <div class="space-y-5 min-w-0">
+        <div>
+          <div class="text-[13px] font-medium text-slate-500">${esc(todayFormatted.charAt(0).toUpperCase() + todayFormatted.slice(1))}</div>
+          <h2 class="font-display text-[28px] sm:text-[32px] leading-tight text-[#0B1F3A] mt-0.5">${esc(greeting(displayName))}</h2>
+          <div data-el="live-chip" class="mt-2.5 lg:hidden"></div>
+        </div>
+        <div data-el="next-service"></div>
+        <div data-el="quick"></div>
+        <div data-el="w-announcements"></div>
+        <div data-el="this-week"></div>
+      </div>
+      <div class="space-y-5 min-w-0">
+        <div data-el="live-card" class="hidden lg:block"></div>
+        ${isLeader ? `
+          <div>
+            <div class="home-kicker mb-2.5">${t('home.manage')}</div>
+            <div data-el="metrics"></div>
+          </div>
+          <div data-el="todo"></div>` : ''}
+        <div data-el="w-birthdays"></div>
+        ${isPastoralTeam && isLeader ? '<div data-el="w-attendance"></div>' : ''}
+      </div>
     </div>
 
-    <div class="mt-4" data-el="metrics"></div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-      <div data-el="w-events"></div>
-      <div data-el="w-pending"></div>
-      <div data-el="w-birthdays"></div>
-      <div data-el="w-prayer"></div>
-      <div data-el="w-attendance" class="md:col-span-2"></div>
-      <div data-el="w-announcements"></div>
-    </div>
-
-    <div id="super-home-pending" class="bg-black text-white rounded-xl p-4 sm:p-6 mt-6">
-      <h2 class="text-lg font-semibold mb-4">${t('superHome.pendingTitle')}</h2>
-      <div data-el="pending"></div>
-    </div>
+    ${isLeader ? `
+      <section id="super-home-pending" class="home-card mt-5">
+        <h2 class="home-h2 mb-3">${t('home.membershipsTitle')}</h2>
+        <div data-el="pending"></div>
+      </section>` : ''}
   `;
 
-  renderMetrics(container.querySelector('[data-el="metrics"]'), supabase, isPastoralTeam);
-  renderAllDepartmentApprovals(container.querySelector('[data-el="pending"]'), { supabase, adminUserId: user.id });
+  const liveInfo = loadLiveInfo();
+  renderLive(container.querySelector('[data-el="live-card"]'), container.querySelector('[data-el="live-chip"]'), { liveInfo });
+  renderNextService(container.querySelector('[data-el="next-service"]'), { supabase });
+  renderQuickActions(container.querySelector('[data-el="quick"]'));
+  renderThisWeek(container.querySelector('[data-el="this-week"]'), { supabase, liveInfo });
+  if (isLeader) {
+    renderMetrics(container.querySelector('[data-el="metrics"]'), supabase, isPastoralTeam);
+    renderAllDepartmentApprovals(container.querySelector('[data-el="pending"]'), { supabase, adminUserId: user.id });
+  }
 
   // This tab re-renders on things unrelated to a real page navigation —
   // View-As entry/exit, language changes, department-switcher use that
@@ -261,28 +282,32 @@ export async function renderSuperAdminHomeTab() {
     currentPeopleImportModal = createPeopleImportModal({ supabase, currentUserId: user.id });
   }
 
-  renderUpcomingChurchEvents(container.querySelector('[data-el="w-events"]'), { supabase });
-  renderPendingRequestsWidget(container.querySelector('[data-el="w-pending"]'), {
-    supabase,
-    onScrollToPending: () => document.querySelector('#super-home-pending')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-  });
+  if (isLeader) {
+    renderTodo(container.querySelector('[data-el="todo"]'), {
+      supabase,
+      actions: {
+        memberships: () => document.querySelector('#super-home-pending')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+        meetings: canSeeMeetings ? () => currentPastorMeetingQueueModal?.open() : null,
+        prayer: isPastoralTeam ? () => currentPrayerRequestQueueModal?.open() : null,
+        budgets: () => window.dispatchEvent(new CustomEvent('app:open-tab', { detail: { tab: 'budget' } })),
+      },
+    });
+  }
   renderBirthdaysWidget(container.querySelector('[data-el="w-birthdays"]'), {
     supabase,
-    onOpenDirectory: () => currentDirectoryModal?.open(),
+    onOpenDirectory: isLeader ? () => currentDirectoryModal?.open() : null,
   });
-  renderPrayerRequestsWidget(container.querySelector('[data-el="w-prayer"]'), {
-    supabase,
-    onOpenQueue: isPastoralTeam ? () => currentPrayerRequestQueueModal?.open() : null,
-  });
-  renderAttendanceWidget(container.querySelector('[data-el="w-attendance"]'), {
-    supabase,
-    onOpenAttendance: isPastoralTeam ? () => currentAttendanceModal?.open() : null,
-  });
+  if (isPastoralTeam && isLeader) {
+    renderAttendanceWidget(container.querySelector('[data-el="w-attendance"]'), {
+      supabase,
+      onOpenAttendance: () => currentAttendanceModal?.open(),
+    });
+  }
   renderAnnouncementsWidget(container.querySelector('[data-el="w-announcements"]'), { supabase });
 }
 
 async function renderMetrics(container, supabase, isPastoralTeam) {
-  container.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">${[1, 2, 3, 4].map(() => metricCardHtml(null, '—', '')).join('')}</div>`;
+  container.innerHTML = `<div class="grid grid-cols-2 gap-3">${[1, 2, 3, 4].map(() => metricCardHtml(null, '—', '')).join('')}</div>`;
 
   const [
     { count: userCount },
@@ -302,7 +327,7 @@ async function renderMetrics(container, supabase, isPastoralTeam) {
   const pendingCount = (pendingMemberships || 0) + (pendingMeetings || 0) + (pendingBudgets || 0);
 
   container.innerHTML = `
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 gap-3">
       ${metricCardHtml('directory', userCount ?? '—', t('superHome.metricUsers'))}
       ${metricCardHtml(null, departmentCount ?? '—', t('superHome.metricDepartments'))}
       ${metricCardHtml(isPastoralTeam ? 'cases' : null, openCaseCount ?? '—', t('superHome.metricOpenCases'), openCaseCount > 0)}
@@ -327,8 +352,8 @@ function metricCardHtml(action, value, label, highlight = false) {
   const clickableClasses = clickable ? 'hover:border-indigo-200 hover:-translate-y-0.5 cursor-pointer' : '';
   return `
     <${tag} ${typeAttr} ${actionAttr}
-        class="bg-white border border-slate-100 rounded-xl p-3.5 sm:p-4 text-left w-full transition-all ${highlight ? 'ring-2 ring-amber-400' : ''} ${clickableClasses}">
-      <div class="text-[22px] font-extrabold text-slate-900 tabular-nums tracking-tight leading-none">${value}</div>
+        class="bg-white border border-[#E6E1D6] rounded-2xl p-3.5 sm:p-4 text-left w-full transition-all ${highlight ? 'ring-2 ring-[#E0B654]' : ''} ${clickableClasses}">
+      <div class="font-display text-[26px] text-[#0B1F3A] tabular-nums leading-none">${value}</div>
       <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mt-1.5">${label}</div>
     </${tag}>
   `;

@@ -8,13 +8,13 @@
 // caller's own tenant, same as every other read in this app.
 import { t, appLocale } from '../i18n.js';
 
-const CARD = 'bg-white rounded-xl border border-slate-100 p-4 flex flex-col';
+const CARD = 'home-card flex flex-col';
 
 function head(title, linkLabel) {
   return `
     <div class="flex items-center justify-between mb-2.5">
-      <h3 class="text-[12.5px] font-bold text-slate-900 flex items-center gap-1.5">${title}</h3>
-      ${linkLabel ? `<button type="button" data-action="widget-link" class="text-[10.5px] font-semibold text-indigo-600 hover:text-indigo-800">${linkLabel}</button>` : ''}
+      <h3 class="home-h2 text-[18px] flex items-center gap-1.5">${title}</h3>
+      ${linkLabel ? `<button type="button" data-action="widget-link" class="home-link">${linkLabel}</button>` : ''}
     </div>
   `;
 }
