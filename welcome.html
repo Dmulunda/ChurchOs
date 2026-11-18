@@ -2,20 +2,29 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>La Voix de la Puissance Divine — Bienvenue · Welcome</title>
-  <meta name="description" content="Programme, événements, prédications, prière, rencontrer un pasteur, dons. Program, events, sermons, prayer, meet a pastor, giving." />
+  <meta name="description" content="Cultes en direct, programme, prédications, prière, rencontrer un pasteur, dons. Live services, program, sermons, prayer, meet a pastor, giving." />
   <meta property="og:title" content="La Voix de la Puissance Divine" />
-  <meta property="og:description" content="Bienvenue · Welcome" />
+  <meta property="og:description" content="Bienvenue à la maison · Welcome home" />
   <meta name="theme-color" content="#0B1F3A" />
   <link rel="icon" type="image/png" href="img/vpd-logo.png" />
   <link rel="apple-touch-icon" href="img/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    #welcome-root a { text-decoration: none; }
+    #welcome-root a.underline { text-decoration: underline; }
+  </style>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800">
-  <div id="welcome-root" class="max-w-2xl mx-auto px-4 pb-16">
+<body class="bg-[#0B1F3A] min-h-screen text-[#1B2433]">
+  <div id="welcome-root" class="max-w-[560px] mx-auto bg-[#F6F4EF] min-h-screen">
     <p class="text-slate-500 p-6">Chargement… / Loading…</p>
   </div>
+  <div id="welcome-bar"></div>
   <script type="module" src="js/welcome.js"></script>
 </body>
 </html>
