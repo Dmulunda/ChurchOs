@@ -123,11 +123,20 @@ export async function renderCalendarTab() {
         <label class="text-sm">${t('calendar.room')}<select name="room_id" class="mt-1 w-full border border-slate-300 rounded-lg px-2 py-2 text-sm"><option value="">${t('calendar.noRoom')}</option>${(rooms || []).map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('')}</select></label>
         <label class="text-sm">${t('calendar.visibility')}<select name="visibility" class="mt-1 w-full border border-slate-300 rounded-lg px-2 py-2 text-sm"><option value="church">${t('calendar.everyone')}</option><option value="leaders">${t('calendar.leadersOnly')}</option></select></label>
         <textarea name="description" rows="2" placeholder="${t('smallGroups.description')}" class="sm:col-span-2 border border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
+        <label class="text-sm">${t('calendar.repeat')}<select name="repeat" class="mt-1 w-full border border-slate-300 rounded-lg px-2 py-2 text-sm">
+          <option value="none">${t('calendar.repeatNone')}</option><option value="daily">${t('calendar.repeatDaily')}</option>
+          <option value="weekly">${t('calendar.repeatWeekly')}</option><option value="monthly">${t('calendar.repeatMonthly')}</option></select></label>
+        <label data-el="until-wrap" class="text-sm hidden">${t('calendar.repeatUntil')}<input name="until" type="date" min="${today}" class="mt-1 w-full border border-slate-300 rounded-lg px-2 py-2 text-sm"></label>
         <div class="sm:col-span-2 flex items-center gap-2"><button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium">${t('givingAdmin.save')}</button>
           <button type="button" data-action="cancel" class="px-4 py-2 rounded-lg border border-slate-300 text-sm">${t('common.cancel')}</button><span data-el="msg" class="text-sm text-rose-600"></span></div>
       </form>`;
     const form = panel.querySelector('form');
     form.querySelector('[data-action="cancel"]').addEventListener('click', () => { panel.innerHTML = ''; });
+    form.elements.repeat.addEventListener('change', () => {
+      const on = form.elements.repeat.value !== 'none';
+      form.querySelector('[data-el="until-wrap"]').classList.toggle('hidden', !on);
+      form.elements.until.required = on;
+    });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const f = form.elements;
@@ -135,11 +144,28 @@ export async function renderCalendarTab() {
       const endsAt = new Date(`${f.date.value}T${f.end.value}`);
       const msg = form.querySelector('[data-el="msg"]');
       if (endsAt <= startsAt) { msg.textContent = t('calendar.errorTimes'); return; }
-      const { error: saveError } = await supabase.from('calendar_items').insert({
+      // Repeat: one row per occurrence (daily up to ~3 months, weekly or
+      // monthly up to 52), same as the service program's recurrence.
+      const days = [f.date.value];
+      if (f.repeat.value !== 'none') {
+        if (!f.until.value || f.until.value < f.date.value) { msg.textContent = t('calendar.errorUntil'); return; }
+        const cap = f.repeat.value === 'daily' ? 92 : 52;
+        const cur = new Date(`${f.date.value}T00:00:00`);
+        const until = new Date(`${f.until.value}T00:00:00`);
+        days.length = 0;
+        while (cur <= until && days.length < cap) {
+          days.push(ymd(cur));
+          if (f.repeat.value === 'daily') cur.setDate(cur.getDate() + 1);
+          else if (f.repeat.value === 'weekly') cur.setDate(cur.getDate() + 7);
+          else cur.setMonth(cur.getMonth() + 1);
+        }
+      }
+      const rows = days.map((d) => ({
         title: f.title.value.trim(), description: f.description.value.trim() || null,
-        starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
+        starts_at: new Date(`${d}T${f.start.value}`).toISOString(), ends_at: new Date(`${d}T${f.end.value}`).toISOString(),
         room_id: f.room_id.value || null, visibility: f.visibility.value, created_by: user.id,
-      });
+      }));
+      const { error: saveError } = await supabase.from('calendar_items').insert(rows);
       if (saveError) { msg.textContent = saveError.message.includes('ROOM_BOOKED') ? t('calendar.roomTaken', { title: saveError.message.split('ROOM_BOOKED:')[1]?.trim() || '' }) : saveError.message; return; }
       monthCursor = new Date(startsAt.getFullYear(), startsAt.getMonth(), 1);
       renderCalendarTab();
