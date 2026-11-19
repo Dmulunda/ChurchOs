@@ -1,10 +1,12 @@
-// public-portal: everything the guest welcome page (welcome.html) shows,
-// in one call, for visitors who are not signed in.
+// public-portal: everything a church's guest welcome page
+// (welcome.html?church=<slug>) shows, in one call, for visitors who are
+// not signed in. The church comes from body.church (its slug); a
+// signed-in caller with no slug gets their own church.
 //
 // Privacy: this function runs with the service role, so it returns ONLY
 // a fixed list of public fields. No people, no member data, no internal
 // events. What is public:
-//   * church name, logo, address/email/phone and social links from church_branding
+//   * church name, logo, address/email/phone and social links from its tenants row
 //   * the church program for the next 8 weeks (title, description, date,
 //     special flag, flyer)
 //   * events with visibility 'public' that are not cancelled and not over
@@ -13,13 +15,13 @@
 //     video (sql/166) so a full livestream link plays only the sermon
 // Called with the anon key (verify_jwt stays on).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { resolveTenant } from '../_shared/resolveTenant.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
-const CHURCH_NAME = 'La Voix de la Puissance Divine';
 const LINK_SECONDS = 6 * 3600;
 
 function ymd(d: Date) { return d.toISOString().slice(0, 10); }
@@ -27,22 +29,28 @@ function ymd(d: Date) { return d.toISOString().slice(0, 10); }
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const body0 = await req.json().catch(() => ({}));
+  const tenant = await resolveTenant(admin, req, body0);
+  if (!tenant) {
+    return new Response(JSON.stringify({ error: 'church_not_found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  const tid = tenant.id;
   const now = new Date();
   const until = new Date(now.getTime() + 56 * 86400000);
 
-  const [branding, dates, events, sermons] = await Promise.all([
-    admin.from('church_branding').select('logo_url, address, email, phone, website_url, facebook_url, youtube_url, instagram_url, tiktok_url, whatsapp_url').eq('id', true).maybeSingle(),
+  const branding = { data: tenant };
+  const [dates, events, sermons] = await Promise.all([
     admin.from('church_program_dates')
       .select('date, program:church_programs!program_id ( title, description, is_special, flyer_storage_path )')
-      .gte('date', ymd(now)).lte('date', ymd(until)).order('date').limit(60),
+      .eq('tenant_id', tid).gte('date', ymd(now)).lte('date', ymd(until)).order('date').limit(60),
     admin.from('events')
       .select('id, title, description, location, start_at, end_at, price_cents')
-      .eq('visibility', 'public').neq('status', 'cancelled')
+      .eq('tenant_id', tid).eq('visibility', 'public').neq('status', 'cancelled')
       .gte('start_at', new Date(now.getTime() - 6 * 3600000).toISOString())
       .order('start_at').limit(12),
     admin.from('sermons')
       .select('title, preacher, preached_on, series, scripture, language, summary, video_url, video_start_seconds, video_end_seconds, audio_path, notes_path')
-      .is('archived_at', null).order('preached_on', { ascending: false }).limit(12),
+      .eq('tenant_id', tid).is('archived_at', null).order('preached_on', { ascending: false }).limit(12),
   ]);
 
   const sign = async (bucket: string, path: string | null) => {
@@ -71,7 +79,8 @@ Deno.serve(async (req) => {
 
   const body = {
     church: {
-      name: CHURCH_NAME,
+      name: tenant.name,
+      slug: tenant.slug,
       logo_url: branding.data?.logo_url || null,
       address: branding.data?.address || null,
       email: branding.data?.email || null,

@@ -1,7 +1,9 @@
-// live-status: is the church's YouTube channel streaming right now?
+// live-status: is a church's YouTube channel streaming right now?
+// The church comes from body.church (its slug) or, for a signed-in
+// caller with no slug, the caller's own church.
 //
-// Reads the YouTube link saved in church_branding.youtube_url (Super
-// Admin Home -> Change Info), finds the channel, and checks the
+// Reads the YouTube link saved in tenants.youtube_url (Settings ->
+// Church logo & info), finds the channel, and checks the
 // channel's /live page. Returns
 //   { configured, live, upcoming, video_id, title, starts_at, channel_url,
 //     schedule: [{ day: 0-6 (Sunday = 0), time: 'HH:MM' }], timezone }
@@ -10,6 +12,7 @@
 // Public on purpose (called with the anon key): it only says whether
 // the public channel is live.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { resolveTenant } from '../_shared/resolveTenant.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -79,12 +82,15 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  const { data: branding } = await admin.from('church_branding').select('youtube_url, live_schedule, live_timezone').eq('id', true).maybeSingle();
+  const body0 = await req.json().catch(() => ({}));
+  const branding = await resolveTenant(admin, req, body0);
+  if (!branding) return json({ configured: false, live: false, schedule: [], timezone: 'America/Toronto' });
+  const tid = branding.id;
   const sourceUrl = (branding?.youtube_url || '').trim();
   const schedule = { schedule: Array.isArray(branding?.live_schedule) ? branding.live_schedule : [], timezone: branding?.live_timezone || 'America/Toronto' };
   if (!sourceUrl) return json({ configured: false, live: false, ...schedule });
 
-  const { data: cache } = await admin.from('live_status_cache').select('*').eq('id', true).maybeSingle();
+  const { data: cache } = await admin.from('live_status_cache').select('*').eq('tenant_id', tid).maybeSingle();
   const fresh = cache && cache.source_url === sourceUrl && Date.now() - new Date(cache.checked_at).getTime() < CACHE_SECONDS * 1000;
   if (fresh) return json({ ...cache.payload, ...schedule });
 
@@ -99,6 +105,6 @@ Deno.serve(async (req) => {
   } catch (_e) {
     payload = cache?.payload && cache.source_url === sourceUrl ? cache.payload : { configured: true, channel_url: sourceUrl, live: false, error: 'check_failed' };
   }
-  await admin.from('live_status_cache').upsert({ id: true, source_url: sourceUrl, channel_id: channelId, payload, checked_at: new Date().toISOString() });
+  await admin.from('live_status_cache').upsert({ tenant_id: tid, source_url: sourceUrl, channel_id: channelId, payload, checked_at: new Date().toISOString() });
   return json({ ...payload, ...schedule });
 });

@@ -4,6 +4,7 @@
 // the next program date and a link to past services. Public page, no
 // account needed; nothing about members is read.
 import { supabase } from './supabaseClient.js';
+import { churchBody, installChurchLinks } from './churchContext.js';
 import { fetchLiveStatus, youtubeEmbedUrl, youtubeWatchUrl } from './liveStatus.js';
 import { serviceState, formatCountdown, formatServiceTime, slotFor, placeLabel } from './liveSchedule.js';
 
@@ -46,6 +47,8 @@ function cap(v) {
 let status = null;
 let nextProgram = null;
 let churchAddress = null;
+let churchLogo = null;
+let churchName = '';
 let shownVideo = null;
 
 function player(videoId) {
@@ -63,7 +66,7 @@ function render() {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>${esc(tx('backShort'))}
       </a>
       <div class="flex items-center gap-2">
-        <a href="welcome.html" class="bg-white rounded-xl px-2 py-1"><img src="img/vpd-logo.png" alt="La Voix de la Puissance Divine" class="h-[30px] block" /></a>
+        <a href="welcome.html" class="bg-white rounded-xl px-2 py-1"><img data-church-logo src="${attr(churchLogo || 'img/church-on-point-icon.png')}" alt="${attr(churchName)}" class="h-[30px] block" /></a>
         <button type="button" data-action="lang" class="h-11 min-w-[44px] px-3 rounded-full border border-white/35 text-[13px] font-semibold">${esc(tx('langSwitch'))}</button>
       </div>
     </header>`;
@@ -160,8 +163,9 @@ async function refresh() {
 }
 
 async function main() {
+  installChurchLinks();
   render();
-  const portal = supabase.functions.invoke('public-portal', { body: {} }).then(({ data }) => { nextProgram = data?.program?.[0] || null; churchAddress = data?.church?.address || null; }).catch(() => {});
+  const portal = supabase.functions.invoke('public-portal', { body: churchBody() }).then(({ data }) => { nextProgram = data?.program?.[0] || null; churchAddress = data?.church?.address || null; churchLogo = data?.church?.logo_url || null; churchName = data?.church?.name || ''; if (churchName) document.title = `${churchName} — Live`; }).catch(() => {});
   await Promise.all([refresh(), portal]);
   render();
   setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60000);

@@ -8,6 +8,7 @@
 // channel name/message shapes.
 import { createProjectionChannel } from './utils/projection.js';
 import { loadYouTubeIframeAPI } from './utils/youtube.js';
+import { supabase } from './supabaseClient.js';
 
 const backdropEl = document.getElementById('backdrop');
 const linesEl = document.getElementById('lines');
@@ -15,6 +16,12 @@ const referenceEl = document.getElementById('reference');
 const imageEl = document.getElementById('image-slide');
 const videoContainerEl = document.getElementById('video-container');
 const idleEl = document.getElementById('idle');
+// The church's own logo on the idle screen (same browser session as the
+// operator's console, so the signed-in church is known).
+supabase.rpc('get_public_church_info').then(({ data }) => {
+  const img = idleEl?.querySelector('img');
+  if (img && data?.logo_url) img.src = data.logo_url;
+}, () => {});
 const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
 const countdownContainerEl = document.getElementById('countdown-container');
 const countdownTextEl = document.getElementById('countdown-text');

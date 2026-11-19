@@ -208,7 +208,7 @@ export async function renderThisWeek(container, { supabase, liveInfo }) {
 
 export function loadLiveInfo(supabase) {
   const address = supabase
-    ? supabase.from('church_branding').select('address').eq('id', true).maybeSingle().then((r) => r.data?.address || null, () => null)
+    ? supabase.rpc('current_tenant_id').then(({ data: tid }) => (tid ? supabase.from('tenants').select('address').eq('id', tid).maybeSingle() : { data: null })).then((r) => r.data?.address || null, () => null)
     : Promise.resolve(null);
   return Promise.all([fetchLiveStatus(), address]).then(([info, addr]) => (info ? { ...info, address: addr } : null));
 }

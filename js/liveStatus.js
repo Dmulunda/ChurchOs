@@ -2,10 +2,11 @@
 // channel is streaming. Shared by live.html, welcome.html and the
 // member app's live banner. Returns null on any failure.
 import { supabase } from './supabaseClient.js';
+import { churchBody } from './churchContext.js';
 
 export async function fetchLiveStatus() {
   try {
-    const { data, error } = await supabase.functions.invoke('live-status', { body: {} });
+    const { data, error } = await supabase.functions.invoke('live-status', { body: churchBody() });
     return error ? null : data;
   } catch {
     return null;

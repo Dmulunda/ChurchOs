@@ -135,6 +135,16 @@ function applyTenantBranding() {
     tenantLogoImgEl.classList.add('hidden');
     tenantLogoPlaceholderEl.classList.remove('hidden');
   }
+  // Brand pill at the top of the sidebar (redesign): the church's logo,
+  // or the ChurchOnPoint icon until one is uploaded.
+  // "Guest view" opens this church's own public welcome page.
+  if (tenant?.slug) {
+    document.querySelectorAll('a[href^="welcome.html"]').forEach((a) => { a.href = `welcome.html?church=${encodeURIComponent(tenant.slug)}`; });
+  }
+  document.querySelectorAll('img[data-tenant-logo]').forEach((img) => {
+    img.src = tenant?.logo_url || 'img/church-on-point-icon.png';
+    img.alt = tenant?.name || '';
+  });
 }
 
 // ---- Church Extensions: "Switch Extension" sidebar control + banner ----

@@ -13,6 +13,17 @@ const BUCKET = 'tenant-logos';
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
 
+const SOCIAL_FIELDS = ['website_url', 'facebook_url', 'youtube_url', 'instagram_url', 'tiktok_url', 'whatsapp_url'];
+const SOCIAL_PLACEHOLDERS = {
+  website_url: 'https://www.…',
+  facebook_url: 'https://www.facebook.com/…',
+  youtube_url: 'https://www.youtube.com/@…',
+  instagram_url: 'https://www.instagram.com/…',
+  tiktok_url: 'https://www.tiktok.com/@…',
+  whatsapp_url: 'https://whatsapp.com/channel/…',
+};
+const TIME_ZONES = ['America/Toronto', 'America/Montreal', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Vancouver', 'America/Halifax', 'Europe/Paris', 'Europe/Brussels', 'Europe/London', 'Africa/Kinshasa', 'Africa/Lubumbashi', 'Africa/Douala', 'Africa/Abidjan', 'Africa/Johannesburg'];
+
 export function createTenantLogoModal({ supabase, tenantId, userId, onSaved, onExtensionCreated }) {
   const root = document.createElement('div');
   root.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4';
@@ -34,17 +45,17 @@ export function createTenantLogoModal({ supabase, tenantId, userId, onSaved, onE
   async function load() {
     bodyEl.innerHTML = `<p class="text-sm text-slate-500">${t('common.loading')}</p>`;
     const [{ data, error }] = await Promise.all([
-      supabase.from('tenants').select('name, logo_url, address, email, phone, denomination_id').eq('id', tenantId).single(),
+      supabase.from('tenants').select('name, slug, logo_url, address, email, phone, denomination_id, website_url, facebook_url, youtube_url, instagram_url, tiktok_url, whatsapp_url, live_schedule, live_timezone').eq('id', tenantId).single(),
       loadMyDenominationInfo(userId),
     ]);
     if (error) {
       bodyEl.innerHTML = `<p class="text-sm text-rose-600">${t('logo.failedToLoad', { message: error.message })}</p>`;
       return;
     }
-    render(data?.name || '', data?.logo_url || null, data?.address || '', data?.email || '', data?.phone || '', data?.denomination_id || null);
+    render(data?.name || '', data?.logo_url || null, data?.address || '', data?.email || '', data?.phone || '', data?.denomination_id || null, data || {});
   }
 
-  function render(name, logoUrl, address, email, phone, denominationId) {
+  function render(name, logoUrl, address, email, phone, denominationId, links = {}) {
     bodyEl.innerHTML = '';
 
     // Only name and logo_url are self-service on this table (see
@@ -113,6 +124,26 @@ export function createTenantLogoModal({ supabase, tenantId, userId, onSaved, onE
       <input type="email" data-el="email-input" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2" placeholder="${t('logo.emailPlaceholder')}" value="${escapeAttr(email)}" />
       <label class="block text-sm font-medium text-slate-600 mb-1">${t('logo.phoneLabel')}</label>
       <input type="tel" data-el="phone-input" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2" placeholder="${t('logo.phonePlaceholder')}" value="${escapeAttr(phone)}" />
+      ${links.slug ? `<h3 class="text-sm font-semibold text-slate-700 mt-4 mb-1">${t('logo.publicPageTitle')}</h3>
+      <p class="text-xs text-slate-400 mb-2">${t('logo.publicPageHint')}</p>
+      <div class="flex items-center gap-2 mb-2">
+        <input type="text" readonly data-el="public-link" class="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-50" value="${escapeAttr(new URL(`welcome.html?church=${encodeURIComponent(links.slug)}`, location.href).href)}" />
+        <button type="button" data-action="copy-public-link" class="px-3 py-2 rounded-lg border border-slate-300 text-sm">${t('logo.copyLink')}</button>
+      </div>` : ''}
+      <h3 class="text-sm font-semibold text-slate-700 mt-4 mb-1">${t('logo.socialTitle')}</h3>
+      <p class="text-xs text-slate-400 mb-2">${t('logo.socialHint')}</p>
+      ${SOCIAL_FIELDS.map((f) => `
+        <label class="block text-sm font-medium text-slate-600 mb-1">${t(`logo.social.${f}`)}</label>
+        <input type="url" data-social="${f}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2" placeholder="${SOCIAL_PLACEHOLDERS[f]}" value="${escapeAttr(links[f] || '')}" />
+        ${f === 'youtube_url' ? `<p class="text-xs text-slate-400 -mt-1 mb-2">${t('logo.youtubeLiveHint')}</p>` : ''}`).join('')}
+      <h3 class="text-sm font-semibold text-slate-700 mt-4 mb-1">${t('logo.liveTimesTitle')}</h3>
+      <p class="text-xs text-slate-400 mb-2">${t('logo.liveTimesHintTenant')}</p>
+      <label class="block text-sm font-medium text-slate-600 mb-1">${t('logo.timeZone')}</label>
+      <select data-el="live-timezone" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2">
+        ${[...new Set([links.live_timezone || 'America/Toronto', ...TIME_ZONES])].map((z) => `<option value="${escapeAttr(z)}" ${z === (links.live_timezone || 'America/Toronto') ? 'selected' : ''}>${escapeHtml(z.replace(/_/g, ' '))}</option>`).join('')}
+      </select>
+      <div data-el="live-times" class="space-y-2 mb-2"></div>
+      <button type="button" data-action="add-live-time" class="text-sm text-indigo-700 mb-3">${t('logo.liveTimesAdd')}</button>
       <p data-el="address-status" class="text-sm mb-2"></p>
       <button type="button" data-action="save-address" class="w-full px-4 py-2 rounded-lg bg-slate-700 text-white font-medium hover:bg-slate-800 disabled:opacity-50">
         ${t('logo.saveAddressButton')}
@@ -125,7 +156,31 @@ export function createTenantLogoModal({ supabase, tenantId, userId, onSaved, onE
     const phoneInput = contactSection.querySelector('[data-el="phone-input"]');
     const addressStatusEl = contactSection.querySelector('[data-el="address-status"]');
     const saveAddressBtn = contactSection.querySelector('[data-action="save-address"]');
-    saveAddressBtn.addEventListener('click', () => saveContactInfo(addressInput, emailInput, phoneInput, addressStatusEl, saveAddressBtn));
+    contactSection.querySelector('[data-action="copy-public-link"]')?.addEventListener('click', (e) => {
+      const input = contactSection.querySelector('[data-el="public-link"]');
+      navigator.clipboard?.writeText(input.value).then(() => { e.target.textContent = t('logo.copied'); }, () => { input.select(); });
+    });
+    const liveTimesEl = contactSection.querySelector('[data-el="live-times"]');
+    const addLiveTimeRow = (slot = { day: 0, time: '10:30' }) => {
+      const row = document.createElement('div');
+      row.className = 'flex flex-wrap items-center gap-2';
+      row.dataset.liveTime = '1';
+      row.innerHTML = `
+        <select data-el="day" class="flex-1 border border-slate-300 rounded-lg px-2 py-2 text-sm">
+          ${[0, 1, 2, 3, 4, 5, 6].map((d) => `<option value="${d}" ${Number(slot.day) === d ? 'selected' : ''}>${t(`logo.weekday.${d}`)}</option>`).join('')}
+        </select>
+        <input type="time" data-el="time" value="${escapeAttr(slot.time || '')}" class="border border-slate-300 rounded-lg px-2 py-2 text-sm" />
+        <label class="flex items-center gap-1.5 text-sm text-slate-600 whitespace-nowrap">
+          <input type="checkbox" data-el="online-only" ${slot.online_only ? 'checked' : ''} class="rounded border-slate-300" />
+          ${t('logo.onlineOnly')}
+        </label>
+        <button type="button" class="px-2 text-rose-600 text-lg" aria-label="${t('logo.liveTimesRemove')}">&times;</button>`;
+      row.querySelector('button').addEventListener('click', () => row.remove());
+      liveTimesEl.appendChild(row);
+    };
+    (Array.isArray(links.live_schedule) ? links.live_schedule : []).forEach((slot) => addLiveTimeRow(slot));
+    contactSection.querySelector('[data-action="add-live-time"]').addEventListener('click', () => addLiveTimeRow());
+    saveAddressBtn.addEventListener('click', () => saveContactInfo(addressInput, emailInput, phoneInput, addressStatusEl, saveAddressBtn, contactSection));
 
     renderExtensions(denominationId);
   }
@@ -307,16 +362,40 @@ export function createTenantLogoModal({ supabase, tenantId, userId, onSaved, onE
     onSaved?.();
   }
 
-  async function saveContactInfo(addressInput, emailInput, phoneInput, statusEl, button) {
+  async function saveContactInfo(addressInput, emailInput, phoneInput, statusEl, button, contactSection) {
     const address = addressInput.value.trim() || null;
     const email = emailInput.value.trim() || null;
     const phone = phoneInput.value.trim() || null;
+    // Social links (public welcome page) and live-service times
+    // (countdown on the welcome/live pages, calendar times).
+    const links = {};
+    for (const input of contactSection.querySelectorAll('[data-social]')) {
+      let v = input.value.trim().replace(/^http:\/\//i, 'https://');
+      if (v && !/^https:\/\//i.test(v)) v = `https://${v}`;
+      if (v && !/^https:\/\/\S+\.\S+$/i.test(v)) {
+        statusEl.className = 'text-sm text-rose-600 mb-2';
+        statusEl.textContent = t('logo.socialInvalid', { field: t(`logo.social.${input.dataset.social}`) });
+        input.focus();
+        return;
+      }
+      input.value = v;
+      links[input.dataset.social] = v || null;
+    }
+    links.live_schedule = [...contactSection.querySelectorAll('[data-live-time]')]
+      .map((row) => ({
+        day: Number(row.querySelector('[data-el="day"]').value),
+        time: row.querySelector('[data-el="time"]').value,
+        online_only: row.querySelector('[data-el="online-only"]').checked,
+      }))
+      .filter((slot) => /^\d{2}:\d{2}$/.test(slot.time))
+      .slice(0, 14);
+    links.live_timezone = contactSection.querySelector('[data-el="live-timezone"]').value || 'America/Toronto';
 
     button.disabled = true;
     statusEl.className = 'text-sm text-slate-500 mb-2';
     statusEl.textContent = t('common.saving');
 
-    const { error } = await supabase.from('tenants').update({ address, email, phone }).eq('id', tenantId);
+    const { error } = await supabase.from('tenants').update({ address, email, phone, ...links }).eq('id', tenantId);
     button.disabled = false;
     if (error) {
       statusEl.className = 'text-sm text-rose-600 mb-2';

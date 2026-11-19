@@ -433,3 +433,9 @@ html.dark .fly-seg { background: #0f172a; }
 html.dark .fly-seg button.is-on { background: #334155; color: #fff; }
 html.dark .fly-stage { background-color: #0f172a; background-image: radial-gradient(#1e293b 1px, transparent 1px); border-color: #334155; }
 html.dark .fly-icon-btn.is-on { background: #E0B654; color: #0B1F3A; }
+
+/* ChurchOnPoint: plan-locked menu items keep their label next to the icon,
+   with the "Upgrade" lock pushed to the right. */
+#sidebar button:has(> span[data-el$="-lock"]) { justify-content: flex-start; gap: 0; }
+#sidebar button:has(> span[data-el$="-lock"]) > span:first-of-type { text-align: left; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sidebar button > span[data-el$="-lock"] { margin-left: auto; padding-left: 8px; white-space: nowrap; }

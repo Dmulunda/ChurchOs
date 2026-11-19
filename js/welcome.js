@@ -7,6 +7,7 @@
 // main actions, a 2x2 help grid, "this week" cards, latest sermon,
 // events, find us, and a bottom bar (Live, Give, Prayer).
 import { supabase } from './supabaseClient.js';
+import { churchBody, installChurchLinks } from './churchContext.js';
 import { fetchLiveStatus } from './liveStatus.js';
 import { serviceState, formatServiceTime, slotFor, placeLabel } from './liveSchedule.js';
 import { clipPageUrl } from './utils/videoClip.js';
@@ -18,7 +19,7 @@ const LIVE_RED = '#C81E1E';
 
 const TEXT = {
   en: {
-    kicker: 'Ottawa', title: 'Welcome home.',
+    kicker: '', title: 'Welcome home.',
     intro: "First visit or long-time member, you are expected. Join our services, ask for prayer or meet a pastor.",
     signIn: 'Sign in', langSwitch: 'FR',
     nextLive: 'NEXT LIVE SERVICE', days: 'DAYS', hours: 'HOURS', min: 'MIN', sec: 'SEC',
@@ -41,7 +42,7 @@ const TEXT = {
     error: 'Could not load the latest information. Please try again later.',
   },
   fr: {
-    kicker: 'Ottawa', title: 'Bienvenue à la maison.',
+    kicker: '', title: 'Bienvenue à la maison.',
     intro: 'Première visite ou fidèle de longue date, vous êtes attendu. Suivez nos cultes, demandez la prière ou rencontrez un pasteur.',
     signIn: 'Se connecter', langSwitch: 'EN',
     nextLive: 'PROCHAIN DIRECT', days: 'JOURS', hours: 'HEURES', min: 'MIN', sec: 'SEC',
@@ -110,14 +111,14 @@ let tick = null;
 
 // ---------- pieces ----------
 function header(church) {
-  const logo = church?.logo_url || 'img/vpd-logo.png';
+  const logo = church?.logo_url || 'img/church-on-point-icon.png';
   return `<header style="background:${NAVY}" class="px-5 py-3.5 flex items-center justify-between gap-3">
     <a href="welcome.html" class="bg-white rounded-xl px-2.5 py-1.5 flex items-center">
-      <img src="${attr(logo)}" alt="${attr(church?.name || 'La Voix de la Puissance Divine')}" class="h-[34px] block" onerror="this.src='img/vpd-logo.png'">
+      <img src="${attr(logo)}" alt="${attr(church?.name || '')}" class="h-[34px] block" onerror="this.src='img/church-on-point-icon.png'">
     </a>
     <div class="flex items-center gap-2">
       <button type="button" data-action="lang" class="h-11 min-w-[44px] px-3 rounded-full border border-white/35 text-white text-[13px] font-semibold">${esc(tx('langSwitch'))}</button>
-      <a href="index.html?signin=1" class="h-11 px-3.5 rounded-full bg-white/10 text-white text-[13px] font-semibold flex items-center">${esc(tx('signIn'))}</a>
+      <a href="app.html?signin=1" class="h-11 px-3.5 rounded-full bg-white/10 text-white text-[13px] font-semibold flex items-center">${esc(tx('signIn'))}</a>
     </div>
   </header>`;
 }
@@ -211,7 +212,7 @@ function hero(church) {
   }
   return `<section class="px-5 pt-3 pb-7 flex flex-col gap-[18px]" style="background:${NAVY}">
     <div class="flex flex-col gap-2.5">
-      <p class="m-0 text-xs font-semibold tracking-[1.5px] uppercase" style="color:${GOLD}">${esc(church?.address || tx('kicker'))}</p>
+      <p class="m-0 text-xs font-semibold tracking-[1.5px] uppercase" style="color:${GOLD}">${esc(church?.name || church?.address || tx('kicker'))}</p>
       <h1 class="m-0 text-[36px] leading-[1.1] text-white font-bold" style="font-family:Fraunces,Georgia,serif">${esc(tx('title'))}</h1>
       <p class="m-0 text-[15px] leading-relaxed" style="color:#C9D2E3">${esc(tx('intro'))}</p>
     </div>
@@ -245,7 +246,7 @@ function helpGrid() {
       ${helpCard('prayer.html', 'prayer', tx('prayer'), tx('prayerSub'))}
       ${helpCard('booking.html', 'calendar', tx('pastor'), tx('pastorSub'))}
       ${helpCard('register.html', 'pen', tx('member'), tx('memberSub'))}
-      ${liveState?.configured ? helpCard('live.html', 'video', tx('watchLive'), tx('watchLiveSub')) : helpCard('index.html?signin=1', 'lock', tx('signIn'), tx('already'))}
+      ${liveState?.configured ? helpCard('live.html', 'video', tx('watchLive'), tx('watchLiveSub')) : helpCard('app.html?signin=1', 'lock', tx('signIn'), tx('already'))}
     </div>
   </section>`;
 }
@@ -366,7 +367,7 @@ function findUs(church) {
 
 function footer() {
   return `<footer class="mt-8 px-5 pt-6 pb-28 border-t border-[#E6E1D6] flex flex-col gap-2.5 items-center text-center">
-    <p class="m-0 text-sm text-[#1B2433]">${esc(tx('already'))} <a href="index.html?signin=1" class="font-bold underline" style="color:${NAVY}">${esc(tx('signIn'))}</a> · <a href="index.html?signup=1" class="font-bold underline" style="color:${NAVY}">${esc(tx('createAccount'))}</a></p>
+    <p class="m-0 text-sm text-[#1B2433]">${esc(tx('already'))} <a href="app.html?signin=1" class="font-bold underline" style="color:${NAVY}">${esc(tx('signIn'))}</a> · <a href="index.html?signup=1" class="font-bold underline" style="color:${NAVY}">${esc(tx('createAccount'))}</a></p>
     <p class="m-0 text-xs text-[#5B6475] flex items-center gap-1.5">${icon('lock', 14)} ${esc(tx('privacy'))}</p>
   </footer>`;
 }
@@ -387,7 +388,7 @@ function bottomBar() {
 function render() {
   document.documentElement.lang = lang;
   const root = document.getElementById('welcome-root');
-  const church = data?.church || { name: 'La Voix de la Puissance Divine' };
+  const church = data?.church || { name: '' };
   let body = header(church) + hero(church) + mainActions() + helpGrid();
   if (data) {
     body += programSection() + sermonSection() + eventsSection() + findUs(church);
@@ -448,9 +449,10 @@ async function checkLive() {
 }
 
 async function main() {
+  installChurchLinks();
   render();
-  const portal = supabase.functions.invoke('public-portal', { body: {} })
-    .then(({ data: result, error }) => { if (!error && result) data = result; })
+  const portal = supabase.functions.invoke('public-portal', { body: churchBody() })
+    .then(({ data: result, error }) => { if (!error && result) { data = result; if (result.church?.name) document.title = result.church.name; } })
     .catch(() => {});
   await Promise.all([portal, checkLive()]);
   loading = false;

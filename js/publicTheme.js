@@ -7,6 +7,9 @@
 // Back goes to the page the person came from on this site (welcome page
 // or member app); when the page was opened directly (QR code, shared
 // link) it goes to the welcome page.
+import { supabase } from './supabaseClient.js';
+import { churchSlug, installChurchLinks } from './churchContext.js';
+
 const NAVY = '#0B1F3A';
 const lang = (() => {
   try { const v = localStorage.getItem('choir-hub-lang'); if (v === 'en' || v === 'fr') return v; } catch { /* storage blocked */ }
@@ -68,13 +71,21 @@ function apply() {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
         <span></span>
       </a>
-      <a href="welcome.html" class="vpd-logo"><img src="img/vpd-logo.png" alt="La Voix de la Puissance Divine"></a>
+      <a href="welcome.html" class="vpd-logo"><img data-church-logo src="img/church-on-point-icon.png" alt=""></a>
     </div>`;
   bar.querySelector('[data-vpd-back] span').textContent = lang === 'fr' ? 'Retour' : 'Back';
   bar.querySelector('[data-vpd-back]').addEventListener('click', (e) => {
     if (cameFromThisSite()) { e.preventDefault(); history.back(); }
   });
   document.body.prepend(bar);
+  installChurchLinks();
+  // The church's own logo and name in the bar (ChurchOnPoint icon until loaded).
+  const slug = churchSlug();
+  supabase.rpc('get_public_church_info', { p_tenant_slug: slug }).then(({ data }) => {
+    const img = bar.querySelector('[data-church-logo]');
+    if (data?.logo_url && img) img.src = data.logo_url;
+    if (data?.name && img) img.alt = data.name;
+  }, () => {});
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);

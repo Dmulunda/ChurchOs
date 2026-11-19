@@ -331,3 +331,19 @@ visitors except the wording.
 - **Cost — your decision:** same as online giving: Stripe's card fee
   (about 2.9% + 30¢ in Canada) is paid by the church on each payment; no
   monthly fee. Check-in itself costs nothing.
+
+## Main port (November 2026): everything Main gained since the 15 features, except the AI writer
+
+Brought over from Main commits 2f35ef6 to 2fa6891 (29 commits, replayed with `git am -3`), then adapted for many churches:
+- Public guest pages: `welcome.html?church=<slug>` (each church's link is shown in Settings -> Church logo & info, with a Copy button), `live.html`, shared navy look for prayer/booking/give/register/event/guest check-in (`js/publicTheme.js`). `js/churchContext.js` remembers the church slug for the tab and adds `?church=` to links between public pages. Church name/logo come from the church, never VPD. The app itself still opens on `app.html` (no redirect to the welcome page, since a visitor without a link has no church).
+- Edge functions `public-portal` and `live-status` (deployed to Saas-platform, verify_jwt on): the church comes from `body.church` (slug) or the signed-in caller's church (`_shared/resolveTenant.ts`). Live cache per church.
+- Settings -> Church logo & info (`tenantLogoModal.js`): social links, YouTube channel, live-service times with "online only", time zone, public page link.
+- Member app redesign (navy/gold, new Home, ministry pages, line icons, bottom bar), Home "my next service" + to-do card, calendar with church program and daily/weekly/monthly repeat, menu by role (Events, Flyers, Projection, Equipment for Media & Tech admins; Supplies and Inventory for every department admin), sermon clip start/end, projection console redesign + reliable verse listening + songs for the Media team + big countdown text, Flyers Canva-style editor with automatic picture shrinking, safe file names for uploads, update bar instead of the pop-up.
+- Plan gating kept: Projection, Flyers and COP Academy still follow the church's plan.
+
+SQL (sql/saas_platform):
+- `170_privacy_live_social.sql` (applied): member privacy (guests see only themselves; `get_profiles_private`, `get_card_pastor_signature`), small groups for members only, tenants social/live columns, `live_status_cache` per church, `get_church_calendar` with the church program, `sermons.video_start_seconds/_end_seconds`, Media & Tech can read/edit songs, supplies per department.
+- `171_home_my_services.sql` (applied): `get_my_upcoming_services`, `confirm_my_service`.
+- `172_profile_private_columns.sql` (NOT applied yet): locks address, birth place, legal name and signature columns. Apply only after this app version is live on churchonpoint.com, otherwise the old app version cannot read profiles.
+- `173_flyers_bucket_25mb.sql` (applied).
+- Not ported on purpose: the monthly deletion of schedules older than one month (Main 165). The SaaS keeps past schedules (sql/saas_platform/32); deleting other churches' history is a decision for each church.

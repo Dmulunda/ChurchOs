@@ -12,7 +12,6 @@
 // Donor (no app account) and emails it instead of downloading it.
 import { t, formatMoney } from '../i18n.js';
 import { mergePrivateFields } from '../utils/privateProfile.js';
-import { t, appLocale, formatMoney } from '../i18n.js';
 import { createMyProfileModal } from './myProfileModal.js';
 import { receiptPdfAvailable, buildReceiptPdfBlob, shareOrDownloadPdf } from '../utils/taxReceiptPdf.js';
 
