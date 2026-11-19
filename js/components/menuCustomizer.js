@@ -33,7 +33,7 @@ const SIDEBAR_KEYS = ['sidebar.churchRules', 'sidebar.attendance', 'sidebar.appS
 // renaming one never needs a code change either.
 let DEPARTMENT_LABEL_KEYS = DEPARTMENT_KEYS.map((key) => `department.${key}`);
 
-const THEME_DEFAULTS = { primary_color: '#4f46e5', text_color: '#1e293b', background_color: '#f1f5f9', font_family: 'default' };
+const THEME_DEFAULTS = { primary_color: '#0B1F3A', text_color: '#1B2433', background_color: '#F6F4EF', font_family: 'inter' };
 
 export function createMenuCustomizerModal({ supabase, currentUserId }) {
   const root = document.createElement('div');

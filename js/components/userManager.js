@@ -370,7 +370,7 @@ export function renderUserManager(container, { supabase, scope, currentUserId })
 
       if (isGlobal) {
         const deptsCell = document.createElement('td');
-        deptsCell.className = 'px-4 py-2.5';
+        deptsCell.className = 'px-4 py-2.5 user-depts';
         deptsCell.innerHTML = row.departments.length === 0
           ? ''
           : row.departments.map((d) => `<span class="inline-block px-2 py-0.5 mb-1 mr-1 rounded-full text-xs bg-slate-100 text-slate-600">${escapeHtml(d.name)} (${roleLabel(d.role)})</span>`).join('');

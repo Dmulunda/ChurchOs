@@ -561,6 +561,23 @@ const DEPARTMENT_RELATIVE_TABS = new Set([
 // Exported so other tab modules can navigate the user elsewhere --
 // e.g. eventsPage.js's own "Create Flyer" button switching straight
 // to the Flyers tab with that event's details pre-filled.
+// Bottom bar (phones): the gold mark sits on the item for the page being
+// shown -- Home for the home pages, Schedule for schedules and the
+// calendar, Menu for everything reached through the menu.
+const BOTTOM_HOME_TABS = new Set(['super-home', 'dashboard', 'dept-dashboard']);
+const BOTTOM_SCHEDULE_TABS = new Set(['scheduling', 'dept-scheduling', 'calendar', 'service-program']);
+function updateBottomNav(name) {
+  document.querySelectorAll('#bottom-nav .bn-item').forEach((el) => {
+    let on = false;
+    if (el.dataset.tabTarget === 'super-home') on = BOTTOM_HOME_TABS.has(name);
+    else if (el.dataset.mobileNav === 'schedule') on = BOTTOM_SCHEDULE_TABS.has(name);
+    else if (el.dataset.mobileNav === 'menu') on = !BOTTOM_HOME_TABS.has(name) && !BOTTOM_SCHEDULE_TABS.has(name);
+    el.classList.toggle('bg-indigo-600', on);
+    el.classList.remove('text-white', 'text-slate-300');
+    if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  });
+}
+
 export function activateTab(name) {
   if (!canOpenTab(name)) name = isHomeActive() || !getActiveDepartment() ? 'super-home' : (getActiveDepartment().key === 'choir' ? 'dashboard' : 'dept-dashboard');
   // Only an actual switch should touch scroll memory -- some call sites
@@ -595,6 +612,7 @@ export function activateTab(name) {
     tab.classList.toggle('text-white', isActive);
     tab.classList.toggle('text-slate-300', !isActive);
   });
+  updateBottomNav(name);
 
   if (lazyTabs[name] && !loadedTabs.has(name)) {
     loadedTabs.add(name);
