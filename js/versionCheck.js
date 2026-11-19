@@ -25,7 +25,7 @@
 // reload, even if a deploy happened while you were gone; the regular
 // interval still catches it, just not timed to the exact moment you
 // return mid-task.
-import { t, getLang } from './i18n.js';
+import { t } from './i18n.js';
 import { isProjectionPanelMounted } from './utils/projectionGuard.js';
 import { hasUnsavedWork } from './utils/unsavedWorkGuard.js';
 
@@ -101,38 +101,30 @@ function showUpdateToastThenReload() {
   setTimeout(() => window.location.reload(), 2000);
 }
 
+// A thin bar at the bottom instead of a pop-up with release notes: the
+// notes list had grown long enough to hide the buttons. Never blocks the
+// screen; "Later" hides it until the next new version.
 function showUpdateModal(info) {
   modalOpen = true;
-  const notes = info.notes[getLang()] || info.notes.en || [];
-
   const root = document.createElement('div');
-  root.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4';
+  root.setAttribute('role', 'status');
+  root.className = 'fixed left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 bg-[#0B1F3A] text-white text-sm pl-4 pr-2 py-2 rounded-full shadow-lg max-w-[94vw]';
+  root.style.bottom = 'calc(env(safe-area-inset-bottom, 0px) + 84px)';
   root.innerHTML = `
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[88vh] flex flex-col">
-      <h2 class="font-display text-[20px] text-[#0B1F3A] mb-1">${t('app.updateAvailableTitle')}</h2>
-      ${notes.length ? `<p class="text-xs text-slate-500 mb-2">${t('app.updateWhatsNew', { n: notes.length })}</p>
-      <ul class="text-sm text-slate-700 mb-4 space-y-2 list-disc pl-5 overflow-y-auto min-h-0 flex-1 pr-2 border-y border-[#EFEBE2] py-3" style="overscroll-behavior:contain">${notes.map((note) => `<li>${escapeHtml(note)}</li>`).join('')}</ul>` : ''}
-      <div class="flex items-center gap-2 flex-wrap shrink-0">
-        <button type="button" data-action="now" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">${t('app.updateNow')}</button>
-        <button type="button" data-action="later" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">${t('app.updateLater')}</button>
-        <button type="button" data-action="refuse" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-100">${t('app.updateRefuse')}</button>
-      </div>
-    </div>
+    <span class="truncate">${t('app.updateBar')}</span>
+    <button type="button" data-action="now" class="shrink-0 px-3 py-1.5 rounded-full bg-[#E0B654] text-[#0B1F3A] font-semibold">${t('app.updateNow')}</button>
+    <button type="button" data-action="later" class="shrink-0 w-8 h-8 rounded-full text-white/70 hover:bg-white/10" aria-label="${t('app.updateLater')}">✕</button>
   `;
   document.body.appendChild(root);
-
   root.querySelector('[data-action="now"]').addEventListener('click', () => {
     reloading = true;
     window.location.reload();
   });
-
-  const dismiss = () => {
+  root.querySelector('[data-action="later"]').addEventListener('click', () => {
     lastDismissedVersion = info.version;
     modalOpen = false;
     root.remove();
-  };
-  root.querySelector('[data-action="later"]').addEventListener('click', dismiss);
-  root.querySelector('[data-action="refuse"]').addEventListener('click', dismiss);
+  });
 }
 
 function escapeHtml(str) {
