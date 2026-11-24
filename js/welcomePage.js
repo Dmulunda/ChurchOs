@@ -244,52 +244,67 @@ function renderPricing() {
 
 const TOPIC_KEYS = { demo: 'welcome.topicDemo', general: 'welcome.topicGeneral', support: 'welcome.topicSupport' };
 
-// Saves to website_inquiries first (sql/053) -- a real, reliably-
-// captured backend every Site Admin sees. Once that's done, still
-// finishes the original mailto flow too (pre-addressed to
-// info@aliviatech.ca) so a visitor who wants to follow up directly by
-// email still can.
+// Saves to website_inquiries (sql/053), which every Site Admin sees.
+// The visitor gets a thank-you in the page; the email app only opens if
+// saving fails (as a way to still reach us).
 function wireContactForm() {
   const form = document.querySelector('[data-el="contact-form"]');
   const submitBtn = form.querySelector('[data-el="submit-btn"]');
-  const statusEl = form.querySelector('[data-el="form-status"]');
+  const errorEl = form.querySelector('[data-el="form-error"]');
+  const thanksEl = document.querySelector('[data-el="form-thanks"]');
+
+  const showError = (html) => { errorEl.innerHTML = html; errorEl.classList.remove('hidden'); };
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const topicValue = form.elements.topic.value;
-    const topic = t(TOPIC_KEYS[topicValue] || TOPIC_KEYS.general);
+    errorEl.classList.add('hidden');
+    const topicValue = form.elements.topic.value || 'general';
     const name = form.elements.name.value.trim();
     const email = form.elements.email.value.trim();
     const phone = form.elements.phone.value.trim();
     const church = form.elements.church.value.trim();
     const message = form.elements.message.value.trim();
 
+    if (!name) { form.elements.name.focus(); form.elements.name.reportValidity?.(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { form.elements.email.focus(); form.elements.email.reportValidity?.(); return; }
+
     submitBtn.disabled = true;
-    statusEl.textContent = t('common.saving');
+    const label = submitBtn.textContent;
+    submitBtn.textContent = L('formSending');
 
     const { error } = await supabase.from('website_inquiries').insert({
-      topic: topicValue || 'general',
+      topic: topicValue,
       name,
       email,
-      phone,
+      phone: phone || '',
       church_name: church || null,
       message: message || null,
     });
 
     submitBtn.disabled = false;
-    statusEl.textContent = error ? t('welcome.formSaveFailed') : t('welcome.formHint');
+    submitBtn.textContent = label;
 
-    const subject = `ChurchOnPoint — ${topic}${church ? ` — ${church}` : ''}`;
-    const body = [
-      `Name: ${name}`,
-      `Email: ${email}`,
-      `Phone: ${phone}`,
-      church ? `Church: ${church}` : null,
-      '',
-      message,
-    ].filter((line) => line !== null).join('\n');
+    if (error) {
+      const topic = t(TOPIC_KEYS[topicValue] || TOPIC_KEYS.general);
+      const subject = `ChurchOnPoint — ${topic}${church ? ` — ${church}` : ''}`;
+      const body = [`Name: ${name}`, `Email: ${email}`, phone ? `Phone: ${phone}` : null, church ? `Church: ${church}` : null, '', message]
+        .filter((line) => line !== null).join('\n');
+      const href = `mailto:info@aliviatech.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      showError(`${escapeHtml(L('formError'))} <a class="underline font-semibold" href="${href}">${escapeHtml(L('formEmailUs'))}</a>`);
+      return;
+    }
 
-    window.location.href = `mailto:info@aliviatech.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    thanksEl.querySelector('[data-el="thanks-title"]').textContent = L('formThanksTitle', { name: name.split(' ')[0] });
+    thanksEl.querySelector('[data-el="thanks-body"]').textContent = L('formThanksBody', { email });
+    form.classList.add('hidden');
+    thanksEl.classList.remove('hidden');
+    form.reset();
+  });
+
+  thanksEl.querySelector('[data-action="form-again"]').addEventListener('click', () => {
+    thanksEl.classList.add('hidden');
+    form.classList.remove('hidden');
+    form.elements.name.focus();
   });
 }
 
