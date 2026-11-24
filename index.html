@@ -4,189 +4,336 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ChurchOnPoint — Church Management Software</title>
-  <meta name="description" content="ChurchOnPoint by AliviaTech: choir, department, scheduling, attendance, and financial management for churches — from a single congregation to a denomination with many extensions." />
+  <meta name="description" content="ChurchOnPoint by AliviaTech: scheduling, members, services, finances, live stream and a public page for every church — in English and French, on computer and phone." />
+  <meta property="og:title" content="ChurchOnPoint — Church Management Software" />
+  <meta property="og:description" content="Run every ministry of your church from one place. 30 days free." />
   <link rel="icon" type="image/png" href="img/church-on-point-icon.png" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- A translated string can be set to '' for a given language to
-       remove that element from display for just that language (see
-       welcome.valuePropsTitle/Subtitle, French) without leaving an
-       empty heading's own margin behind as a blank gap. -->
-  <style>h1:empty, h2:empty, p:empty { display: none; }</style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" />
+  <style>
+    :root { --navy: #0B1F3A; --navy-2: #13294A; --gold: #E0B654; --cream: #F6F4EF; --line: #E6E1D6; --ink: #1B2433; --muted: #5B6475; }
+    html { scroll-behavior: smooth; }
+    body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--ink); background: #fff; }
+    .font-display { font-family: Fraunces, Georgia, serif; letter-spacing: -0.01em; }
+    h1:empty, h2:empty, p:empty { display: none; }
+    .kicker { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #8A6A1F; }
+    .kicker--light { color: var(--gold); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 22px; border-radius: 14px; font-weight: 700; font-size: 15px; transition: transform .15s, background .15s, box-shadow .15s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-gold { background: var(--gold); color: var(--navy); box-shadow: 0 8px 24px rgba(224,182,84,.28); }
+    .btn-gold:hover { background: #E8C46A; }
+    .btn-ghost { border: 1.5px solid rgba(255,255,255,.35); color: #fff; }
+    .btn-ghost:hover { background: rgba(255,255,255,.08); }
+    .btn-navy { background: var(--navy); color: #fff; }
+    .btn-navy:hover { background: #142d52; }
+    .btn-outline { border: 1.5px solid var(--navy); color: var(--navy); background: #fff; }
+    .btn-outline:hover { background: var(--cream); }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 20px; }
+    .icon-chip { width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: #FBF3DF; color: var(--navy); }
+    .hero-bg { background: radial-gradient(1200px 500px at 85% -10%, rgba(224,182,84,.18), transparent 60%), linear-gradient(160deg, #081729 0%, var(--navy) 55%, #102a4d 100%); }
+    .phone { width: 290px; border-radius: 38px; background: #0a1424; padding: 10px; box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08); }
+    .phone-screen { border-radius: 30px; background: var(--cream); overflow: hidden; }
+    .seg { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 4px; gap: 4px; }
+    .seg button { height: 40px; padding: 0 18px; border-radius: 10px; font-weight: 600; font-size: 14px; color: var(--muted); display: inline-flex; align-items: center; gap: 8px; }
+    .seg button.is-on { background: var(--navy); color: #fff; }
+    .save-pill { display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #E6F4EA; color: #146C2E; }
+    .seg button.is-on .save-pill { background: var(--gold); color: var(--navy); }
+    .plan { position: relative; display: flex; flex-direction: column; border-radius: 24px; padding: 28px; border: 1px solid var(--line); background: #fff; }
+    .plan--hl { background: var(--navy); color: #fff; border-color: var(--navy); box-shadow: 0 24px 60px rgba(11,31,58,.25); }
+    .plan li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.45; }
+    .plan li svg { flex: none; margin-top: 2px; }
+    .plan .no { opacity: .45; }
+    details summary { list-style: none; cursor: pointer; }
+    details summary::-webkit-details-marker { display: none; }
+    details[open] .chev { transform: rotate(180deg); }
+    .chev { transition: transform .2s; }
+    .faq + .faq { border-top: 1px solid var(--line); }
+    .field { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; background: #fff; }
+    .field:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+    .nav-link { color: #3A4556; font-weight: 500; font-size: 14px; }
+    .nav-link:hover { color: var(--navy); }
+  </style>
 </head>
-<body class="bg-white text-slate-800">
+<body>
 
   <!-- Nav -->
-  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-100">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-      <a href="#top" class="flex items-center gap-2 font-bold text-lg text-[#0B1F3A] shrink-0">
-        <img src="img/church-on-point-icon.png" alt="" class="w-7 h-7 rounded-md" /> ChurchOnPoint
+  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b" style="border-color:var(--line)">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <a href="#top" class="flex items-center gap-2.5 shrink-0">
+        <img src="img/church-on-point-icon.png" alt="" class="w-8 h-8 rounded-lg" />
+        <span class="font-display font-bold text-[19px]" style="color:var(--navy)">ChurchOnPoint</span>
       </a>
-      <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-        <a href="#about" class="hover:text-[#0B1F3A]" data-i18n="welcome.navAbout">Who We Are</a>
-        <a href="#features" class="hover:text-[#0B1F3A]" data-i18n="welcome.navFeatures">Features</a>
-        <a href="#pricing" class="hover:text-[#0B1F3A]" data-i18n="welcome.navPricing">Pricing</a>
-        <a href="privacy.html" class="hover:text-[#0B1F3A]" data-i18n="welcome.navPrivacy">Privacy</a>
-        <a href="#contact" class="hover:text-[#0B1F3A]" data-i18n="welcome.navContact">Contact</a>
+      <nav class="hidden md:flex items-center gap-7">
+        <a href="#features" class="nav-link" data-i18n="welcome.navFeatures">Features</a>
+        <a href="#pricing" class="nav-link" data-i18n="welcome.navPricing">Pricing</a>
+        <a href="#about" class="nav-link" data-i18n="welcome.navAbout">Who We Are</a>
+        <a href="#contact" class="nav-link" data-i18n="welcome.navContact">Contact</a>
       </nav>
       <div class="flex items-center gap-2">
         <select id="welcome-lang-select" data-i18n-aria-label="sidebar.language" aria-label="Language"
-                class="bg-slate-100 border border-slate-200 text-slate-700 text-xs rounded-lg px-2 py-1.5">
+                class="h-9 border rounded-lg px-2 text-xs font-semibold bg-white" style="border-color:var(--line);color:var(--navy)">
           <option value="en">EN</option>
           <option value="fr">FR</option>
         </select>
-        <a href="app.html" class="hidden sm:inline-block px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100" data-i18n="welcome.signIn">Sign In</a>
-        <a href="app.html?mode=new-church" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700" data-i18n="welcome.getStarted">Get Started</a>
+        <a href="app.html" class="hidden sm:inline-flex h-9 items-center px-3 rounded-lg text-sm font-semibold hover:bg-slate-100" style="color:var(--navy)" data-i18n="welcome.signIn">Sign In</a>
+        <a href="app.html?mode=new-church" class="inline-flex h-9 items-center px-4 rounded-lg text-sm font-bold text-white" style="background:var(--navy)" data-i18n="welcome.getStarted">Get Started</a>
       </div>
     </div>
   </header>
 
   <!-- Hero -->
-  <section id="top" class="bg-gradient-to-br from-[#0a1628] to-[#0B1F3A] text-white">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
-      <img src="img/church-on-point-logo.png" alt="ChurchOnPoint" class="mx-auto mb-8 h-20 sm:h-28 w-auto rounded-2xl shadow-lg" />
-      <h1 class="text-3xl sm:text-5xl font-bold leading-tight max-w-3xl mx-auto" data-i18n="welcome.heroTitle">
-        14 ready-made ministries, one login: from Choir to Finance, Ushers to Sunday School
-      </h1>
-      <p class="mt-5 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto" data-i18n="welcome.heroSubtitle">
-        All 14 ministries are ready to use from day one, with no setup required. Need more? Add as many as you
-        like and rename any of them to fit the way your church serves. Scheduling warns you before it
-        double-books someone or assigns a person who has said they're unavailable. A single roster shows every
-        ministry's assignments for a service at a glance.
-      </p>
-      <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
-        <a href="app.html?mode=new-church" class="px-6 py-3 rounded-lg bg-[#D4AF37] text-[#0B1F3A] font-semibold hover:brightness-95" data-i18n="welcome.getStarted">Get Started</a>
-        <a href="#contact" class="px-6 py-3 rounded-lg border border-white/30 text-white font-semibold hover:bg-white/10" data-i18n="welcome.scheduleDemo">Schedule a Demo</a>
+  <section id="top" class="hero-bg text-white overflow-hidden">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-16 sm:pt-20 sm:pb-24 grid lg:grid-cols-[1.15fr_1fr] gap-12 items-center">
+      <div>
+        <p class="kicker kicker--light mb-4" data-l="kicker">Church management software · English & French</p>
+        <h1 class="font-display text-[40px] leading-[1.05] sm:text-[58px] font-bold" data-l="heroTitle">Run every ministry of your church from one place.</h1>
+        <p class="mt-5 text-[17px] leading-relaxed max-w-xl" style="color:#C9D2E3" data-l="heroSub"></p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="app.html?mode=new-church" class="btn btn-gold" data-l="ctaTrial">Start my 30-day free trial</a>
+          <a href="#contact" class="btn btn-ghost" data-l="ctaDemo" data-demo-link>Book a demo</a>
+        </div>
+        <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm" style="color:#C9D2E3">
+          <li class="flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E0B654" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span data-l="trust1"></span></li>
+          <li class="flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E0B654" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span data-l="trust2"></span></li>
+          <li class="flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E0B654" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span data-l="trust3"></span></li>
+        </ul>
+      </div>
+
+      <!-- App preview (illustration of the member Home screen) -->
+      <div class="flex justify-center lg:justify-end" aria-hidden="true">
+        <div class="phone">
+          <div class="phone-screen" style="color:var(--ink)">
+            <div class="px-4 pt-5 pb-3" style="background:var(--navy)">
+              <div class="flex items-center justify-between text-white">
+                <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-md bg-white/90"></span><span class="text-[13px] font-semibold" data-l="mockChurch">Grace Church</span></div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              </div>
+            </div>
+            <div class="p-4 space-y-3">
+              <p class="font-display text-[22px] font-bold" style="color:var(--navy)" data-l="mockHello">Good evening, Grace</p>
+              <div class="rounded-2xl p-4 text-white" style="background:var(--navy)">
+                <p class="text-[10px] font-bold tracking-widest uppercase" style="color:var(--gold)" data-l="mockNextLive">Next live service</p>
+                <p class="font-display text-[24px] font-bold mt-1" data-l="mockCountdown">1 d 14 h 22 min</p>
+                <p class="text-[12px]" style="color:#C9D2E3" data-l="mockSunday">Sunday 10:30 AM</p>
+              </div>
+              <div class="rounded-2xl bg-white p-3.5 border" style="border-color:var(--line)">
+                <p class="text-[10px] font-bold tracking-widest uppercase" style="color:#8A6A1F" data-l="mockTodo">To do</p>
+                <p class="text-[12.5px] mt-2 flex gap-2"><span class="w-1.5 h-1.5 rounded-full mt-1.5" style="background:var(--gold)"></span><span data-l="mockTodo1"></span></p>
+                <p class="text-[12.5px] mt-1.5 flex gap-2"><span class="w-1.5 h-1.5 rounded-full mt-1.5" style="background:var(--gold)"></span><span data-l="mockTodo2"></span></p>
+              </div>
+              <div class="rounded-2xl bg-white p-3.5 border-l-4 border" style="border-color:var(--line);border-left-color:var(--gold)">
+                <p class="text-[10px] font-bold tracking-widest uppercase" style="color:#8A6A1F" data-l="mockService">My next service</p>
+                <div class="flex items-center justify-between mt-1.5 gap-2">
+                  <p class="text-[13px] font-semibold" style="color:var(--navy)" data-l="mockServiceDept">Ushers · Sunday</p>
+                  <span class="shrink-0 whitespace-nowrap text-[11px] font-bold text-white px-2.5 py-1 rounded-lg" style="background:var(--navy)" data-l="mockConfirm">Confirm</span>
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-5 border-t bg-white py-2" style="border-color:var(--line)">
+              <span class="mx-auto w-5 h-5 rounded" style="background:var(--navy)"></span>
+              <span class="mx-auto w-5 h-5 rounded bg-slate-300"></span>
+              <span class="mx-auto w-5 h-5 rounded bg-slate-300"></span>
+              <span class="mx-auto w-5 h-5 rounded bg-slate-300"></span>
+              <span class="mx-auto w-5 h-5 rounded bg-slate-300"></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Value Props -->
-  <section id="value-props" class="bg-slate-50 border-y border-slate-100">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-      <h2 class="text-2xl sm:text-3xl font-bold text-[#0B1F3A] text-center mb-2" data-i18n="welcome.valuePropsTitle">
-        The all-in-one tool to run your ministries effortlessly
-      </h2>
-      <p class="text-center text-slate-500 mb-10 max-w-2xl mx-auto" data-i18n="welcome.valuePropsSubtitle">
-        Take control of your church's organization without wasting time.
-      </p>
-      <div class="grid sm:grid-cols-3 gap-5">
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <p class="text-sm font-semibold text-[#0B1F3A] mb-1.5" data-i18n="welcome.valueProp1Title">Ready from day one</p>
-          <p class="text-sm text-slate-600 leading-relaxed" data-i18n="welcome.valueProp1Desc">Start with 14 preset ministries that you can adapt to fit your community.</p>
-        </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <p class="text-sm font-semibold text-[#0B1F3A] mb-1.5" data-i18n="welcome.valueProp2Title">No more scheduling mistakes</p>
-          <p class="text-sm text-slate-600 leading-relaxed" data-i18n="welcome.valueProp2Desc">Get automatic alerts when someone is double-booked or has said they're unavailable.</p>
-        </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <p class="text-sm font-semibold text-[#0B1F3A] mb-1.5" data-i18n="welcome.valueProp3Title">Everything in one place</p>
-          <p class="text-sm text-slate-600 leading-relaxed" data-i18n="welcome.valueProp3Desc">One schedule to coordinate all your teams for every service.</p>
-        </div>
+  <!-- Key numbers -->
+  <section style="background:var(--cream)" class="border-b" >
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      <div><p class="font-display text-[34px] font-bold" style="color:var(--navy)">14</p><p class="text-sm" style="color:var(--muted)" data-l="stat1"></p></div>
+      <div><p class="font-display text-[34px] font-bold" style="color:var(--navy)">2</p><p class="text-sm" style="color:var(--muted)" data-l="stat2"></p></div>
+      <div><p class="font-display text-[34px] font-bold" style="color:var(--navy)">1</p><p class="text-sm" style="color:var(--muted)" data-l="stat3"></p></div>
+      <div><p class="font-display text-[34px] font-bold" style="color:var(--navy)" data-l="stat4Value">Several</p><p class="text-sm" style="color:var(--muted)" data-l="stat4"></p></div>
+    </div>
+  </section>
+
+  <!-- Why -->
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+    <div class="max-w-2xl">
+      <h2 class="font-display text-[32px] sm:text-[40px] font-bold leading-tight" style="color:var(--navy)" data-l="whyTitle"></h2>
+      <p class="mt-3 text-[17px]" style="color:var(--muted)" data-l="whySub"></p>
+    </div>
+    <div class="mt-10 grid md:grid-cols-3 gap-5">
+      <div class="card p-6">
+        <span class="icon-chip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5z"/><path d="m3 17 9 5 9-5"/><path d="m3 12 9 5 9-5"/></svg></span>
+        <p class="mt-4 font-bold text-[17px]" style="color:var(--navy)" data-l="why1Title"></p>
+        <p class="mt-1.5 text-[15px] leading-relaxed" style="color:var(--muted)" data-l="why1Desc"></p>
+      </div>
+      <div class="card p-6">
+        <span class="icon-chip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span>
+        <p class="mt-4 font-bold text-[17px]" style="color:var(--navy)" data-l="why2Title"></p>
+        <p class="mt-1.5 text-[15px] leading-relaxed" style="color:var(--muted)" data-l="why2Desc"></p>
+      </div>
+      <div class="card p-6">
+        <span class="icon-chip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M15 15c3 0 6 1.5 6 4.5"/></svg></span>
+        <p class="mt-4 font-bold text-[17px]" style="color:var(--navy)" data-l="why3Title"></p>
+        <p class="mt-1.5 text-[15px] leading-relaxed" style="color:var(--muted)" data-l="why3Desc"></p>
       </div>
     </div>
   </section>
 
-  <!-- Who we are -->
-  <section id="about" class="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center">
-    <h2 class="text-2xl sm:text-3xl font-bold text-[#0B1F3A] mb-4" data-i18n="welcome.aboutTitle">Who We Are</h2>
-    <p class="text-slate-600 leading-relaxed" data-i18n="welcome.aboutBody">
-      ChurchOnPoint is the church management system built by AliviaTech. It started as the scheduling and member-management system
-      for a single church, and grew from real requests: a way to track a promised replacement when someone can't
-      make their slot, an official tax receipt at year-end, a public link for booking a meeting with a pastor, a
-      quick tally at the door on a Sunday. When that church opened a second location, the same system grew a way
-      to run several extensions of one denomination — each with its own address and admins — under one login,
-      with a Global Super Admin, General Overseer, and General Secretary who can act across all of them.
-    </p>
+  <!-- New this season -->
+  <section style="background:var(--navy)" class="text-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+      <p class="kicker kicker--light" data-l="newTitle"></p>
+      <h2 class="font-display text-[30px] sm:text-[38px] font-bold mt-2" data-l="newSub"></h2>
+      <div class="mt-10 grid sm:grid-cols-2 gap-5">
+        <div class="rounded-[20px] p-6 border border-white/10" style="background:var(--navy-2)">
+          <span class="icon-chip" style="background:rgba(224,182,84,.16);color:var(--gold)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg></span>
+          <p class="mt-4 font-bold text-[17px]" data-l="new1Title"></p>
+          <p class="mt-1.5 text-[15px] leading-relaxed" style="color:#C9D2E3" data-l="new1Desc"></p>
+        </div>
+        <div class="rounded-[20px] p-6 border border-white/10" style="background:var(--navy-2)">
+          <span class="icon-chip" style="background:rgba(224,182,84,.16);color:var(--gold)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="m17 10 5-3v10l-5-3"/></svg></span>
+          <p class="mt-4 font-bold text-[17px]" data-l="new2Title"></p>
+          <p class="mt-1.5 text-[15px] leading-relaxed" style="color:#C9D2E3" data-l="new2Desc"></p>
+        </div>
+        <div class="rounded-[20px] p-6 border border-white/10" style="background:var(--navy-2)">
+          <span class="icon-chip" style="background:rgba(224,182,84,.16);color:var(--gold)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></span>
+          <p class="mt-4 font-bold text-[17px]" data-l="new3Title"></p>
+          <p class="mt-1.5 text-[15px] leading-relaxed" style="color:#C9D2E3" data-l="new3Desc"></p>
+        </div>
+        <div class="rounded-[20px] p-6 border border-white/10" style="background:var(--navy-2)">
+          <span class="icon-chip" style="background:rgba(224,182,84,.16);color:var(--gold)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
+          <p class="mt-4 font-bold text-[17px]" data-l="new4Title"></p>
+          <p class="mt-1.5 text-[15px] leading-relaxed" style="color:#C9D2E3" data-l="new4Desc"></p>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- Features -->
-  <section id="features" class="bg-slate-50 border-y border-slate-100">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-      <h2 class="text-2xl sm:text-3xl font-bold text-[#0B1F3A] text-center mb-2" data-i18n="welcome.featuresTitle">What's actually in it</h2>
-      <p class="text-center text-slate-500 mb-10 max-w-2xl mx-auto" data-i18n="welcome.featuresSubtitle">Not a generic feature list — this is what the app does today.</p>
-      <div data-el="features-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  <section id="features" class="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+    <div class="max-w-2xl">
+      <p class="kicker" data-i18n="welcome.navFeatures">Features</p>
+      <h2 class="font-display text-[30px] sm:text-[38px] font-bold mt-2" style="color:var(--navy)" data-l="featuresTitle"></h2>
+      <p class="mt-3 text-[17px]" style="color:var(--muted)" data-l="featuresSub"></p>
     </div>
+    <div data-el="features-grid" class="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
   <!-- Pricing -->
-  <section id="pricing" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-    <h2 class="text-2xl sm:text-3xl font-bold text-[#0B1F3A] text-center mb-2" data-i18n="welcome.pricingTitle">Pricing</h2>
-    <p class="text-center text-slate-500 mb-6" data-i18n="welcome.pricingSubtitle">Every plan starts with a full-featured trial — no card required to try it.</p>
-    <div class="flex justify-center mb-8">
-      <div class="inline-flex rounded-lg border border-slate-200 p-1">
-        <button type="button" data-action="pricing-interval-monthly" class="px-3 py-1.5 rounded-md text-sm font-medium"></button>
-        <button type="button" data-action="pricing-interval-yearly" class="px-3 py-1.5 rounded-md text-sm font-medium"></button>
+  <section id="pricing" style="background:var(--cream)">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+      <div class="text-center max-w-2xl mx-auto">
+        <p class="kicker" data-l="pricingKicker">Pricing</p>
+        <h2 class="font-display text-[32px] sm:text-[42px] font-bold mt-2 leading-tight" style="color:var(--navy)" data-l="pricingTitle"></h2>
+        <p class="mt-3 text-[16px]" style="color:var(--muted)" data-l="pricingSub"></p>
       </div>
+      <div class="flex justify-center mt-8">
+        <div class="seg" role="tablist">
+          <button type="button" data-action="pricing-interval-monthly" class="is-on"></button>
+          <button type="button" data-action="pricing-interval-yearly"></button>
+        </div>
+      </div>
+      <div data-el="pricing-grid" class="mt-10">
+        <p class="text-center" style="color:var(--muted)" data-l="loading">Loading plans…</p>
+      </div>
+      <div data-el="every-plan" class="mt-10"></div>
+      <details class="mt-6 card overflow-hidden">
+        <summary class="px-6 py-4 flex items-center justify-between font-semibold" style="color:var(--navy)">
+          <span data-l="compare">Compare all plan details</span>
+          <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div data-el="compare-table" class="px-4 pb-5 overflow-x-auto"></div>
+      </details>
     </div>
-    <div data-el="pricing-grid">
-      <p class="text-center text-slate-400" data-i18n="welcome.loadingPlans">Loading plans…</p>
+  </section>
+
+  <!-- FAQ -->
+  <section class="max-w-3xl mx-auto px-4 sm:px-6 py-20">
+    <h2 class="font-display text-[30px] sm:text-[36px] font-bold text-center" style="color:var(--navy)" data-l="faqTitle">Questions</h2>
+    <div class="mt-8 card px-6" data-el="faq"></div>
+  </section>
+
+  <!-- About -->
+  <section id="about" class="border-t" style="border-color:var(--line)">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center">
+      <p class="kicker" data-l="aboutKicker">Who we are</p>
+      <p class="mt-4 text-[16px] leading-relaxed" style="color:var(--muted)" data-i18n="welcome.aboutBody"></p>
     </div>
   </section>
 
   <!-- Contact / Demo -->
-  <section id="contact" class="bg-[#0B1F3A] text-white">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-16 grid md:grid-cols-2 gap-10">
+  <section id="contact" class="hero-bg text-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-20 grid md:grid-cols-2 gap-12 items-start">
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-3" data-i18n="welcome.contactTitle">Talk to us</h2>
-        <p class="text-slate-300 mb-6" data-i18n="welcome.contactBody">
-          Have questions, want a walkthrough, or ready to move your church onto ChurchOnPoint? Send us a note and
-          we'll get back to you — or reach out directly below.
-        </p>
-        <div class="space-y-2 text-slate-200">
-          <p>✉️ <a href="mailto:info@aliviatech.ca" class="underline hover:text-white">info@aliviatech.ca</a></p>
-          <p>📞 <a href="tel:+16137005827" class="underline hover:text-white">(613) 700-5827</a></p>
+        <h2 class="font-display text-[32px] sm:text-[40px] font-bold" data-l="contactTitle">Talk to us</h2>
+        <p class="mt-3 text-[16px] leading-relaxed" style="color:#C9D2E3" data-l="contactSub"></p>
+        <div class="mt-8 space-y-3">
+          <a href="mailto:info@aliviatech.ca" class="flex items-center gap-3 text-white/90 hover:text-white">
+            <span class="icon-chip" style="background:rgba(224,182,84,.16);color:var(--gold)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg></span>
+            info@aliviatech.ca
+          </a>
+          <a href="tel:+16137005827" class="flex items-center gap-3 text-white/90 hover:text-white">
+            <span class="icon-chip" style="background:rgba(224,182,84,.16);color:var(--gold)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></span>
+            (613) 700-5827
+          </a>
         </div>
       </div>
 
-      <form data-el="contact-form" class="bg-white rounded-xl shadow-xl p-6 text-slate-800 space-y-3">
+      <form data-el="contact-form" class="bg-white rounded-[24px] shadow-2xl p-6 sm:p-7 space-y-3" style="color:var(--ink)">
         <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1" data-i18n="welcome.formSubject">Subject</label>
-          <select name="topic" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+          <label class="block text-sm font-semibold mb-1" style="color:var(--muted)" data-i18n="welcome.formSubject">Subject</label>
+          <select name="topic" class="field">
             <option value="demo" data-i18n="welcome.topicDemo">Schedule a Demo</option>
             <option value="general" data-i18n="welcome.topicGeneral">General Inquiry</option>
             <option value="support" data-i18n="welcome.topicSupport">Support</option>
           </select>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1" data-i18n="welcome.formName">Your Name</label>
-          <input type="text" name="name" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold mb-1" style="color:var(--muted)" data-i18n="welcome.formName">Your Name</label>
+            <input type="text" name="name" required class="field" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1" style="color:var(--muted)" data-i18n="welcome.formChurch">Church Name</label>
+            <input type="text" name="church" class="field" />
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold mb-1" style="color:var(--muted)" data-i18n="welcome.formEmail">Email</label>
+            <input type="email" name="email" required class="field" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1" style="color:var(--muted)" data-i18n="welcome.formPhone">Phone Number</label>
+            <input type="tel" name="phone" required class="field" />
+          </div>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1" data-i18n="welcome.formEmail">Email</label>
-          <input type="email" name="email" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <label class="block text-sm font-semibold mb-1" style="color:var(--muted)" data-i18n="welcome.formMessage">Message</label>
+          <textarea name="message" rows="3" class="field"></textarea>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1" data-i18n="welcome.formPhone">Phone Number</label>
-          <input type="tel" name="phone" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1" data-i18n="welcome.formChurch">Church Name</label>
-          <input type="text" name="church" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1" data-i18n="welcome.formMessage">Message</label>
-          <textarea name="message" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
-        </div>
-        <button type="submit" data-el="submit-btn" class="w-full py-2.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50" data-i18n="welcome.formSend">
-          Send
-        </button>
-        <p data-el="form-status" class="text-xs text-slate-400" data-i18n="welcome.formHint">Opens your email app with this filled in, addressed to info@aliviatech.ca.</p>
+        <button type="submit" data-el="submit-btn" class="btn btn-navy w-full disabled:opacity-50" data-i18n="welcome.formSend">Send</button>
+        <p data-el="form-status" class="text-xs" style="color:var(--muted)" data-i18n="welcome.formHint">Opens your email app with this filled in, addressed to info@aliviatech.ca.</p>
       </form>
     </div>
   </section>
 
-  <footer class="bg-[#0a1628] text-slate-400 text-sm">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-2 text-white font-semibold">
-        <img src="img/church-on-point-icon.png" alt="" class="w-6 h-6 rounded-md" /> ChurchOnPoint <span class="text-slate-500 font-normal" data-i18n="welcome.byAliviaTech">by AliviaTech</span>
+  <footer style="background:#06111F" class="text-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 flex flex-wrap items-center justify-between gap-6" style="color:#8E9AB0">
+      <div>
+        <div class="flex items-center gap-2.5 text-white">
+          <img src="img/church-on-point-icon.png" alt="" class="w-7 h-7 rounded-md" />
+          <span class="font-display font-bold text-[17px]">ChurchOnPoint</span>
+        </div>
+        <p class="mt-2" data-l="footerTag">Church management software by AliviaTech.</p>
       </div>
-      <div class="flex flex-wrap gap-4">
-        <a href="mailto:info@aliviatech.ca" class="hover:text-white">info@aliviatech.ca</a>
-        <a href="tel:+16137005827" class="hover:text-white">(613) 700-5827</a>
+      <div class="flex flex-wrap gap-5">
+        <a href="#features" class="hover:text-white" data-i18n="welcome.navFeatures">Features</a>
+        <a href="#pricing" class="hover:text-white" data-i18n="welcome.navPricing">Pricing</a>
         <a href="privacy.html" class="hover:text-white" data-i18n="welcome.navPrivacy">Privacy</a>
         <a href="app.html" class="hover:text-white" data-i18n="welcome.signIn">Sign In</a>
       </div>
-      <p>&copy; <span data-el="year"></span> AliviaTech. <span data-i18n="welcome.allRightsReserved">All rights reserved.</span></p>
+      <p class="w-full border-t border-white/10 pt-6">&copy; <span data-el="year"></span> AliviaTech. <span data-i18n="welcome.allRightsReserved">All rights reserved.</span></p>
     </div>
   </footer>
 
