@@ -63,13 +63,14 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
       <a href="#top" class="flex items-center gap-2.5 shrink-0">
         <img src="img/church-on-point-icon.png" alt="" class="w-8 h-8 rounded-lg" />
-        <span class="font-display font-bold text-[19px]" style="color:var(--navy)">ChurchOnPoint</span>
+        <span class="hidden min-[420px]:inline font-display font-bold text-[19px]" style="color:var(--navy)">ChurchOnPoint</span>
       </a>
       <nav class="hidden md:flex items-center gap-7">
         <a href="#features" class="nav-link" data-i18n="welcome.navFeatures">Features</a>
         <a href="#pricing" class="nav-link" data-i18n="welcome.navPricing">Pricing</a>
         <a href="#about" class="nav-link" data-i18n="welcome.navAbout">Who We Are</a>
         <a href="#contact" class="nav-link" data-i18n="welcome.navContact">Contact</a>
+        <a href="privacy.html" class="nav-link" data-i18n="welcome.navPrivacy">Privacy</a>
       </nav>
       <div class="flex items-center gap-2">
         <select id="welcome-lang-select" data-i18n-aria-label="sidebar.language" aria-label="Language"
@@ -78,15 +79,29 @@
           <option value="fr">FR</option>
         </select>
         <a href="app.html" class="hidden sm:inline-flex h-9 items-center px-3 rounded-lg text-sm font-semibold hover:bg-slate-100" style="color:var(--navy)" data-i18n="welcome.signIn">Sign In</a>
-        <a href="app.html?mode=new-church" class="inline-flex h-9 items-center px-4 rounded-lg text-sm font-bold text-white" style="background:var(--navy)" data-i18n="welcome.getStarted">Get Started</a>
+        <a href="app.html?mode=new-church" class="inline-flex h-9 items-center px-3 sm:px-4 rounded-lg text-sm font-bold text-white whitespace-nowrap" style="background:var(--navy)" data-i18n="welcome.getStarted">Get Started</a>
+        <button type="button" data-action="menu" class="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border" style="border-color:var(--line);color:var(--navy)" aria-label="Menu" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
       </div>
     </div>
+    <nav data-el="mobile-menu" class="hidden md:hidden border-t bg-white" style="border-color:var(--line)">
+      <div class="max-w-6xl mx-auto px-4 py-2 flex flex-col">
+        <a href="#features" class="py-3 font-semibold border-b" style="color:var(--navy);border-color:var(--line)" data-i18n="welcome.navFeatures">Features</a>
+        <a href="#pricing" class="py-3 font-semibold border-b" style="color:var(--navy);border-color:var(--line)" data-i18n="welcome.navPricing">Pricing</a>
+        <a href="#about" class="py-3 font-semibold border-b" style="color:var(--navy);border-color:var(--line)" data-i18n="welcome.navAbout">Who We Are</a>
+        <a href="#contact" class="py-3 font-semibold border-b" style="color:var(--navy);border-color:var(--line)" data-i18n="welcome.navContact">Contact</a>
+        <a href="privacy.html" class="py-3 font-semibold border-b" style="color:var(--navy);border-color:var(--line)" data-i18n="welcome.navPrivacy">Privacy</a>
+        <a href="app.html" class="my-3 btn btn-outline" data-i18n="welcome.signIn">Sign In</a>
+      </div>
+    </nav>
   </header>
 
   <!-- Hero -->
   <section id="top" class="hero-bg text-white overflow-hidden">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-16 sm:pt-20 sm:pb-24 grid lg:grid-cols-[1.15fr_1fr] gap-12 items-center">
       <div>
+        <img src="img/church-on-point-logo.png" alt="ChurchOnPoint" class="h-16 sm:h-20 w-auto rounded-2xl shadow-lg mb-7" />
         <p class="kicker kicker--light mb-4" data-l="kicker">Church management software · English & French</p>
         <h1 class="font-display text-[40px] leading-[1.05] sm:text-[58px] font-bold" data-l="heroTitle">Run every ministry of your church from one place.</h1>
         <p class="mt-5 text-[17px] leading-relaxed max-w-xl" style="color:#C9D2E3" data-l="heroSub"></p>
@@ -363,6 +378,8 @@
         <p class="mt-2" data-l="footerTag">Church management software by AliviaTech.</p>
       </div>
       <div class="flex flex-wrap gap-5">
+        <a href="mailto:info@aliviatech.ca" class="hover:text-white">info@aliviatech.ca</a>
+        <a href="tel:+16137005827" class="hover:text-white">(613) 700-5827</a>
         <a href="#features" class="hover:text-white" data-i18n="welcome.navFeatures">Features</a>
         <a href="#pricing" class="hover:text-white" data-i18n="welcome.navPricing">Pricing</a>
         <a href="privacy.html" class="hover:text-white" data-i18n="welcome.navPrivacy">Privacy</a>

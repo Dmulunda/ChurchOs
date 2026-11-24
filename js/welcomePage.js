@@ -76,6 +76,18 @@ async function init() {
   renderFaq();
   loadPricing();
   wireContactForm();
+  wireMobileMenu();
+}
+
+// Phones: the menu button opens the section links and Sign In; picking
+// a link closes it again.
+function wireMobileMenu() {
+  const btn = document.querySelector('[data-action="menu"]');
+  const menu = document.querySelector('[data-el="mobile-menu"]');
+  if (!btn || !menu) return;
+  const set = (open) => { menu.classList.toggle('hidden', !open); btn.setAttribute('aria-expanded', String(open)); };
+  btn.addEventListener('click', () => set(menu.classList.contains('hidden')));
+  menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => set(false)));
 }
 
 // ---------- icons ----------
