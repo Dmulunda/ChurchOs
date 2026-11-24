@@ -126,6 +126,7 @@ function buildFeatures() {
 
 function renderFeatures() {
   const grid = document.querySelector('[data-el="features-grid"]');
+  if (!grid) return;
   grid.innerHTML = buildFeatures().map(({ icon: ic, title, desc }) => `
     <div class="card p-6">
       <span class="icon-chip">${icon(ic)}</span>
@@ -135,17 +136,20 @@ function renderFeatures() {
   `).join('');
 }
 
+// Fifteen questions in two columns: the basics first, then the
+// details of each feature (kept out of the feature list on purpose so
+// the page stays short).
 function renderFaq() {
-  const el = document.querySelector('[data-el="faq"]');
-  el.innerHTML = [1, 2, 3, 4, 5].map((n) => `
+  const item = (n) => `
     <details class="faq py-1">
       <summary class="py-4 flex items-center justify-between gap-4 font-semibold text-[16px]" style="color:var(--navy)">
         <span>${escapeHtml(L(`faq${n}Q`))}</span>
         <svg class="chev shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
       </summary>
       <p class="pb-4 -mt-1 text-[15px] leading-relaxed" style="color:var(--muted)">${escapeHtml(L(`faq${n}A`))}</p>
-    </details>
-  `).join('');
+    </details>`;
+  document.querySelector('[data-el="faq"]').innerHTML = [1, 2, 3, 4, 5, 6, 7].map(item).join('');
+  document.querySelector('[data-el="faq2"]').innerHTML = [8, 9, 10, 11, 12, 13, 14, 15].map(item).join('');
 }
 
 // ---------- pricing ----------
